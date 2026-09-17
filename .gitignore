@@ -1,0 +1,17 @@
+/build*/
+/.cache/
+/.qt/
+/.vs/
+/.vscode/
+/.tooling/
+/.downloads/
+*.user
+*.suo
+*.pdb
+*.ilk
+*.log
+config.json
+secrets.json
+models/
+voices/
+runtime/
