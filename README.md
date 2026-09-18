@@ -81,29 +81,35 @@ Run normally or with synthetic telemetry:
 .\build\RaceEngineer.exe --mock
 ```
 
+CLI options:
+
+- `.\build\RaceEngineer.exe --help`: xem danh sách tham số
+- `.\build\RaceEngineer.exe --map-button`: gán nút Push-to-Talk trên vô lăng (DirectInput)
+- `.\build\RaceEngineer.exe --set-key <api_key>`: lưu API key vào Windows Credential Manager
+- `.\build\RaceEngineer.exe --test-llm`: kiểm tra kết nối tới LLM server
+
 ## Moza / DirectInput push-to-talk
 
-1. Connect the wheel and open **AI & Voice**.
-2. Under **Push-to-talk mapping**, choose **Map button**.
-3. Press the radio button on the Moza ES once.
-4. Enable **DirectInput wheel button**, optionally disable **Ctrl+Space**, then choose **Apply**.
+1. Kết nối vô lăng vào máy tính.
+2. Chạy lệnh: `.\build\RaceEngineer.exe --map-button`
+3. Nhấn nút mong muốn trên vô lăng (ví dụ nút Radio trên Moza ES) một lần. Cấu hình sẽ tự động lưu vào `settings.json`.
 
-The binding stores the DirectInput device instance GUID and zero-based button index in normal JSON settings. At runtime the UI displays it as `Button 1`, `Button 2`, etc. Input is polled on a low-priority worker using background, non-exclusive access, so the game can continue reading the same wheel. Holding the mapped button begins capture; releasing it ends the utterance and immediately sends it to PhoWhisper. There is no VAD endpoint delay.
+Input được quét trên worker độ ưu tiên thấp qua chế độ background non-exclusive, không làm gián đoạn game đọc vô lăng. Giữ nút để bắt đầu ghi âm; nhả nút để gửi ngay lập tức tới PhoWhisper.
 
 ## AI setup
 
-Open **AI & Voice** in the app. The development defaults target the LG V60 llama.cpp server over Tailscale:
+Cấu hình được lưu trữ dạng JSON tại `settings.json` trong thư mục AppData của Windows.
+API key được lưu trữ an toàn trong Windows Credential Manager (`RaceEngineer/LLMApiKey`).
 
-- Provider: OpenAI Compatible
-- Base URL: `http://100.114.125.88:8080/v1`
-- Model: `race-engineer`
-- API key: empty (optional)
-- Streaming: enabled
-- Timeout: 30 seconds
-- Maximum response: 32 tokens
-- Temperature: 0.1
+Để lưu API key từ dòng lệnh:
+```powershell
+.\build\RaceEngineer.exe --set-key "your_api_key_here"
+```
 
-Choose **Save**, then **Test /models**. The test performs `GET /v1/models` and verifies that the configured model ID is available. The base URL and model remain editable, so the application is not tied to Tailscale or this phone. Non-secret configuration is stored as human-readable JSON under the Windows application config directory. If provided, the API key is stored separately by Windows Credential Manager under `RaceEngineer/LLMApiKey`.
+Để kiểm tra kết nối API:
+```powershell
+.\build\RaceEngineer.exe --test-llm
+```
 
 Live telemetry questions use OpenAI-style tool calls. Tool results carry deterministic semantic fields such as `fuel_status`, `enough_fuel`, `spare_laps`, `missing_laps`, temperature status and gap trend. These conclusions are authoritative so a small local model does not need to recalculate them.
 

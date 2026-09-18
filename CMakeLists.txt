@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Multimedia Network Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Multimedia Network)
 
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -21,7 +21,7 @@ add_subdirectory(third_party/whisper.cpp EXCLUDE_FROM_ALL)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
-qt_add_executable(RaceEngineer WIN32
+qt_add_executable(RaceEngineer
     src/main.cpp
     src/app/Application.cpp
     src/app/Application.h
@@ -80,17 +80,6 @@ qt_add_executable(RaceEngineer WIN32
     src/input/DInputButtonMonitor.h
 )
 
-set_source_files_properties(src/ui/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
-
-qt_add_qml_module(RaceEngineer
-    URI RaceEngineer
-    VERSION 1.0
-    QML_FILES
-        src/ui/Main.qml
-        src/ui/Theme.qml
-        src/ui/StyledComboBox.qml
-)
-
 target_include_directories(RaceEngineer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -99,11 +88,8 @@ target_include_directories(RaceEngineer PRIVATE
 target_link_libraries(RaceEngineer PRIVATE
     Qt6::Core
     Qt6::Gui
-    Qt6::Quick
-    Qt6::QuickControls2
     Qt6::Multimedia
     Qt6::Network
-    Qt6::Widgets
     whisper
 )
 

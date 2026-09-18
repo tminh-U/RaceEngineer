@@ -107,6 +107,12 @@ void DInputButtonMonitor::start(const quintptr nativeWindowHandle)
     stop();
 #ifdef _WIN32
     impl_->window = reinterpret_cast<HWND>(nativeWindowHandle);
+    if (impl_->window == nullptr) {
+        impl_->window = GetConsoleWindow();
+        if (impl_->window == nullptr) {
+            impl_->window = GetDesktopWindow();
+        }
+    }
     if (impl_->window == nullptr || FAILED(DirectInput8Create(GetModuleHandleW(nullptr),
             DIRECTINPUT_VERSION, IID_IDirectInput8W,
             reinterpret_cast<void**>(&impl_->directInput), nullptr))) {
@@ -194,10 +200,13 @@ void DInputButtonMonitor::scanDevices()
 {
 #ifdef _WIN32
     if (impl_->directInput == nullptr) return;
+    const std::size_t previousCount = impl_->devices.size();
     releaseDevices(*impl_);
     impl_->directInput->EnumDevices(DI8DEVCLASS_GAMECTRL, enumerateController, impl_.get(),
         DIEDFL_ATTACHEDONLY);
-    qCInfo(logAudio) << "DirectInput controllers detected:" << impl_->devices.size();
+    if (impl_->devices.size() != previousCount) {
+        qCInfo(logAudio) << "DirectInput controllers detected:" << impl_->devices.size();
+    }
     if (!impl_->mapping) {
         emit statusChanged(impl_->devices.empty() ? QStringLiteral("No DirectInput controller found")
                                                   : QStringLiteral("DirectInput ready"));
