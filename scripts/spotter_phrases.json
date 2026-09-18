@@ -1,0 +1,46 @@
+[
+  {
+    "id": "session_started",
+    "text": "Đã kết nối."
+  },
+  {
+    "id": "session_ended",
+    "text": "Đã ngắt kết nối."
+  },
+  {
+    "id": "fuel_low",
+    "text": "Nhiên liệu sắp hết."
+  },
+  {
+    "id": "fuel_critical",
+    "text": "Nhiên liệu nguy cấp."
+  },
+  {
+    "id": "engine_hot",
+    "text": "Nhiệt độ động cơ cao."
+  },
+  {
+    "id": "engine_critical",
+    "text": "Động cơ quá nhiệt."
+  },
+  {
+    "id": "yellow_flag",
+    "text": "Cờ vàng."
+  },
+  {
+    "id": "blue_flag",
+    "text": "Cờ xanh dương."
+  },
+  {
+    "id": "pit_limiter_on",
+    "text": "Đã bật giới hạn tốc độ pit."
+  },
+  {
+    "id": "pit_limiter_off",
+    "text": "Đã tắt giới hạn tốc độ pit."
+  },
+  {
+    "id": "new_best_lap",
+    "text": "Vòng chạy nhanh nhất mới."
+  }
+]

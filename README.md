@@ -7,8 +7,8 @@ Native Windows x64 race engineer for Assetto Corsa and Assetto Corsa Competizion
 - AC/ACC auto-detection and read-only shared-memory telemetry
 - Normalized `RaceState`, bounded `RaceHistory`, fuel/lap calculations, event transitions and cooldowns
 - Mock telemetry in Debug builds
-- Microphone capture, 320 ms pre-roll, real TEN VAD, push-to-talk (`Ctrl+Space`)
-- Local multilingual Whisper small Q5 transcription (Vietnamese-first, English supported)
+- Microphone capture with 80 ms fixed pre-roll and held push-to-talk (`Ctrl+Space`)
+- Local `vinai/PhoWhisper-medium` Q5_0 transcription through whisper.cpp (Vietnamese-first with racing English preserved)
 - Configurable push-to-talk using `Ctrl+Space` and/or a held DirectInput wheel button
 - OpenAI-compatible chat completions for llama.cpp and similar local/LAN/cloud servers, with streaming, cancellation, timeout and one bounded transient retry
 - Local telemetry tool calling with bounded conversation history
@@ -33,7 +33,7 @@ The validated local setup is MSVC 17.14, Qt 6.8.3, CMake 4.4.1 and Ninja 1.13.2.
 
 ## Runtime models
 
-Models and binary runtimes are intentionally ignored by Git. Install the default Whisper model, the CrispASR Windows Vulkan runtime, Gwen-TTS talker/codec models and the official Vietnamese Khánh Toàn reference voice:
+Models and binary runtimes are intentionally ignored by Git. Install the `vinai/PhoWhisper-medium` Q5_0 model, the CrispASR Windows Vulkan runtime, Gwen-TTS talker/codec models and the official Vietnamese Khánh Toàn reference voice:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup_runtime.ps1
@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_runtime.ps1
 This creates:
 
 ```text
-models/ggml-small-q5_1.bin
+models/ggml-phowhisper-medium-q5_0.bin
 models/gwen-tts/gwen-tts-0.6b-q8_0.gguf
 models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf
 runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe
@@ -50,7 +50,7 @@ voices/gwen-tts/khanh_toan.wav
 voices/gwen-tts/khanh_toan.txt
 ```
 
-The Gwen assets use about 1.35 GB before build-directory copies. Reconfigure/rebuild after installation. The app preloads Gwen once and reuses its local HTTP server; the child process runs below normal priority. Missing voice components degrade safely: telemetry and text responses keep working.
+PhoWhisper conversion is pinned to the VinAI checkpoint revision and uses the vendored whisper.cpp converter plus `whisper-quantize q5_0`; Python/PyTorch are used only for this one-time conversion, never at runtime. The Gwen assets use about 1.35 GB before build-directory copies. Reconfigure/rebuild after installation. The app preloads Gwen once and reuses its local HTTP server; the child process runs below normal priority. Missing voice components degrade safely: telemetry and text responses keep working.
 
 Built-in alerts are read from `assets/spotter/manifest.json` and play a non-repeating random WAV without calling Gwen at race time. To regenerate the cache after changing a fixed phrase, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/generate_spotter_cache.ps1 -Variants 15`, then rebuild. Dynamic LLM answers still use Gwen-TTS normally.
 
@@ -88,7 +88,7 @@ Run normally or with synthetic telemetry:
 3. Press the radio button on the Moza ES once.
 4. Enable **DirectInput wheel button**, optionally disable **Ctrl+Space**, then choose **Apply**.
 
-The binding stores the DirectInput device instance GUID and zero-based button index in normal JSON settings. At runtime the UI displays it as `Button 1`, `Button 2`, etc. Input is polled on a low-priority worker using background, non-exclusive access, so the game can continue reading the same wheel. Holding the mapped button begins capture; releasing it ends the utterance and sends it to Whisper.
+The binding stores the DirectInput device instance GUID and zero-based button index in normal JSON settings. At runtime the UI displays it as `Button 1`, `Button 2`, etc. Input is polled on a low-priority worker using background, non-exclusive access, so the game can continue reading the same wheel. Holding the mapped button begins capture; releasing it ends the utterance and immediately sends it to PhoWhisper. There is no VAD endpoint delay.
 
 ## AI setup
 
@@ -124,7 +124,7 @@ ToolRegistry → LLMManager → OpenAI-compatible API
         ↓
 MessageDispatcher → GwenTtsBackend → persistent CrispASR/Gwen-TTS server
 
-Microphone → AudioCapture → TEN VAD → whisper.cpp → LLMManager
+Microphone → AudioCapture → held push-to-talk → PhoWhisper-medium / whisper.cpp → LLMManager
 ```
 
 Main source areas:
@@ -134,7 +134,6 @@ src/telemetry/   simulator providers and normalized state
 src/race/        bounded history and deterministic analysis
 src/events/      transition/cooldown event engine
 src/audio/       capture, voice controller and priority dispatcher
-src/vad/         TEN VAD wrapper and utterance state machine
 src/stt/         whisper.cpp recognizer
 src/llm/         providers, conversation manager and telemetry tools
 src/tts/         backend abstraction and persistent Gwen-TTS implementation
@@ -150,4 +149,4 @@ AC opens `Local\acpmf_physics` and `Local\acpmf_static`; ACC uses the same mappi
 
 ## Test coverage
 
-The offline test executable covers normalization helpers, mock telemetry, fuel averaging, lap history, event transitions/cooldowns, TEN VAD loading, conversation trimming, telemetry tool JSON, provider endpoint/error parsing and the explicit no-fabrication spotter behavior.
+The offline test executable covers normalization helpers, mock telemetry, fuel averaging, lap history, event transitions/cooldowns, conversation trimming, telemetry tool JSON, provider endpoint/error parsing and the explicit no-fabrication spotter behavior.

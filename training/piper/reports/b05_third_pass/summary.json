@@ -1,0 +1,174 @@
+{
+  "accepted_count": 2,
+  "category_counts": {
+    "pit_instruction": 2
+  },
+  "length_counts": {
+    "very_short": 2
+  },
+  "template_family_unique": 2,
+  "template_family_max_count": 1,
+  "tone_counts": {
+    "ngang": 9,
+    "sac": 4,
+    "huyen": 0,
+    "hoi": 0,
+    "nga": 0,
+    "nang": 1
+  },
+  "vietnamese_special_counts": {
+    "ă": 0,
+    "â": 0,
+    "ê": 0,
+    "ô": 0,
+    "ơ": 0,
+    "ư": 0,
+    "đ": 0
+  },
+  "rime_counts": {
+    "iê": 0,
+    "ươ": 0,
+    "uô": 0,
+    "uyê": 0,
+    "oă": 0,
+    "uâ": 0,
+    "ươi": 0,
+    "ương": 0,
+    "iêng": 0
+  },
+  "final_counts": {
+    "ch": 1,
+    "nh": 0,
+    "ng": 0,
+    "c": 0,
+    "m": 0,
+    "n": 0,
+    "p": 0,
+    "t": 4
+  },
+  "term_counts": {
+    "drs": 0,
+    "ers": 0,
+    "pit": 4,
+    "box": 0,
+    "delta": 0,
+    "sector": 0,
+    "stint": 0,
+    "understeer": 0,
+    "oversteer": 0,
+    "tyre": 0,
+    "brake": 0,
+    "fuel": 0,
+    "engine": 0,
+    "damage": 0,
+    "gap": 0,
+    "position": 0,
+    "lap": 0,
+    "penalty": 0,
+    "yellow_flag": 0,
+    "blue_flag": 0,
+    "track_limits": 0,
+    "pit_limiter": 0
+  },
+  "unit_counts": {
+    "seconds": 0,
+    "litres": 0,
+    "degrees": 0,
+    "psi": 0,
+    "kpa": 0,
+    "percent": 0,
+    "positive": 0,
+    "negative": 0,
+    "decimal": 0
+  },
+  "coverage_gaps": {
+    "tones": [
+      "huyen",
+      "hoi",
+      "nga"
+    ],
+    "vietnamese_specials": [
+      "ă",
+      "â",
+      "ê",
+      "ô",
+      "ơ",
+      "ư",
+      "đ"
+    ],
+    "rimes": [
+      "iê",
+      "ươ",
+      "uô",
+      "uyê",
+      "oă",
+      "uâ",
+      "ươi",
+      "ương",
+      "iêng"
+    ],
+    "finals": [
+      "nh",
+      "ng",
+      "c",
+      "m",
+      "n",
+      "p"
+    ],
+    "racing_terms": [
+      "drs",
+      "ers",
+      "box",
+      "delta",
+      "sector",
+      "stint",
+      "understeer",
+      "oversteer",
+      "tyre",
+      "brake",
+      "fuel",
+      "engine",
+      "damage",
+      "gap",
+      "position",
+      "lap",
+      "penalty",
+      "yellow_flag",
+      "blue_flag",
+      "track_limits",
+      "pit_limiter"
+    ],
+    "number_units": [
+      "seconds",
+      "litres",
+      "degrees",
+      "psi",
+      "kpa",
+      "percent",
+      "positive",
+      "negative",
+      "decimal"
+    ],
+    "categories": [
+      "confirmation_encouragement",
+      "critical_warning",
+      "engineer_update",
+      "lap_analysis",
+      "strategy_call",
+      "system_session",
+      "telemetry_report"
+    ],
+    "length_buckets": [
+      "short",
+      "medium",
+      "long"
+    ]
+  },
+  "input_count": 2,
+  "reference_count": 1264,
+  "rejected_count": 0,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 0,
+  "rejection_reason_counts": {}
+}

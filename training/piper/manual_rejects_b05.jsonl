@@ -1,0 +1,12 @@
+{"id":"agy_b05_0181","reason":"spoken_text bỏ đơn vị PSI của lốp trước và bỏ ý rất cân bằng; transcript phải khớp ngoài mở rộng số, đơn vị."}
+{"id":"agy_b05_0182","reason":"spoken_text bỏ cụm của xe; chỉ được mở rộng số và độ C."}
+{"id":"agy_b05_0183","reason":"spoken_text bỏ từ nhiên liệu trong hiệu suất đốt nhiên liệu."}
+{"id":"agy_b05_0184","reason":"Giới hạn ERS không được báo bằng tổng thời gian 33.3 giây theo quy định; dùng telemetry năng lượng hoặc công suất kỹ thuật hợp lý."}
+{"id":"agy_b05_0185","reason":"4.2 G là gia tốc ngang, không phải lực ép; sửa đại lượng kỹ thuật đúng và đọc G thành gi."}
+{"id":"agy_b05_0186","reason":"Gầm xe trục trước không tự nhiên và spoken_text tự thêm khí động; viết telemetry chiều cao gầm trước khớp transcript."}
+{"id":"agy_b05_0221","reason":"spoken_text bỏ từ kế tiếp; transcript phải khớp ngoài số."}
+{"id":"agy_b05_0245","reason":"spoken_text đổi tay đua thành xe và thêm vững vàng; lời radio không nên khẳng định vị trí được bảo đảm tuyệt đối."}
+{"id":"agy_b05_0274","reason":"spoken_text lược từ và đổi cấu trúc; phải khớp runtime ngoài chuẩn hóa pit."}
+{"id":"agy_b05_0275","reason":"spoken_text bỏ từ kẻ; phải khớp runtime ngoài số."}
+{"id":"agy_b05_0276","reason":"Không giả định bên trái cho mọi đường đua và transcript đang lược nghĩa; yêu cầu giữ làn nhập và không cắt vạch trắng."}
+{"id":"agy_b05_0286","reason":"spoken_text bỏ GPS; phải đọc GPS thành gi pê ét hoặc giữ nội dung tương đương đầy đủ."}

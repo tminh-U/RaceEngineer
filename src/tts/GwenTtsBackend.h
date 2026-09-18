@@ -37,6 +37,7 @@ public slots:
     void shutdown();
     void setVolume(float volume) override;
     void setSpeed(float speed) override;
+    void setAudioOutputDevice(const QString& description) override;
 
 signals:
     void statusChanged(const QString& status);

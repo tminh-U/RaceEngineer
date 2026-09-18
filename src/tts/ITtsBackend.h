@@ -20,6 +20,7 @@ public slots:
     virtual void stop() = 0;
     virtual void setVolume(float volume) = 0;
     virtual void setSpeed(float speed) = 0;
+    virtual void setAudioOutputDevice(const QString& description) = 0;
 
 signals:
     void speakingStarted(const QString& text);

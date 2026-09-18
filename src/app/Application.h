@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QThread>
 #include <QVariantMap>
+#include <QStringList>
 
 #include <memory>
 
@@ -22,7 +23,9 @@ class TelemetryManager;
 class VoiceInputController;
 class WhisperRecognizer;
 class LLMManager;
+class ITtsBackend;
 class GwenTtsBackend;
+class PiperTtsBackend;
 class MessageDispatcher;
 class DInputButtonMonitor;
 
@@ -43,6 +46,7 @@ class Application final : public QObject {
     Q_PROPERTY(QString latestEngineerText READ latestEngineerText NOTIFY interactionChanged)
     Q_PROPERTY(QString apiProvider READ apiProvider NOTIFY apiSettingsChanged)
     Q_PROPERTY(QString apiBaseUrl READ apiBaseUrl NOTIFY apiSettingsChanged)
+    Q_PROPERTY(QString apiKey READ apiKey NOTIFY apiSettingsChanged)
     Q_PROPERTY(QString apiModel READ apiModel NOTIFY apiSettingsChanged)
     Q_PROPERTY(bool apiStreaming READ apiStreaming NOTIFY apiSettingsChanged)
     Q_PROPERTY(int apiTimeoutMilliseconds READ apiTimeoutMilliseconds NOTIFY apiSettingsChanged)
@@ -52,8 +56,11 @@ class Application final : public QObject {
     Q_PROPERTY(QString apiState READ apiState NOTIFY apiStateChanged)
     Q_PROPERTY(QString apiDetail READ apiDetail NOTIFY apiStateChanged)
     Q_PROPERTY(QVariantMap apiStatistics READ apiStatistics NOTIFY apiStatisticsChanged)
-    Q_PROPERTY(bool ttsAvailable READ ttsAvailable CONSTANT)
+    Q_PROPERTY(bool ttsAvailable READ ttsAvailable NOTIFY ttsStatusChanged)
+    Q_PROPERTY(QString ttsBackend READ ttsBackend NOTIFY ttsStatusChanged)
     Q_PROPERTY(QString ttsStatus READ ttsStatus NOTIFY ttsStatusChanged)
+    Q_PROPERTY(QStringList audioOutputDevices READ audioOutputDevices NOTIFY audioOutputChanged)
+    Q_PROPERTY(QString selectedAudioOutput READ selectedAudioOutput NOTIFY audioOutputChanged)
     Q_PROPERTY(QVariantList toolLog READ toolLog NOTIFY toolLogChanged)
     Q_PROPERTY(bool keyboardPttEnabled READ keyboardPttEnabled NOTIFY pttSettingsChanged)
     Q_PROPERTY(bool directInputPttEnabled READ directInputPttEnabled NOTIFY pttSettingsChanged)
@@ -82,6 +89,7 @@ public:
     [[nodiscard]] QString latestEngineerText() const { return latestEngineerText_; }
     [[nodiscard]] QString apiProvider() const { return settingsManager_.llm().provider; }
     [[nodiscard]] QString apiBaseUrl() const { return settingsManager_.llm().baseUrl; }
+    [[nodiscard]] QString apiKey() const { return apiKey_; }
     [[nodiscard]] QString apiModel() const { return settingsManager_.llm().model; }
     [[nodiscard]] bool apiStreaming() const noexcept { return settingsManager_.llm().streaming; }
     [[nodiscard]] int apiTimeoutMilliseconds() const noexcept
@@ -95,7 +103,10 @@ public:
     [[nodiscard]] QString apiDetail() const { return apiDetail_; }
     [[nodiscard]] QVariantMap apiStatistics() const { return apiStatistics_; }
     [[nodiscard]] bool ttsAvailable() const noexcept { return ttsAvailable_; }
+    [[nodiscard]] QString ttsBackend() const;
     [[nodiscard]] QString ttsStatus() const { return ttsStatus_; }
+    [[nodiscard]] QStringList audioOutputDevices() const;
+    [[nodiscard]] QString selectedAudioOutput() const;
     [[nodiscard]] QVariantList toolLog() const { return toolLog_; }
     [[nodiscard]] bool keyboardPttEnabled() const noexcept { return settingsManager_.pushToTalk().keyboardEnabled; }
     [[nodiscard]] bool directInputPttEnabled() const noexcept { return settingsManager_.pushToTalk().directInputEnabled; }
@@ -111,6 +122,8 @@ public:
     Q_INVOKABLE void testApiConnection();
     Q_INVOKABLE void askText(const QString& text);
     Q_INVOKABLE void resetConversation();
+    Q_INVOKABLE void setTtsBackend(const QString& backend);
+    Q_INVOKABLE void setAudioOutputDevice(const QString& description);
     Q_INVOKABLE void setPushToTalkOptions(bool keyboardEnabled, bool directInputEnabled);
     Q_INVOKABLE void beginDirectInputMapping();
     void startDirectInput(quintptr nativeWindowHandle);
@@ -131,6 +144,7 @@ signals:
     void apiStateChanged();
     void apiStatisticsChanged();
     void ttsStatusChanged();
+    void audioOutputChanged();
     void toolLogChanged();
     void pttSettingsChanged();
     void directInputStatusChanged();
@@ -157,7 +171,9 @@ private:
     TelemetryManager* telemetryManager_{nullptr};
     VoiceInputController* voiceInput_{nullptr};
     WhisperRecognizer* speechRecognizer_{nullptr};
-    GwenTtsBackend* ttsBackend_{nullptr};
+    PiperTtsBackend* piperTtsBackend_{nullptr};
+    GwenTtsBackend* gwenTtsBackend_{nullptr};
+    ITtsBackend* ttsBackend_{nullptr};
     DInputButtonMonitor* directInput_{nullptr};
     QMediaPlayer* pttSoundPlayer_{nullptr};
     QAudioOutput* pttSoundOutput_{nullptr};
@@ -177,6 +193,7 @@ private:
     QString latestUserText_;
     QString latestEngineerText_;
     SettingsManager settingsManager_;
+    QString apiKey_;
     std::unique_ptr<LLMManager> llmManager_;
     RaceState latestState_;
     QString apiState_{QStringLiteral("Unavailable")};

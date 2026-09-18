@@ -12,7 +12,7 @@
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 2;
+constexpr int currentSettingsVersion = 4;
 }
 
 SettingsManager::SettingsManager()
@@ -37,6 +37,17 @@ void SettingsManager::setPushToTalk(const PushToTalkSettings& settings)
     pushToTalk_ = settings;
     if (pushToTalk_.buttonIndex < -1 || pushToTalk_.buttonIndex > 127) {
         pushToTalk_.buttonIndex = -1;
+    }
+    save();
+}
+
+void SettingsManager::setTts(const TtsSettings& settings)
+{
+    tts_ = settings;
+    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) != 0) {
+        tts_.backend = QStringLiteral("Piper");
+    } else {
+        tts_.backend = QStringLiteral("Gwen-TTS");
     }
     save();
 }
@@ -72,6 +83,12 @@ void SettingsManager::load()
     pushToTalk_.deviceGuid = input.value(QStringLiteral("device_guid")).toString();
     pushToTalk_.deviceName = input.value(QStringLiteral("device_name")).toString();
     pushToTalk_.buttonIndex = input.value(QStringLiteral("button_index")).toInt(-1);
+    const auto tts = root.value(QStringLiteral("tts")).toObject();
+    tts_.backend = tts.value(QStringLiteral("backend")).toString(tts_.backend);
+    tts_.outputDevice = tts.value(QStringLiteral("output_device")).toString();
+    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) != 0) {
+        tts_.backend = QStringLiteral("Piper");
+    }
 
     const bool legacyDefaults = llm_.provider.compare(QStringLiteral("Mistral"), Qt::CaseInsensitive) == 0
         && llm_.baseUrl == QStringLiteral("https://api.mistral.ai/v1")
@@ -108,11 +125,14 @@ void SettingsManager::save() const
     pushToTalk.insert(QStringLiteral("device_guid"), pushToTalk_.deviceGuid);
     pushToTalk.insert(QStringLiteral("device_name"), pushToTalk_.deviceName);
     pushToTalk.insert(QStringLiteral("button_index"), pushToTalk_.buttonIndex);
+    const QJsonObject tts{{QStringLiteral("backend"), tts_.backend},
+        {QStringLiteral("output_device"), tts_.outputDevice}};
     QFile file(filePath_);
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         file.write(QJsonDocument(QJsonObject{{QStringLiteral("settings_version"), currentSettingsVersion},
             {QStringLiteral("llm"), llm},
-            {QStringLiteral("push_to_talk"), pushToTalk}}).toJson(QJsonDocument::Indented));
+            {QStringLiteral("push_to_talk"), pushToTalk},
+            {QStringLiteral("tts"), tts}}).toJson(QJsonDocument::Indented));
     }
 }
 

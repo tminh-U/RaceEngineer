@@ -1,0 +1,56 @@
+[
+  {
+    "id": "agy_b05_0141",
+    "reasons": [
+      "near_duplicate:agy_b02_0150:jaccard=0.769:ratio=0.923"
+    ]
+  },
+  {
+    "id": "agy_b05_0143",
+    "reasons": [
+      "near_duplicate:agy_b04_0145:jaccard=0.688:ratio=0.923"
+    ]
+  },
+  {
+    "id": "agy_b05_0144",
+    "reasons": [
+      "near_duplicate:agy_b02_0140:jaccard=0.806:ratio=0.926"
+    ]
+  },
+  {
+    "id": "agy_b05_0154",
+    "reasons": [
+      "near_duplicate:agy_b02_0153:jaccard=0.867:ratio=0.933"
+    ]
+  },
+  {
+    "id": "agy_b05_0159",
+    "reasons": [
+      "near_duplicate:agy_b01_0156:jaccard=0.730:ratio=0.935"
+    ]
+  },
+  {
+    "id": "agy_b05_0162",
+    "reasons": [
+      "near_duplicate:agy_b01_0159:jaccard=0.938:ratio=0.957"
+    ]
+  },
+  {
+    "id": "agy_b05_0256",
+    "reasons": [
+      "near_duplicate:agy_b03_0253:jaccard=0.903:ratio=0.621"
+    ]
+  },
+  {
+    "id": "agy_b05_0261",
+    "reasons": [
+      "near_duplicate:agy_b04_0254:jaccard=0.806:ratio=0.923"
+    ]
+  },
+  {
+    "id": "agy_b05_0280",
+    "reasons": [
+      "near_duplicate:gold_059:jaccard=0.725:ratio=0.923"
+    ]
+  }
+]

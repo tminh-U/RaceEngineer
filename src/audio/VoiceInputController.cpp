@@ -1,26 +1,24 @@
 #include "audio/VoiceInputController.h"
 
 #include "audio/AudioCapture.h"
-#include "vad/VadProcessor.h"
+
+#include <utility>
 
 namespace raceengineer {
+namespace {
+
+constexpr qsizetype kPreRollBytes = 16'000 * 2 * 80 / 1000;
+
+} // namespace
 
 VoiceInputController::VoiceInputController(QObject* const parent)
     : QObject(parent)
     , capture_(new AudioCapture(this))
-    , vad_(new VadProcessor(this))
 {
-    connect(capture_, &AudioCapture::pcm16kReady, vad_, &VadProcessor::processPcm16k);
+    connect(capture_, &AudioCapture::pcm16kReady, this, &VoiceInputController::onPcm16k);
     connect(capture_, &AudioCapture::levelChanged, this, &VoiceInputController::levelChanged);
     connect(capture_, &AudioCapture::deviceChanged, this, &VoiceInputController::microphoneChanged);
     connect(capture_, &AudioCapture::captureError, this, &VoiceInputController::errorOccurred);
-    connect(vad_, &VadProcessor::speechStarted, this, [this] { emit statusChanged(QStringLiteral("Listening")); });
-    connect(vad_, &VadProcessor::speechEnded, this, [this] { emit statusChanged(QStringLiteral("Recognizing")); });
-    connect(vad_, &VadProcessor::utteranceRejected, this, [this](const QString& reason) {
-        emit errorOccurred(reason);
-        emit statusChanged(QStringLiteral("Idle"));
-    });
-    connect(vad_, &VadProcessor::utteranceReady, this, &VoiceInputController::utteranceReady);
 }
 
 void VoiceInputController::start()
@@ -32,22 +30,47 @@ void VoiceInputController::start()
 void VoiceInputController::stop()
 {
     capture_->stop();
-    vad_->reset();
+    preRoll_.clear();
+    recording_.clear();
+    pushToTalk_ = false;
 }
 
 void VoiceInputController::beginPushToTalk()
 {
-    vad_->beginPushToTalk();
+    if (pushToTalk_) {
+        return;
+    }
+    pushToTalk_ = true;
+    recording_ = preRoll_;
+    emit statusChanged(QStringLiteral("Listening"));
 }
 
 void VoiceInputController::endPushToTalk()
 {
-    vad_->endPushToTalk();
+    if (!pushToTalk_) {
+        return;
+    }
+    pushToTalk_ = false;
+    const QByteArray utterance = std::move(recording_);
+    recording_.clear();
+    if (utterance.size() <= kPreRollBytes) {
+        emit statusChanged(QStringLiteral("Idle"));
+        return;
+    }
+    emit statusChanged(QStringLiteral("Recognizing"));
+    emit utteranceReady(utterance);
 }
 
-void VoiceInputController::setVoiceActivationEnabled(const bool enabled)
+void VoiceInputController::onPcm16k(const QByteArray& pcm)
 {
-    vad_->setVoiceActivationEnabled(enabled);
+    if (pushToTalk_) {
+        recording_.append(pcm);
+        return;
+    }
+    preRoll_.append(pcm);
+    if (preRoll_.size() > kPreRollBytes) {
+        preRoll_.remove(0, preRoll_.size() - kPreRollBytes);
+    }
 }
 
 } // namespace raceengineer

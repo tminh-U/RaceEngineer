@@ -3,6 +3,7 @@
 #include "utils/Logging.h"
 
 #include <QAudioOutput>
+#include <QAudioDevice>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -11,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMediaPlayer>
+#include <QMediaDevices>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -166,6 +168,14 @@ void GwenTtsBackend::warmUp()
     }
 
     emit statusChanged(QStringLiteral("Đang nạp Gwen-TTS · Khánh Toàn…"));
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    // Bind solely to iGPU (Device 0: AMD Radeon Graphics), keeping discrete GPU (RX 6500M) free for games
+    env.insert(QStringLiteral("GGML_VK_VISIBLE_DEVICES"), QStringLiteral("0"));
+    // Offload audio codec/tokenizer from CPU onto Vulkan GPU as well
+    env.insert(QStringLiteral("CRISPASR_QWEN3_TTS_CODEC_GPU"), QStringLiteral("1"));
+    server_->setProcessEnvironment(env);
+
     server_->setProgram(executablePath_);
     server_->setWorkingDirectory(QFileInfo(executablePath_).absolutePath());
     server_->setProcessChannelMode(QProcess::SeparateChannels);
@@ -184,7 +194,7 @@ void GwenTtsBackend::warmUp()
         QStringLiteral("--port"), QString::number(serverPort),
         QStringLiteral("--gpu-backend"), QStringLiteral("vulkan"),
         QStringLiteral("--seed"), QStringLiteral("42"),
-        QStringLiteral("--threads"), QStringLiteral("8")});
+        QStringLiteral("--threads"), QStringLiteral("2")});
     server_->start();
 }
 
@@ -279,11 +289,24 @@ void GwenTtsBackend::shutdown()
         }
     }
     setServerReady(false);
+    // Allow an explicit backend switch to start the local server again later.
+    shuttingDown_ = false;
 }
 
 void GwenTtsBackend::setVolume(const float volume)
 {
     output_->setVolume(std::clamp(volume, 0.0F, 1.0F));
+}
+
+void GwenTtsBackend::setAudioOutputDevice(const QString& description)
+{
+    for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
+        if (device.description() == description) {
+            output_->setDevice(device);
+            return;
+        }
+    }
+    output_->setDevice(QMediaDevices::defaultAudioOutput());
 }
 
 void GwenTtsBackend::setSpeed(const float speed)

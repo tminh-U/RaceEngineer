@@ -1,0 +1,140 @@
+{
+  "accepted_count": 8,
+  "category_counts": {
+    "critical_warning": 2,
+    "lap_analysis": 1,
+    "pit_instruction": 1,
+    "system_session": 3,
+    "telemetry_report": 1
+  },
+  "length_counts": {
+    "long": 4,
+    "medium": 3,
+    "short": 1
+  },
+  "template_family_unique": 8,
+  "template_family_max_count": 1,
+  "tone_counts": {
+    "ngang": 100,
+    "sac": 36,
+    "huyen": 35,
+    "hoi": 8,
+    "nga": 3,
+    "nang": 18
+  },
+  "vietnamese_special_counts": {
+    "ă": 5,
+    "â": 4,
+    "ê": 3,
+    "ô": 1,
+    "ơ": 3,
+    "ư": 7,
+    "đ": 13
+  },
+  "rime_counts": {
+    "iê": 4,
+    "ươ": 6,
+    "uô": 1,
+    "uyê": 0,
+    "oă": 0,
+    "uâ": 2,
+    "ươi": 4,
+    "ương": 1,
+    "iêng": 0
+  },
+  "final_counts": {
+    "ch": 1,
+    "nh": 9,
+    "ng": 14,
+    "c": 5,
+    "m": 7,
+    "n": 23,
+    "p": 4,
+    "t": 17
+  },
+  "term_counts": {
+    "drs": 0,
+    "ers": 0,
+    "pit": 4,
+    "box": 0,
+    "delta": 0,
+    "sector": 0,
+    "stint": 0,
+    "understeer": 2,
+    "oversteer": 0,
+    "tyre": 2,
+    "brake": 4,
+    "fuel": 0,
+    "engine": 2,
+    "damage": 0,
+    "gap": 0,
+    "position": 0,
+    "lap": 10,
+    "penalty": 2,
+    "yellow_flag": 0,
+    "blue_flag": 0,
+    "track_limits": 0,
+    "pit_limiter": 0
+  },
+  "unit_counts": {
+    "seconds": 1,
+    "litres": 0,
+    "degrees": 0,
+    "psi": 0,
+    "kpa": 0,
+    "percent": 1,
+    "positive": 0,
+    "negative": 0,
+    "decimal": 2
+  },
+  "coverage_gaps": {
+    "tones": [],
+    "vietnamese_specials": [],
+    "rimes": [
+      "uyê",
+      "oă",
+      "iêng"
+    ],
+    "finals": [],
+    "racing_terms": [
+      "drs",
+      "ers",
+      "box",
+      "delta",
+      "sector",
+      "stint",
+      "oversteer",
+      "fuel",
+      "damage",
+      "gap",
+      "position",
+      "yellow_flag",
+      "blue_flag",
+      "track_limits",
+      "pit_limiter"
+    ],
+    "number_units": [
+      "litres",
+      "degrees",
+      "psi",
+      "kpa",
+      "positive",
+      "negative"
+    ],
+    "categories": [
+      "confirmation_encouragement",
+      "engineer_update",
+      "strategy_call"
+    ],
+    "length_buckets": [
+      "very_short"
+    ]
+  },
+  "input_count": 8,
+  "reference_count": 64,
+  "rejected_count": 0,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 0,
+  "rejection_reason_counts": {}
+}

@@ -2,7 +2,6 @@
 #include "telemetry/mock/MockTelemetryProvider.h"
 #include "race/RaceHistory.h"
 #include "events/EventEngine.h"
-#include "vad/TenVadProcessor.h"
 #include "llm/ConversationManager.h"
 #include "llm/LLMManager.h"
 #include "llm/providers/OpenAICompatibleProvider.h"
@@ -11,12 +10,15 @@
 #include "structed_file_AC.h"
 #include "structed_file_ACC.h"
 
+#include <whisper.h>
+
 #include <cmath>
 #include <string_view>
 
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QFileInfo>
 
 int main()
 {
@@ -31,6 +33,17 @@ int main()
             ++failures;
         }
     };
+
+    const QByteArray phoWhisperModel = qgetenv("RACEENGINEER_PHOWHISPER_MODEL");
+    if (!phoWhisperModel.isEmpty()) {
+        expect(QFileInfo::exists(QString::fromUtf8(phoWhisperModel)));
+        auto params = whisper_context_default_params();
+        whisper_context* const context = whisper_init_from_file_with_params(phoWhisperModel.constData(), params);
+        expect(context != nullptr);
+        if (context != nullptr) {
+            whisper_free(context);
+        }
+    }
 
     expect(normalizeAcGear(0) == -1);
     expect(normalizeAcGear(1) == 0);
@@ -102,13 +115,6 @@ int main()
     eventState.pitLimiter = true;
     emitted = events.process(eventState, baseTime + std::chrono::seconds(4));
     expect(emitted.size() == 1 && emitted.front().type == EventType::PitLimiterOn);
-
-    TenVadProcessor vad;
-    expect(vad.isAvailable());
-    expect(!vad.version().empty());
-    std::array<std::int16_t, 256> silence{};
-    const auto vadResult = vad.process(silence);
-    expect(!vadResult.speech);
 
     ConversationManager conversation(6);
     for (int index = 0; index < 10; ++index) {

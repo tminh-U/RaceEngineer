@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -8,8 +8,10 @@ $gwenRuntimeDirectory = Join-Path $ProjectRoot "runtime\gwen-tts"
 $voiceDirectory = Join-Path $ProjectRoot "voices\gwen-tts"
 $whisperDirectory = Join-Path $ProjectRoot "models"
 $gwenModelDirectory = Join-Path $whisperDirectory "gwen-tts"
+$piperModelDirectory = Join-Path $whisperDirectory "piper"
+$piperRuntimeDirectory = Join-Path $ProjectRoot "runtime\piper"
 
-New-Item -ItemType Directory -Force -Path $downloadDirectory, $gwenRuntimeDirectory, $voiceDirectory, $whisperDirectory, $gwenModelDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $downloadDirectory, $gwenRuntimeDirectory, $voiceDirectory, $whisperDirectory, $gwenModelDirectory, $piperModelDirectory, $piperRuntimeDirectory | Out-Null
 
 function Get-VerifiedFile {
     param(
@@ -74,9 +76,22 @@ $referenceText = "việt nam đang kiêu hãnh bước vào kỷ nguyên vươn 
     $referenceText + [Environment]::NewLine,
     [System.Text.UTF8Encoding]::new($false))
 
-Get-VerifiedFile `
-    -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin?download=true" `
-    -OutFile (Join-Path $whisperDirectory "ggml-small-q5_1.bin") `
-    -Sha256 "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"
+& (Join-Path $PSScriptRoot "convert_phowhisper_model.ps1") -ProjectRoot $ProjectRoot
 
-Write-Host "Whisper and Gwen-TTS (Khanh Toan) runtime assets are ready. Rebuild RaceEngineer to copy them beside the executable."
+Get-VerifiedFile `
+    -Uri "https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx?download=true" `
+    -OutFile (Join-Path $piperModelDirectory "vi_VN-vais1000-medium.onnx") `
+    -Sha256 "ec7c89e2c85f4d1edc24b6120c18aaf1bda614f06b511567eb9c7c0de15e2dab"
+Get-VerifiedFile `
+    -Uri "https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json?download=true" `
+    -OutFile (Join-Path $piperModelDirectory "vi_VN-vais1000-medium.onnx.json") `
+    -Sha256 "fafb9da1354ed4b77c31af228ed41fb41cd825c14cffa105454b25e6ae751ee0"
+
+$piperPython = Join-Path $piperRuntimeDirectory "venv\Scripts\python.exe"
+if (-not (Test-Path -LiteralPath $piperPython -PathType Leaf)) {
+    & $python.Source -m venv (Join-Path $piperRuntimeDirectory "venv")
+}
+& $piperPython -m pip install --disable-pip-version-check "piper-tts==1.8.0"
+if ($LASTEXITCODE -ne 0) { throw "Could not install Piper 1.8.0 runtime." }
+
+Write-Host "PhoWhisper-medium Q5, Piper 1.8.0 and Gwen-TTS (Khanh Toan) runtime assets are ready. Rebuild RaceEngineer to copy them beside the executable."

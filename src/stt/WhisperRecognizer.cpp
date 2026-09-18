@@ -84,9 +84,8 @@ void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& lang
     const QByteArray languageUtf8 = language.toUtf8();
     parameters.language = languageUtf8.constData();
     parameters.detect_language = language.compare(QStringLiteral("auto"), Qt::CaseInsensitive) == 0;
-    parameters.initial_prompt = "Kỹ sư đường đua, tiếng Việt. Nhiệt độ lốp xe hiện tại, áp suất lốp xe, "
-                                "độ mòn lốp, nhiên liệu, vòng đua, DRS, ERS, ABS, TC, pit, box, delta, "
-                                "sector, thiếu lái, thừa lái, lốp mềm, lốp cứng, trời mưa.";
+    parameters.initial_prompt = "Vietnamese race engineer. Preserve English racing terms exactly: "
+                                "gap ahead, full push, box this lap, tyre, fuel, sector, DRS, ERS, ABS, TC.";
     parameters.abort_callback = [](void* userData) {
         return static_cast<WhisperRecognizer*>(userData)->cancelRequested_.load();
     };
@@ -149,15 +148,13 @@ bool WhisperRecognizer::ensureModelLoaded()
         return false;
     }
     auto parameters = whisper_context_default_params();
-    parameters.use_gpu = false;
-    parameters.flash_attn = false;
     const QByteArray path = QFileInfo(modelPath_).absoluteFilePath().toUtf8();
     context_ = whisper_init_from_file_with_params(path.constData(), parameters);
     if (context_ == nullptr) {
         emit recognitionError(QStringLiteral("Không thể nạp mô hình Whisper."));
         return false;
     }
-    qCInfo(logStt) << "Whisper model loaded on CPU:" << modelPath_;
+    qCInfo(logStt) << "PhoWhisper-medium Q5 model loaded:" << modelPath_;
     return true;
 }
 

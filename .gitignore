@@ -10,8 +10,14 @@
 *.pdb
 *.ilk
 *.log
+aqtinstall.log
+piper_in.txt
+scratch_*.wav
+test_*.wav
 config.json
 secrets.json
 models/
 voices/
 runtime/
+__pycache__/
+*.pyc

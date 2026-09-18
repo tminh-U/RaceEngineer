@@ -3,6 +3,7 @@
 #include "events/EventEngine.h"
 
 #include <QObject>
+#include <QMetaObject>
 #include <QString>
 #include <vector>
 
@@ -15,6 +16,7 @@ class MessageDispatcher final : public QObject {
 
 public:
     explicit MessageDispatcher(ITtsBackend* backend, QObject* parent = nullptr);
+    void setBackend(ITtsBackend* backend);
     void enqueue(const QString& text, EventPriority priority);
     void clear();
 
@@ -28,6 +30,7 @@ private:
     void playNext();
 
     ITtsBackend* backend_{nullptr};
+    std::vector<QMetaObject::Connection> backendConnections_;
     std::vector<Message> queue_;
     quint64 nextSequence_{0};
     bool speaking_{false};

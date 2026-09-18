@@ -1,0 +1,111 @@
+{
+  "accepted_count": 300,
+  "category_counts": {
+    "confirmation_encouragement": 24,
+    "critical_warning": 36,
+    "engineer_update": 48,
+    "lap_analysis": 36,
+    "pit_instruction": 30,
+    "strategy_call": 48,
+    "system_session": 24,
+    "telemetry_report": 54
+  },
+  "length_counts": {
+    "long": 30,
+    "medium": 105,
+    "short": 120,
+    "very_short": 45
+  },
+  "template_family_unique": 300,
+  "template_family_max_count": 1,
+  "tone_counts": {
+    "ngang": 2081,
+    "sac": 738,
+    "huyen": 432,
+    "hoi": 282,
+    "nga": 110,
+    "nang": 490
+  },
+  "vietnamese_special_counts": {
+    "ă": 89,
+    "â": 55,
+    "ê": 61,
+    "ô": 63,
+    "ơ": 60,
+    "ư": 171,
+    "đ": 322
+  },
+  "rime_counts": {
+    "iê": 95,
+    "ươ": 154,
+    "uô": 24,
+    "uyê": 12,
+    "oă": 2,
+    "uâ": 34,
+    "ươi": 54,
+    "ương": 35,
+    "iêng": 2
+  },
+  "final_counts": {
+    "ch": 39,
+    "nh": 111,
+    "ng": 308,
+    "c": 159,
+    "m": 180,
+    "n": 347,
+    "p": 103,
+    "t": 300
+  },
+  "term_counts": {
+    "drs": 6,
+    "ers": 8,
+    "pit": 58,
+    "box": 23,
+    "delta": 14,
+    "sector": 18,
+    "stint": 2,
+    "understeer": 8,
+    "oversteer": 4,
+    "tyre": 100,
+    "brake": 50,
+    "fuel": 17,
+    "engine": 12,
+    "damage": 4,
+    "gap": 20,
+    "position": 16,
+    "lap": 79,
+    "penalty": 14,
+    "yellow_flag": 4,
+    "blue_flag": 2,
+    "track_limits": 2,
+    "pit_limiter": 2
+  },
+  "unit_counts": {
+    "seconds": 33,
+    "litres": 9,
+    "degrees": 11,
+    "psi": 5,
+    "kpa": 2,
+    "percent": 14,
+    "positive": 4,
+    "negative": 6,
+    "decimal": 38
+  },
+  "coverage_gaps": {
+    "tones": [],
+    "vietnamese_specials": [],
+    "rimes": [],
+    "finals": [],
+    "racing_terms": [],
+    "number_units": [],
+    "categories": [],
+    "length_buckets": []
+  },
+  "input_count": 300,
+  "reference_count": 64,
+  "rejected_count": 0,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 0,
+  "rejection_reason_counts": {}
+}

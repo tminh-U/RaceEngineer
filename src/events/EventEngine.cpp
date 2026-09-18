@@ -19,7 +19,6 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
     const std::chrono::steady_clock::time_point now)
 {
     std::vector<RaceEvent> events;
-
     if (!connected_) {
         connected_ = state.connected;
     } else if (*connected_ != state.connected) {
@@ -28,9 +27,7 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
             state.connected ? "Đã kết nối với game." : "Đã ngắt kết nối game.", now);
         connected_ = state.connected;
     }
-    if (!state.connected) {
-        return events;
-    }
+    if (!state.connected) return events;
 
     FuelLevel nextFuel = FuelLevel::Unknown;
     if (state.fuelLiters && state.fuelCapacityLiters && *state.fuelCapacityLiters > 0.0) {
@@ -93,9 +90,7 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
             emitIfReady(events, EventType::NewBestLap, EventPriority::Engineer,
                 "Vòng chạy nhanh nhất mới.", now);
         }
-        if (!bestLap_ || *state.bestLapTimeSeconds < *bestLap_) {
-            bestLap_ = state.bestLapTimeSeconds;
-        }
+        if (!bestLap_ || *state.bestLapTimeSeconds < *bestLap_) bestLap_ = state.bestLapTimeSeconds;
     }
     return events;
 }
@@ -122,9 +117,7 @@ void EventEngine::emitIfReady(std::vector<RaceEvent>& output, const EventType ty
     const auto last = lastEmitted_.find(type);
     const auto cooldown = cooldowns_.find(type);
     if (last != lastEmitted_.end() && cooldown != cooldowns_.end()
-        && now - last->second < cooldown->second) {
-        return;
-    }
+        && now - last->second < cooldown->second) return;
     output.push_back({type, priority, std::move(message), now});
     lastEmitted_[type] = now;
 }

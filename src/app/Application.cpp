@@ -7,6 +7,7 @@
 #include "llm/LLMManager.h"
 #include "audio/MessageDispatcher.h"
 #include "tts/GwenTtsBackend.h"
+#include "tts/PiperTtsBackend.h"
 #include "input/DInputButtonMonitor.h"
 #include "utils/Logging.h"
 
@@ -19,6 +20,8 @@
 #include <QMetaObject>
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QAudioDevice>
+#include <QMediaDevices>
 #include <QFileInfo>
 #include <QUrl>
 #include <QVariantList>
@@ -44,33 +47,76 @@ QString utf8(const std::string& value)
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
 }
 
+QString resolveGwenModelPath()
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString q4k = QDir(appDir).filePath(QStringLiteral("models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"));
+    if (QFileInfo::exists(q4k)) return q4k;
+    return QDir(appDir).filePath(QStringLiteral("models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"));
+}
+
+QString resolvePiperPythonPath()
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString packaged = QDir(appDir).filePath(QStringLiteral("tools/piper/Scripts/python.exe"));
+    if (QFileInfo::exists(packaged)) return packaged;
+    return QDir(appDir).absoluteFilePath(
+        QStringLiteral("../runtime/piper/venv/Scripts/python.exe"));
+}
+
+QString resolvePiperModelPath()
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString packaged = QDir(appDir).filePath(
+        QStringLiteral("models/piper/vi_VN-vais1000-medium.onnx"));
+    if (QFileInfo::exists(packaged)) return packaged;
+    return QDir(appDir).absoluteFilePath(
+        QStringLiteral("../models/piper/vi_VN-vais1000-medium.onnx"));
+}
+
+QString resolvePhoWhisperModelPath()
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString packaged = QDir(appDir).filePath(
+        QStringLiteral("models/ggml-phowhisper-medium-q5_0.bin"));
+    if (QFileInfo::exists(packaged)) return packaged;
+    return QDir(appDir).absoluteFilePath(
+        QStringLiteral("../models/ggml-phowhisper-medium-q5_0.bin"));
+}
+
 } // namespace
 
 Application::Application(const bool startWithMock, QObject* const parent)
     : QObject(parent)
     , telemetryManager_(new TelemetryManager)
     , voiceInput_(new VoiceInputController)
-    , speechRecognizer_(new WhisperRecognizer(
-          QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("models/ggml-small-q5_1.bin"))))
-    , ttsBackend_(new GwenTtsBackend(
+    , speechRecognizer_(new WhisperRecognizer(resolvePhoWhisperModelPath()))
+    , piperTtsBackend_(new PiperTtsBackend(resolvePiperPythonPath(), resolvePiperModelPath(), this))
+    , gwenTtsBackend_(new GwenTtsBackend(
           QDir(QCoreApplication::applicationDirPath()).filePath(
               QStringLiteral("tools/gwen-tts/crispasr.exe")),
-          QDir(QCoreApplication::applicationDirPath()).filePath(
-              QStringLiteral("models/gwen-tts/gwen-tts-0.6b-q8_0.gguf")),
+          resolveGwenModelPath(),
           QDir(QCoreApplication::applicationDirPath()).filePath(
               QStringLiteral("models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf")),
           QDir(QCoreApplication::applicationDirPath()).filePath(
               QStringLiteral("voices/gwen-tts")), this))
+    , ttsBackend_(piperTtsBackend_)
     , directInput_(new DInputButtonMonitor)
     , pttSoundPlayer_(new QMediaPlayer(this))
     , pttSoundOutput_(new QAudioOutput(this))
     , mockEnabled_(startWithMock && mockAvailable())
-    , llmManager_(std::make_unique<LLMManager>(settingsManager_.llm(),
-          settingsManager_.migratedFromLegacyMistral() ? QString{} : CredentialStore::readApiKey()))
-    , messageDispatcher_(std::make_unique<MessageDispatcher>(ttsBackend_))
+    , apiKey_(settingsManager_.migratedFromLegacyMistral() ? QString{} : CredentialStore::readApiKey())
+    , llmManager_(std::make_unique<LLMManager>(settingsManager_.llm(), apiKey_))
+    , messageDispatcher_(std::make_unique<MessageDispatcher>(piperTtsBackend_))
 {
     qRegisterMetaType<RaceState>();
     pttSoundOutput_->setVolume(0.7F);
+    for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
+        if (device.description() == settingsManager_.tts().outputDevice) {
+            pttSoundOutput_->setDevice(device);
+            break;
+        }
+    }
     pttSoundPlayer_->setAudioOutput(pttSoundOutput_);
     const QString pttSoundPath = QDir(QCoreApplication::applicationDirPath())
         .filePath(QStringLiteral("sound.mp3"));
@@ -142,7 +188,10 @@ Application::Application(const bool startWithMock, QObject* const parent)
         }
     }, Qt::QueuedConnection);
 
-    if (settingsManager_.migratedFromLegacyMistral()) CredentialStore::clearApiKey();
+    if (settingsManager_.migratedFromLegacyMistral()) {
+        CredentialStore::clearApiKey();
+        apiKey_.clear();
+    }
     apiConfigured_ = !settingsManager_.llm().baseUrl.trimmed().isEmpty()
         && !settingsManager_.llm().model.trimmed().isEmpty();
     apiDetail_ = apiConfigured_ ? QStringLiteral("Configured; connection not tested yet")
@@ -193,29 +242,51 @@ Application::Application(const bool startWithMock, QObject* const parent)
             emit interactionChanged();
         });
 
+    if (settingsManager_.tts().backend.compare(QStringLiteral("Gwen-TTS"),
+            Qt::CaseInsensitive) == 0) {
+        ttsBackend_ = gwenTtsBackend_;
+        messageDispatcher_->setBackend(ttsBackend_);
+    }
+    piperTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
+    gwenTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
     ttsAvailable_ = ttsBackend_->isAvailable();
-    ttsStatus_ = ttsAvailable_ ? QStringLiteral("Đang nạp AI voice · Gwen-TTS · Khánh Toàn…")
-                               : QStringLiteral("Thiếu runtime/model Gwen-TTS");
+    ttsStatus_ = ttsAvailable_
+        ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
+        : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
     connect(messageDispatcher_.get(), &MessageDispatcher::speakingChanged, this,
         [this](const bool speaking, const QString&) {
-            ttsStatus_ = speaking ? QStringLiteral("Đang chuẩn bị giọng Khánh Toàn…")
-                                  : (ttsAvailable_
-                                          ? QStringLiteral("AI voice · Gwen-TTS · Khánh Toàn sẵn sàng")
-                                          : QStringLiteral("Chưa cài Gwen-TTS"));
+            ttsStatus_ = speaking
+                ? QStringLiteral("Đang chuẩn bị · %1…").arg(ttsBackend_->backendName())
+                : (ttsAvailable_
+                    ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
+                    : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName()));
             if (speaking) onVoiceStatusChanged(QStringLiteral("Speaking"));
             else if (voiceStatus_ == QStringLiteral("Speaking")) onVoiceStatusChanged(QStringLiteral("Idle"));
             emit ttsStatusChanged();
     });
-    connect(ttsBackend_, &GwenTtsBackend::statusChanged, this, [this](const QString& status) {
-        ttsStatus_ = status;
-        emit ttsStatusChanged();
-    }, Qt::QueuedConnection);
-    connect(ttsBackend_, &GwenTtsBackend::errorOccurred, this, [this](const QString& error) {
-        qCWarning(logTts).noquote() << error;
-        ttsStatus_ = error;
-        emit ttsStatusChanged();
-    }, Qt::QueuedConnection);
-    ttsBackend_->warmUp();
+    connect(piperTtsBackend_, &PiperTtsBackend::statusChanged,
+        this, [this](const QString& status) {
+            if (ttsBackend_ != piperTtsBackend_) return;
+            ttsStatus_ = status;
+            emit ttsStatusChanged();
+        }, Qt::QueuedConnection);
+    connect(gwenTtsBackend_, &GwenTtsBackend::statusChanged,
+        this, [this](const QString& status) {
+            if (ttsBackend_ != gwenTtsBackend_) return;
+            ttsStatus_ = status;
+            emit ttsStatusChanged();
+        }, Qt::QueuedConnection);
+    const auto connectBackendError = [this](ITtsBackend* backend) {
+        connect(backend, &ITtsBackend::errorOccurred, this, [this, backend](const QString& error) {
+            qCWarning(logTts).noquote() << error;
+            if (ttsBackend_ != backend) return;
+            ttsStatus_ = error;
+            emit ttsStatusChanged();
+        }, Qt::QueuedConnection);
+    };
+    connectBackendError(piperTtsBackend_);
+    connectBackendError(gwenTtsBackend_);
+    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->warmUp();
 
     connect(&inputThread_, &QThread::finished, directInput_, &QObject::deleteLater);
     connect(this, &Application::requestStartDirectInput,
@@ -268,7 +339,8 @@ Application::~Application()
         inputThread_.quit();
         inputThread_.wait(3000);
     }
-    ttsBackend_->shutdown();
+    piperTtsBackend_->stop();
+    gwenTtsBackend_->shutdown();
     if (sttThread_.isRunning()) {
         speechRecognizer_->cancel();
         sttThread_.quit();
@@ -316,6 +388,70 @@ QString Application::directInputBinding() const
         return QStringLiteral("Not mapped");
     }
     return QStringLiteral("%1 — Button %2").arg(settings.deviceName).arg(settings.buttonIndex + 1);
+}
+
+QString Application::ttsBackend() const
+{
+    return settingsManager_.tts().backend;
+}
+
+void Application::setTtsBackend(const QString& backend)
+{
+    const bool useGwen = backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) == 0;
+    ITtsBackend* const selected = useGwen
+        ? static_cast<ITtsBackend*>(gwenTtsBackend_)
+        : static_cast<ITtsBackend*>(piperTtsBackend_);
+    if (selected == ttsBackend_) return;
+
+    messageDispatcher_->clear();
+    ttsBackend_->stop();
+    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->shutdown();
+    ttsBackend_ = selected;
+    messageDispatcher_->setBackend(ttsBackend_);
+
+    TtsSettings settings = settingsManager_.tts();
+    settings.backend = useGwen ? QStringLiteral("Gwen-TTS") : QStringLiteral("Piper");
+    settingsManager_.setTts(settings);
+    ttsAvailable_ = ttsBackend_->isAvailable();
+    ttsStatus_ = ttsAvailable_
+        ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
+        : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
+    emit ttsStatusChanged();
+    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->warmUp();
+}
+
+QStringList Application::audioOutputDevices() const
+{
+    QStringList devices;
+    for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
+        devices.append(device.description());
+    }
+    return devices;
+}
+
+QString Application::selectedAudioOutput() const
+{
+    if (!settingsManager_.tts().outputDevice.isEmpty()) {
+        return settingsManager_.tts().outputDevice;
+    }
+    return QMediaDevices::defaultAudioOutput().description();
+}
+
+void Application::setAudioOutputDevice(const QString& description)
+{
+    auto settings = settingsManager_.tts();
+    settings.outputDevice = audioOutputDevices().contains(description) ? description : QString{};
+    settingsManager_.setTts(settings);
+    piperTtsBackend_->setAudioOutputDevice(settings.outputDevice);
+    gwenTtsBackend_->setAudioOutputDevice(settings.outputDevice);
+    pttSoundOutput_->setDevice(QMediaDevices::defaultAudioOutput());
+    for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
+        if (device.description() == settings.outputDevice) {
+            pttSoundOutput_->setDevice(device);
+            break;
+        }
+    }
+    emit audioOutputChanged();
 }
 
 void Application::startDirectInput(const quintptr nativeWindowHandle)
@@ -384,10 +520,10 @@ void Application::saveAiSettings(const QString& provider, const QString& baseUrl
         emit apiStateChanged();
         return;
     }
-    const QString storedKey = CredentialStore::readApiKey();
+    apiKey_ = CredentialStore::readApiKey();
     apiConfigured_ = !settingsManager_.llm().baseUrl.trimmed().isEmpty()
         && !settingsManager_.llm().model.trimmed().isEmpty();
-    llmManager_->configure(settingsManager_.llm(), storedKey);
+    llmManager_->configure(settingsManager_.llm(), apiKey_);
     emit apiSettingsChanged();
 }
 
@@ -467,7 +603,7 @@ void Application::onVoiceStatusChanged(const QString& status)
 
 void Application::onUtteranceReady(const QByteArray& pcm16k)
 {
-    qCInfo(logVad) << "Utterance complete:" << pcm16k.size() / 2 << "samples";
+    qCInfo(logAudio) << "PTT utterance complete:" << pcm16k.size() / 2 << "samples";
     onVoiceStatusChanged(QStringLiteral("Recognizing"));
     emit requestTranscription(pcm16k, QStringLiteral("vi"));
 }

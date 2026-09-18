@@ -1,0 +1,132 @@
+{
+  "accepted_count": 14,
+  "category_counts": {
+    "confirmation_encouragement": 1,
+    "critical_warning": 2,
+    "pit_instruction": 3,
+    "strategy_call": 1,
+    "telemetry_report": 7
+  },
+  "length_counts": {
+    "long": 8,
+    "medium": 3,
+    "short": 3
+  },
+  "template_family_unique": 14,
+  "template_family_max_count": 1,
+  "tone_counts": {
+    "ngang": 176,
+    "sac": 62,
+    "huyen": 32,
+    "hoi": 19,
+    "nga": 6,
+    "nang": 50
+  },
+  "vietnamese_special_counts": {
+    "ă": 13,
+    "â": 3,
+    "ê": 4,
+    "ô": 8,
+    "ơ": 8,
+    "ư": 18,
+    "đ": 22
+  },
+  "rime_counts": {
+    "iê": 13,
+    "ươ": 15,
+    "uô": 0,
+    "uyê": 1,
+    "oă": 1,
+    "uâ": 4,
+    "ươi": 7,
+    "ương": 5,
+    "iêng": 0
+  },
+  "final_counts": {
+    "ch": 5,
+    "nh": 7,
+    "ng": 21,
+    "c": 15,
+    "m": 22,
+    "n": 39,
+    "p": 5,
+    "t": 28
+  },
+  "term_counts": {
+    "drs": 0,
+    "ers": 2,
+    "pit": 12,
+    "box": 0,
+    "delta": 4,
+    "sector": 0,
+    "stint": 0,
+    "understeer": 0,
+    "oversteer": 0,
+    "tyre": 2,
+    "brake": 2,
+    "fuel": 2,
+    "engine": 0,
+    "damage": 2,
+    "gap": 0,
+    "position": 0,
+    "lap": 2,
+    "penalty": 0,
+    "yellow_flag": 0,
+    "blue_flag": 0,
+    "track_limits": 0,
+    "pit_limiter": 2
+  },
+  "unit_counts": {
+    "seconds": 2,
+    "litres": 1,
+    "degrees": 2,
+    "psi": 0,
+    "kpa": 2,
+    "percent": 2,
+    "positive": 1,
+    "negative": 1,
+    "decimal": 2
+  },
+  "coverage_gaps": {
+    "tones": [],
+    "vietnamese_specials": [],
+    "rimes": [
+      "uô",
+      "iêng"
+    ],
+    "finals": [],
+    "racing_terms": [
+      "drs",
+      "box",
+      "sector",
+      "stint",
+      "understeer",
+      "oversteer",
+      "engine",
+      "gap",
+      "position",
+      "penalty",
+      "yellow_flag",
+      "blue_flag",
+      "track_limits"
+    ],
+    "number_units": [
+      "psi"
+    ],
+    "categories": [
+      "engineer_update",
+      "lap_analysis",
+      "system_session"
+    ],
+    "length_buckets": [
+      "very_short"
+    ]
+  },
+  "input_count": 14,
+  "reference_count": 664,
+  "rejected_count": 0,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 0,
+  "rejection_reason_counts": {}
+}

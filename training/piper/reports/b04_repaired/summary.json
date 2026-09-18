@@ -1,0 +1,128 @@
+{
+  "accepted_count": 23,
+  "category_counts": {
+    "confirmation_encouragement": 2,
+    "critical_warning": 2,
+    "lap_analysis": 2,
+    "pit_instruction": 4,
+    "strategy_call": 4,
+    "telemetry_report": 9
+  },
+  "length_counts": {
+    "long": 9,
+    "medium": 2,
+    "short": 8,
+    "very_short": 4
+  },
+  "template_family_unique": 23,
+  "template_family_max_count": 1,
+  "tone_counts": {
+    "ngang": 202,
+    "sac": 70,
+    "huyen": 47,
+    "hoi": 19,
+    "nga": 17,
+    "nang": 65
+  },
+  "vietnamese_special_counts": {
+    "ă": 12,
+    "â": 3,
+    "ê": 4,
+    "ô": 7,
+    "ơ": 8,
+    "ư": 16,
+    "đ": 24
+  },
+  "rime_counts": {
+    "iê": 6,
+    "ươ": 14,
+    "uô": 2,
+    "uyê": 2,
+    "oă": 0,
+    "uâ": 4,
+    "ươi": 8,
+    "ương": 2,
+    "iêng": 0
+  },
+  "final_counts": {
+    "ch": 8,
+    "nh": 6,
+    "ng": 34,
+    "c": 13,
+    "m": 22,
+    "n": 41,
+    "p": 10,
+    "t": 36
+  },
+  "term_counts": {
+    "drs": 0,
+    "ers": 2,
+    "pit": 11,
+    "box": 4,
+    "delta": 4,
+    "sector": 2,
+    "stint": 0,
+    "understeer": 0,
+    "oversteer": 0,
+    "tyre": 6,
+    "brake": 4,
+    "fuel": 2,
+    "engine": 0,
+    "damage": 0,
+    "gap": 0,
+    "position": 1,
+    "lap": 6,
+    "penalty": 2,
+    "yellow_flag": 0,
+    "blue_flag": 0,
+    "track_limits": 0,
+    "pit_limiter": 4
+  },
+  "unit_counts": {
+    "seconds": 2,
+    "litres": 1,
+    "degrees": 1,
+    "psi": 1,
+    "kpa": 0,
+    "percent": 3,
+    "positive": 1,
+    "negative": 1,
+    "decimal": 3
+  },
+  "coverage_gaps": {
+    "tones": [],
+    "vietnamese_specials": [],
+    "rimes": [
+      "oă",
+      "iêng"
+    ],
+    "finals": [],
+    "racing_terms": [
+      "drs",
+      "stint",
+      "understeer",
+      "oversteer",
+      "engine",
+      "damage",
+      "gap",
+      "yellow_flag",
+      "blue_flag",
+      "track_limits"
+    ],
+    "number_units": [
+      "kpa"
+    ],
+    "categories": [
+      "engineer_update",
+      "system_session"
+    ],
+    "length_buckets": []
+  },
+  "input_count": 23,
+  "reference_count": 964,
+  "rejected_count": 0,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 0,
+  "rejection_reason_counts": {}
+}

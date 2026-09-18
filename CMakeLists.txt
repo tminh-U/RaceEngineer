@@ -54,10 +54,6 @@ qt_add_executable(RaceEngineer WIN32
     src/audio/VoiceInputController.h
     src/audio/MessageDispatcher.cpp
     src/audio/MessageDispatcher.h
-    src/vad/TenVadProcessor.cpp
-    src/vad/TenVadProcessor.h
-    src/vad/VadProcessor.cpp
-    src/vad/VadProcessor.h
     src/stt/WhisperRecognizer.cpp
     src/stt/WhisperRecognizer.h
     src/config/CredentialStore.cpp
@@ -76,17 +72,12 @@ qt_add_executable(RaceEngineer WIN32
     src/tts/ITtsBackend.h
     src/tts/GwenTtsBackend.cpp
     src/tts/GwenTtsBackend.h
+    src/tts/PiperTtsBackend.cpp
+    src/tts/PiperTtsBackend.h
     src/spotter/SpotterEngine.cpp
     src/spotter/SpotterEngine.h
     src/input/DInputButtonMonitor.cpp
     src/input/DInputButtonMonitor.h
-)
-
-add_library(TenVad SHARED IMPORTED)
-set_target_properties(TenVad PROPERTIES
-    IMPORTED_IMPLIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ten_vad/lib/ten_vad.lib"
-    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ten_vad/lib/ten_vad.dll"
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ten_vad/include"
 )
 
 set_source_files_properties(src/ui/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
@@ -96,6 +87,8 @@ qt_add_qml_module(RaceEngineer
     VERSION 1.0
     QML_FILES
         src/ui/Main.qml
+        src/ui/Theme.qml
+        src/ui/StyledComboBox.qml
 )
 
 target_include_directories(RaceEngineer PRIVATE
@@ -111,24 +104,20 @@ target_link_libraries(RaceEngineer PRIVATE
     Qt6::Multimedia
     Qt6::Network
     Qt6::Widgets
-    TenVad
     whisper
 )
 
 add_custom_command(TARGET RaceEngineer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ten_vad/lib/ten_vad.dll"
-        "$<TARGET_FILE_DIR:RaceEngineer>/ten_vad.dll"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/sound.mp3"
         "$<TARGET_FILE_DIR:RaceEngineer>/sound.mp3"
 )
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-small-q5_1.bin")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin")
     add_custom_command(TARGET RaceEngineer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-small-q5_1.bin"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/ggml-small-q5_1.bin"
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/ggml-phowhisper-medium-q5_0.bin"
     )
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe")
@@ -156,6 +145,9 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf")
             "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"
             "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf"
             "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf"
     )
@@ -166,6 +158,17 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter/manifest.json")
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter"
             "$<TARGET_FILE_DIR:RaceEngineer>/audio/spotter"
+    )
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx")
+    add_custom_command(TARGET RaceEngineer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/piper"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/piper/vi_VN-vais1000-medium.onnx"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx.json"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/piper/vi_VN-vais1000-medium.onnx.json"
     )
 endif()
 
@@ -195,7 +198,6 @@ if(BUILD_TESTING)
         src/telemetry/mock/MockTelemetryProvider.cpp
         src/race/RaceHistory.cpp
         src/events/EventEngine.cpp
-        src/vad/TenVadProcessor.cpp
         src/llm/ConversationManager.cpp
         src/llm/tools/ToolRegistry.cpp
         src/llm/providers/OpenAICompatibleProvider.cpp
@@ -210,12 +212,7 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
-    target_link_libraries(RaceStateTests PRIVATE TenVad Qt6::Core Qt6::Network)
-    add_custom_command(TARGET RaceStateTests POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ten_vad/lib/ten_vad.dll"
-            "$<TARGET_FILE_DIR:RaceStateTests>/ten_vad.dll"
-    )
+    target_link_libraries(RaceStateTests PRIVATE Qt6::Core Qt6::Network whisper)
     if(MSVC)
         target_compile_options(RaceStateTests PRIVATE /W4 /permissive- /utf-8)
     else()
@@ -228,8 +225,10 @@ install(TARGETS RaceEngineer
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
 )
-install(FILES third_party/ten_vad/lib/ten_vad.dll DESTINATION bin)
 install(FILES sound.mp3 DESTINATION bin)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin")
+    install(FILES models/ggml-phowhisper-medium-q5_0.bin DESTINATION bin/models)
+endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe")
     install(DIRECTORY runtime/gwen-tts/crispasr-windows-x86_64-vulkan/
         DESTINATION bin/tools/gwen-tts)
@@ -239,4 +238,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf")
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/gwen-tts/khanh_toan.wav")
     install(DIRECTORY voices/gwen-tts/ DESTINATION bin/voices/gwen-tts)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx")
+    install(DIRECTORY models/piper/ DESTINATION bin/models/piper)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/piper/venv/Scripts/python.exe")
+    install(DIRECTORY runtime/piper/venv/ DESTINATION bin/tools/piper)
 endif()

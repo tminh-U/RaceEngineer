@@ -1,0 +1,117 @@
+{
+  "accepted_count": 275,
+  "category_counts": {
+    "confirmation_encouragement": 23,
+    "critical_warning": 32,
+    "engineer_update": 47,
+    "lap_analysis": 35,
+    "pit_instruction": 25,
+    "strategy_call": 45,
+    "system_session": 23,
+    "telemetry_report": 45
+  },
+  "length_counts": {
+    "long": 30,
+    "medium": 104,
+    "short": 108,
+    "very_short": 33
+  },
+  "template_family_unique": 206,
+  "template_family_max_count": 4,
+  "tone_counts": {
+    "ngang": 2038,
+    "sac": 757,
+    "huyen": 404,
+    "hoi": 247,
+    "nga": 122,
+    "nang": 461
+  },
+  "vietnamese_special_counts": {
+    "ă": 84,
+    "â": 45,
+    "ê": 63,
+    "ô": 66,
+    "ơ": 67,
+    "ư": 171,
+    "đ": 261
+  },
+  "rime_counts": {
+    "iê": 97,
+    "ươ": 160,
+    "uô": 14,
+    "uyê": 21,
+    "oă": 0,
+    "uâ": 28,
+    "ươi": 49,
+    "ương": 43,
+    "iêng": 0
+  },
+  "final_counts": {
+    "ch": 33,
+    "nh": 111,
+    "ng": 326,
+    "c": 158,
+    "m": 181,
+    "n": 351,
+    "p": 90,
+    "t": 306
+  },
+  "term_counts": {
+    "drs": 10,
+    "ers": 12,
+    "pit": 54,
+    "box": 11,
+    "delta": 12,
+    "sector": 18,
+    "stint": 4,
+    "understeer": 8,
+    "oversteer": 4,
+    "tyre": 79,
+    "brake": 61,
+    "fuel": 13,
+    "engine": 14,
+    "damage": 2,
+    "gap": 20,
+    "position": 15,
+    "lap": 66,
+    "penalty": 2,
+    "yellow_flag": 4,
+    "blue_flag": 4,
+    "track_limits": 2,
+    "pit_limiter": 3
+  },
+  "unit_counts": {
+    "seconds": 21,
+    "litres": 7,
+    "degrees": 8,
+    "psi": 3,
+    "kpa": 1,
+    "percent": 8,
+    "positive": 4,
+    "negative": 5,
+    "decimal": 35
+  },
+  "coverage_gaps": {
+    "tones": [],
+    "vietnamese_specials": [],
+    "rimes": [
+      "oă",
+      "iêng"
+    ],
+    "finals": [],
+    "racing_terms": [],
+    "number_units": [],
+    "categories": [],
+    "length_buckets": []
+  },
+  "input_count": 300,
+  "reference_count": 1264,
+  "rejected_count": 25,
+  "malformed_count": 0,
+  "reference_malformed_count": 0,
+  "suspicious_near_duplicate_count": 9,
+  "rejection_reason_counts": {
+    "exact_duplicate": 16,
+    "near_duplicate": 9
+  }
+}

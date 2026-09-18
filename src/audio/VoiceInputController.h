@@ -6,7 +6,6 @@
 namespace raceengineer {
 
 class AudioCapture;
-class VadProcessor;
 
 class VoiceInputController final : public QObject {
     Q_OBJECT
@@ -19,7 +18,6 @@ public slots:
     void stop();
     void beginPushToTalk();
     void endPushToTalk();
-    void setVoiceActivationEnabled(bool enabled);
 
 signals:
     void levelChanged(float level);
@@ -29,8 +27,12 @@ signals:
     void utteranceReady(const QByteArray& pcm16k);
 
 private:
+    void onPcm16k(const QByteArray& pcm);
+
     AudioCapture* capture_;
-    VadProcessor* vad_;
+    QByteArray preRoll_;
+    QByteArray recording_;
+    bool pushToTalk_{false};
 };
 
 } // namespace raceengineer
