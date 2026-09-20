@@ -16,6 +16,8 @@ scratch_*.wav
 test_*.wav
 config.json
 secrets.json
+dataset/
+*.zip
 models/
 voices/
 runtime/

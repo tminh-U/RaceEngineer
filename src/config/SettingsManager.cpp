@@ -12,7 +12,7 @@
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 4;
+constexpr int currentSettingsVersion = 9;
 }
 
 SettingsManager::SettingsManager()
@@ -44,11 +44,46 @@ void SettingsManager::setPushToTalk(const PushToTalkSettings& settings)
 void SettingsManager::setTts(const TtsSettings& settings)
 {
     tts_ = settings;
-    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) != 0) {
-        tts_.backend = QStringLiteral("Piper");
+    if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) == 0) {
+        tts_.backend = QStringLiteral("VieNeu-TTS");
     } else {
-        tts_.backend = QStringLiteral("Gwen-TTS");
+        tts_.backend = QStringLiteral("Piper");
     }
+    tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
+    save();
+}
+
+void SettingsManager::setAudioInput(const AudioInputSettings& settings)
+{
+    audioInput_ = settings;
+    audioInput_.deviceId = audioInput_.deviceId.trimmed();
+    audioInput_.deviceName = audioInput_.deviceName.trimmed();
+    if (audioInput_.deviceId.isEmpty() || audioInput_.deviceName.isEmpty()) {
+        audioInput_.deviceId.clear();
+        audioInput_.deviceName = QStringLiteral("Default (System)");
+    }
+    save();
+}
+
+void SettingsManager::setDriverName(const QString& name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty() || driverName_ == trimmed) return;
+    driverName_ = trimmed;
+    save();
+}
+
+void SettingsManager::setResponseStyle(const QString& style)
+{
+    const QString trimmed = style.trimmed();
+    QString normalized = QStringLiteral("Tiêu chuẩn");
+    if (trimmed.compare(QStringLiteral("Tối giản"), Qt::CaseInsensitive) == 0) {
+        normalized = QStringLiteral("Tối giản");
+    } else if (trimmed.compare(QStringLiteral("Chi tiết"), Qt::CaseInsensitive) == 0) {
+        normalized = QStringLiteral("Chi tiết");
+    }
+    if (responseStyle_ == normalized) return;
+    responseStyle_ = normalized;
     save();
 }
 
@@ -67,6 +102,15 @@ void SettingsManager::load()
     }
     const QJsonObject root = document.object();
     const int settingsVersion = root.value(QStringLiteral("settings_version")).toInt(1);
+    driverName_ = root.value(QStringLiteral("driver_name")).toString(driverName_);
+    const QString style = root.value(QStringLiteral("response_style")).toString(responseStyle_).trimmed();
+    if (style.compare(QStringLiteral("Tối giản"), Qt::CaseInsensitive) == 0) {
+        responseStyle_ = QStringLiteral("Tối giản");
+    } else if (style.compare(QStringLiteral("Chi tiết"), Qt::CaseInsensitive) == 0) {
+        responseStyle_ = QStringLiteral("Chi tiết");
+    } else {
+        responseStyle_ = QStringLiteral("Tiêu chuẩn");
+    }
     const auto object = root.value(QStringLiteral("llm")).toObject();
     llm_.provider = object.value(QStringLiteral("provider")).toString(llm_.provider);
     llm_.baseUrl = object.value(QStringLiteral("base_url")).toString(llm_.baseUrl);
@@ -75,6 +119,7 @@ void SettingsManager::load()
     llm_.timeoutMilliseconds = object.value(QStringLiteral("timeout_ms")).toInt(llm_.timeoutMilliseconds);
     llm_.maximumTokens = object.value(QStringLiteral("maximum_tokens")).toInt(llm_.maximumTokens);
     llm_.temperature = object.value(QStringLiteral("temperature")).toDouble(llm_.temperature);
+    llm_.reasoning = object.value(QStringLiteral("reasoning")).toBool(llm_.reasoning);
     const auto input = root.value(QStringLiteral("push_to_talk")).toObject();
     pushToTalk_.keyboardEnabled = input.value(QStringLiteral("keyboard_enabled"))
                                        .toBool(pushToTalk_.keyboardEnabled);
@@ -85,15 +130,40 @@ void SettingsManager::load()
     pushToTalk_.buttonIndex = input.value(QStringLiteral("button_index")).toInt(-1);
     const auto tts = root.value(QStringLiteral("tts")).toObject();
     tts_.backend = tts.value(QStringLiteral("backend")).toString(tts_.backend);
+    tts_.voice = tts.value(QStringLiteral("voice")).toString(tts_.voice);
+    bool shouldSave = false;
+    if (tts_.voice.trimmed().isEmpty()) {
+        tts_.voice = QStringLiteral("Minh Đức");
+    } else if (tts_.voice.compare(QStringLiteral("Kiên Trần"), Qt::CaseInsensitive) == 0
+               || tts_.voice.compare(QStringLiteral("kientran"), Qt::CaseInsensitive) == 0) {
+        tts_.voice = QStringLiteral("Minh Quân");
+        shouldSave = true;
+    }
     tts_.outputDevice = tts.value(QStringLiteral("output_device")).toString();
-    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) != 0) {
+    tts_.volume = static_cast<float>(tts.value(QStringLiteral("volume")).toDouble(tts_.volume));
+    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) == 0) {
+        tts_.backend = QStringLiteral("VieNeu-TTS");
+        tts_.voice = QStringLiteral("Minh Đức");
+        shouldSave = true;
+    } else if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) != 0) {
         tts_.backend = QStringLiteral("Piper");
+    }
+    tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
+    tts_.audioDucking = tts.value(QStringLiteral("audio_ducking")).toBool(tts_.audioDucking);
+    tts_.duckFactor = static_cast<float>(tts.value(QStringLiteral("duck_factor")).toDouble(tts_.duckFactor));
+    tts_.duckFactor = std::clamp(tts_.duckFactor, 0.05F, 0.95F);
+    const auto audioInput = root.value(QStringLiteral("audio_input")).toObject();
+    audioInput_.deviceId = audioInput.value(QStringLiteral("device_id")).toString().trimmed();
+    audioInput_.deviceName = audioInput.value(QStringLiteral("device_name"))
+                                 .toString(audioInput_.deviceName).trimmed();
+    if (audioInput_.deviceId.isEmpty() || audioInput_.deviceName.isEmpty()) {
+        audioInput_.deviceId.clear();
+        audioInput_.deviceName = QStringLiteral("Default (System)");
     }
 
     const bool legacyDefaults = llm_.provider.compare(QStringLiteral("Mistral"), Qt::CaseInsensitive) == 0
         && llm_.baseUrl == QStringLiteral("https://api.mistral.ai/v1")
         && llm_.model == QStringLiteral("ministral-3b-latest");
-    bool shouldSave = false;
     if (legacyDefaults) {
         llm_ = LlmSettings{};
         migratedFromLegacyMistral_ = true;
@@ -104,6 +174,15 @@ void SettingsManager::load()
         llm_.timeoutMilliseconds = 30000;
         shouldSave = true;
         qCInfo(logApp) << "Migrated LLM timeout from 10 to 30 seconds";
+    }
+    const bool hostedGemma = llm_.baseUrl.contains(QStringLiteral("generativelanguage.googleapis.com"),
+                                  Qt::CaseInsensitive)
+        && llm_.model.contains(QStringLiteral("gemma"), Qt::CaseInsensitive);
+    if (settingsVersion < 6 && hostedGemma && llm_.maximumTokens <= 32) {
+        // Gemma spends part of its budget on hidden reasoning/tool orchestration.
+        // The old visual-only slider left this at 16, which cannot reach a final answer.
+        llm_.maximumTokens = 64;
+        shouldSave = true;
     }
     if (settingsVersion < currentSettingsVersion) shouldSave = true;
     if (shouldSave) save();
@@ -119,6 +198,7 @@ void SettingsManager::save() const
     llm.insert(QStringLiteral("timeout_ms"), llm_.timeoutMilliseconds);
     llm.insert(QStringLiteral("maximum_tokens"), llm_.maximumTokens);
     llm.insert(QStringLiteral("temperature"), llm_.temperature);
+    llm.insert(QStringLiteral("reasoning"), llm_.reasoning);
     QJsonObject pushToTalk;
     pushToTalk.insert(QStringLiteral("keyboard_enabled"), pushToTalk_.keyboardEnabled);
     pushToTalk.insert(QStringLiteral("directinput_enabled"), pushToTalk_.directInputEnabled);
@@ -126,13 +206,22 @@ void SettingsManager::save() const
     pushToTalk.insert(QStringLiteral("device_name"), pushToTalk_.deviceName);
     pushToTalk.insert(QStringLiteral("button_index"), pushToTalk_.buttonIndex);
     const QJsonObject tts{{QStringLiteral("backend"), tts_.backend},
-        {QStringLiteral("output_device"), tts_.outputDevice}};
+        {QStringLiteral("voice"), tts_.voice},
+        {QStringLiteral("output_device"), tts_.outputDevice},
+        {QStringLiteral("volume"), tts_.volume},
+        {QStringLiteral("audio_ducking"), tts_.audioDucking},
+        {QStringLiteral("duck_factor"), tts_.duckFactor}};
+    const QJsonObject audioInput{{QStringLiteral("device_id"), audioInput_.deviceId},
+        {QStringLiteral("device_name"), audioInput_.deviceName}};
     QFile file(filePath_);
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         file.write(QJsonDocument(QJsonObject{{QStringLiteral("settings_version"), currentSettingsVersion},
+            {QStringLiteral("driver_name"), driverName_},
+            {QStringLiteral("response_style"), responseStyle_},
             {QStringLiteral("llm"), llm},
             {QStringLiteral("push_to_talk"), pushToTalk},
-            {QStringLiteral("tts"), tts}}).toJson(QJsonDocument::Indented));
+            {QStringLiteral("tts"), tts},
+            {QStringLiteral("audio_input"), audioInput}}).toJson(QJsonDocument::Indented));
     }
 }
 

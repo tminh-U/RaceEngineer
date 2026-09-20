@@ -1,13 +1,15 @@
 #include "app/Application.h"
 
 #include "telemetry/TelemetryManager.h"
+#include "audio/AudioCapture.h"
 #include "audio/VoiceInputController.h"
 #include "stt/WhisperRecognizer.h"
 #include "config/CredentialStore.h"
 #include "llm/LLMManager.h"
 #include "audio/MessageDispatcher.h"
-#include "tts/GwenTtsBackend.h"
+#include "audio/AudioDucker.h"
 #include "tts/PiperTtsBackend.h"
+#include "tts/VieNeuTtsBackend.h"
 #include "input/DInputButtonMonitor.h"
 #include "utils/Logging.h"
 
@@ -22,9 +24,12 @@
 #include <QAudioOutput>
 #include <QAudioDevice>
 #include <QMediaDevices>
+#include <QTimer>
 #include <QFileInfo>
 #include <QUrl>
 #include <QVariantList>
+
+#include <algorithm>
 
 namespace raceengineer {
 namespace {
@@ -47,12 +52,27 @@ QString utf8(const std::string& value)
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
 }
 
-QString resolveGwenModelPath()
+QString stableAudioInputId(const QByteArray& id)
+{
+    return QString::fromLatin1(id.toHex());
+}
+
+QByteArray audioInputIdBytes(const QString& id)
+{
+    return QByteArray::fromHex(id.trimmed().toLatin1());
+}
+
+QString resolvePackagedOrDevelopmentPath(const QString& relativePath)
 {
     const QString appDir = QCoreApplication::applicationDirPath();
-    const QString q4k = QDir(appDir).filePath(QStringLiteral("models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"));
-    if (QFileInfo::exists(q4k)) return q4k;
-    return QDir(appDir).filePath(QStringLiteral("models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"));
+    const QString packaged = QDir(appDir).filePath(relativePath);
+    if (QFileInfo::exists(packaged)) return packaged;
+    return QDir(appDir).absoluteFilePath(QStringLiteral("../") + relativePath);
+}
+
+QString resolveVieNeuModelPath()
+{
+    return resolvePackagedOrDevelopmentPath(QStringLiteral("models/vieneu-v3"));
 }
 
 QString resolvePiperPythonPath()
@@ -66,22 +86,12 @@ QString resolvePiperPythonPath()
 
 QString resolvePiperModelPath()
 {
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QString packaged = QDir(appDir).filePath(
-        QStringLiteral("models/piper/vi_VN-vais1000-medium.onnx"));
-    if (QFileInfo::exists(packaged)) return packaged;
-    return QDir(appDir).absoluteFilePath(
-        QStringLiteral("../models/piper/vi_VN-vais1000-medium.onnx"));
+    return resolvePackagedOrDevelopmentPath(QStringLiteral("models/piper/vi_VN-vais1000-medium.onnx"));
 }
 
 QString resolvePhoWhisperModelPath()
 {
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QString packaged = QDir(appDir).filePath(
-        QStringLiteral("models/ggml-phowhisper-medium-q5_0.bin"));
-    if (QFileInfo::exists(packaged)) return packaged;
-    return QDir(appDir).absoluteFilePath(
-        QStringLiteral("../models/ggml-phowhisper-medium-q5_0.bin"));
+    return resolvePackagedOrDevelopmentPath(QStringLiteral("models/ggml-phowhisper-small-q5_1.bin"));
 }
 
 } // namespace
@@ -92,14 +102,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , voiceInput_(new VoiceInputController)
     , speechRecognizer_(new WhisperRecognizer(resolvePhoWhisperModelPath()))
     , piperTtsBackend_(new PiperTtsBackend(resolvePiperPythonPath(), resolvePiperModelPath(), this))
-    , gwenTtsBackend_(new GwenTtsBackend(
-          QDir(QCoreApplication::applicationDirPath()).filePath(
-              QStringLiteral("tools/gwen-tts/crispasr.exe")),
-          resolveGwenModelPath(),
-          QDir(QCoreApplication::applicationDirPath()).filePath(
-              QStringLiteral("models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf")),
-          QDir(QCoreApplication::applicationDirPath()).filePath(
-              QStringLiteral("voices/gwen-tts")), this))
+    , vieNeuTtsBackend_(new VieNeuTtsBackend(resolveVieNeuModelPath(), settingsManager_.tts().voice, this))
     , ttsBackend_(piperTtsBackend_)
     , directInput_(new DInputButtonMonitor)
     , pttSoundPlayer_(new QMediaPlayer(this))
@@ -108,8 +111,16 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , apiKey_(settingsManager_.migratedFromLegacyMistral() ? QString{} : CredentialStore::readApiKey())
     , llmManager_(std::make_unique<LLMManager>(settingsManager_.llm(), apiKey_))
     , messageDispatcher_(std::make_unique<MessageDispatcher>(piperTtsBackend_))
+    , audioDucker_(std::make_unique<AudioDucker>(this))
 {
     qRegisterMetaType<RaceState>();
+    audioDucker_->setEnabled(settingsManager_.tts().audioDucking);
+    audioDucker_->setDuckFactor(settingsManager_.tts().duckFactor);
+    connect(audioDucker_.get(), &AudioDucker::duckedChanged, this, &Application::audioDuckingStateChanged);
+    llmManager_->setDriverName(settingsManager_.driverName());
+    llmManager_->setResponseStyle(settingsManager_.responseStyle());
+    refreshAudioInputDevices();
+    microphoneName_ = selectedAudioInput();
     pttSoundOutput_->setVolume(0.7F);
     for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
         if (device.description() == settingsManager_.tts().outputDevice) {
@@ -139,8 +150,14 @@ Application::Application(const bool startWithMock, QObject* const parent)
     connect(this, &Application::requestMockTelemetry,
         telemetryManager_, &TelemetryManager::setUseMockTelemetry, Qt::QueuedConnection);
 
-    connect(&audioThread_, &QThread::started, voiceInput_, &VoiceInputController::start);
+    connect(&audioThread_, &QThread::started, this, [this] {
+        emit requestStartVoiceInput(audioInputIdBytes(settingsManager_.audioInput().deviceId));
+    });
     connect(&audioThread_, &QThread::finished, voiceInput_, &QObject::deleteLater);
+    connect(this, &Application::requestStartVoiceInput,
+        voiceInput_, &VoiceInputController::start, Qt::QueuedConnection);
+    connect(this, &Application::requestConfigureAudioInput,
+        voiceInput_, &VoiceInputController::setInputDevice, Qt::QueuedConnection);
     connect(this, &Application::requestBeginPushToTalk,
         voiceInput_, &VoiceInputController::beginPushToTalk, Qt::QueuedConnection);
     connect(this, &Application::requestEndPushToTalk,
@@ -158,7 +175,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
     connect(voiceInput_, &VoiceInputController::errorOccurred, this, [this](const QString& error) {
         qCWarning(logAudio).noquote() << error;
         microphoneName_ = error;
-        latestEngineerText_ = error;
+        updateEngineerMessage(error);
         onVoiceStatusChanged(QStringLiteral("Idle"));
         emit microphoneChanged();
         emit interactionChanged();
@@ -176,13 +193,13 @@ Application::Application(const bool startWithMock, QObject* const parent)
     connect(speechRecognizer_, &WhisperRecognizer::transcriptionReady,
         this, &Application::onTranscriptionReady, Qt::QueuedConnection);
     connect(speechRecognizer_, &WhisperRecognizer::recognitionError, this, [this](const QString& error) {
-        latestEngineerText_ = error;
+        updateEngineerMessage(error);
         onVoiceStatusChanged(QStringLiteral("Idle"));
         emit interactionChanged();
     }, Qt::QueuedConnection);
     connect(speechRecognizer_, &WhisperRecognizer::recognitionFinished, this, [this] {
         if (voiceStatus_ == QStringLiteral("Recognizing")) {
-            latestEngineerText_ = QStringLiteral("Whisper không trả về kết quả nhận dạng.");
+            updateEngineerMessage(QStringLiteral("Whisper không trả về kết quả nhận dạng."));
             onVoiceStatusChanged(QStringLiteral("Idle"));
             emit interactionChanged();
         }
@@ -205,18 +222,18 @@ Application::Application(const bool startWithMock, QObject* const parent)
         });
     connect(llmManager_.get(), &LLMManager::responseChunk, this, [this](const QString& chunk) {
         streamedResponse_ += chunk;
-        latestEngineerText_ = streamedResponse_;
+        updateEngineerMessage(streamedResponse_);
         emit interactionChanged();
     });
     connect(llmManager_.get(), &LLMManager::responseReady, this, [this](const QString& text) {
-        latestEngineerText_ = text;
+        updateEngineerMessage(text);
         streamedResponse_.clear();
         onVoiceStatusChanged(QStringLiteral("Idle"));
         emit interactionChanged();
         messageDispatcher_->enqueue(text, EventPriority::Conversation);
     });
     connect(llmManager_.get(), &LLMManager::errorOccurred, this, [this](const QString& message) {
-        latestEngineerText_ = message;
+        updateEngineerMessage(message);
         streamedResponse_.clear();
         onVoiceStatusChanged(QStringLiteral("Idle"));
         emit interactionChanged();
@@ -236,25 +253,33 @@ Application::Application(const bool startWithMock, QObject* const parent)
         });
     connect(llmManager_.get(), &LLMManager::connectionTested, this,
         [this](const bool, const QString& detail) {
-            latestEngineerText_ = detail;
+            if (manualConnectionTestActive_) {
+                updateEngineerMessage(detail);
+                manualConnectionTestActive_ = false;
+            }
             streamedResponse_.clear();
             onVoiceStatusChanged(QStringLiteral("Idle"));
             emit interactionChanged();
         });
 
-    if (settingsManager_.tts().backend.compare(QStringLiteral("Gwen-TTS"),
+    if (settingsManager_.tts().backend.compare(QStringLiteral("VieNeu-TTS"),
             Qt::CaseInsensitive) == 0) {
-        ttsBackend_ = gwenTtsBackend_;
+        ttsBackend_ = vieNeuTtsBackend_;
         messageDispatcher_->setBackend(ttsBackend_);
     }
+    vieNeuTtsBackend_->setVoice(settingsManager_.tts().voice);
     piperTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
-    gwenTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
+    vieNeuTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
+    piperTtsBackend_->setVolume(settingsManager_.tts().volume);
+    vieNeuTtsBackend_->setVolume(settingsManager_.tts().volume);
     ttsAvailable_ = ttsBackend_->isAvailable();
     ttsStatus_ = ttsAvailable_
         ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
         : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
     connect(messageDispatcher_.get(), &MessageDispatcher::speakingChanged, this,
         [this](const bool speaking, const QString&) {
+            isSpeaking_ = speaking;
+            updateAudioDuckingState();
             ttsStatus_ = speaking
                 ? QStringLiteral("Đang chuẩn bị · %1…").arg(ttsBackend_->backendName())
                 : (ttsAvailable_
@@ -270,9 +295,9 @@ Application::Application(const bool startWithMock, QObject* const parent)
             ttsStatus_ = status;
             emit ttsStatusChanged();
         }, Qt::QueuedConnection);
-    connect(gwenTtsBackend_, &GwenTtsBackend::statusChanged,
+    connect(vieNeuTtsBackend_, &VieNeuTtsBackend::statusChanged,
         this, [this](const QString& status) {
-            if (ttsBackend_ != gwenTtsBackend_) return;
+            if (ttsBackend_ != vieNeuTtsBackend_) return;
             ttsStatus_ = status;
             emit ttsStatusChanged();
         }, Qt::QueuedConnection);
@@ -285,8 +310,8 @@ Application::Application(const bool startWithMock, QObject* const parent)
         }, Qt::QueuedConnection);
     };
     connectBackendError(piperTtsBackend_);
-    connectBackendError(gwenTtsBackend_);
-    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->warmUp();
+    connectBackendError(vieNeuTtsBackend_);
+    if (ttsBackend_ == vieNeuTtsBackend_) vieNeuTtsBackend_->warmUp();
 
     connect(&inputThread_, &QThread::finished, directInput_, &QObject::deleteLater);
     connect(this, &Application::requestStartDirectInput,
@@ -327,11 +352,21 @@ Application::Application(const bool startWithMock, QObject* const parent)
     if (mockEnabled_) {
         emit requestMockTelemetry(true);
     }
+    if (apiConfigured_) {
+        QTimer::singleShot(500, this, [this] {
+            if (llmManager_ && apiConfigured_) {
+                llmManager_->testConnection();
+            }
+        });
+    }
 }
 
 Application::~Application()
 {
     QCoreApplication::instance()->removeEventFilter(this);
+    if (audioDucker_) {
+        audioDucker_->setDucked(false);
+    }
     messageDispatcher_->clear();
     if (inputThread_.isRunning()) {
         QMetaObject::invokeMethod(directInput_, &DInputButtonMonitor::stop,
@@ -340,7 +375,7 @@ Application::~Application()
         inputThread_.wait(3000);
     }
     piperTtsBackend_->stop();
-    gwenTtsBackend_->shutdown();
+    vieNeuTtsBackend_->shutdown();
     if (sttThread_.isRunning()) {
         speechRecognizer_->cancel();
         sttThread_.quit();
@@ -364,6 +399,7 @@ void Application::beginPushToTalk()
 {
     if (!pushToTalkPressed_) {
         pushToTalkPressed_ = true;
+        updateAudioDuckingState();
         messageDispatcher_->clear();
         if (pttSoundPlayer_->source().isValid()) {
             pttSoundPlayer_->setPosition(0);
@@ -377,6 +413,7 @@ void Application::endPushToTalk()
 {
     if (pushToTalkPressed_) {
         pushToTalkPressed_ = false;
+        updateAudioDuckingState();
         emit requestEndPushToTalk();
     }
 }
@@ -397,27 +434,128 @@ QString Application::ttsBackend() const
 
 void Application::setTtsBackend(const QString& backend)
 {
-    const bool useGwen = backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) == 0;
-    ITtsBackend* const selected = useGwen
-        ? static_cast<ITtsBackend*>(gwenTtsBackend_)
-        : static_cast<ITtsBackend*>(piperTtsBackend_);
+    const bool useVieNeu = backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) == 0;
+    ITtsBackend* const selected = useVieNeu ? static_cast<ITtsBackend*>(vieNeuTtsBackend_)
+                                            : static_cast<ITtsBackend*>(piperTtsBackend_);
     if (selected == ttsBackend_) return;
 
     messageDispatcher_->clear();
     ttsBackend_->stop();
-    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->shutdown();
+    if (ttsBackend_ == vieNeuTtsBackend_) vieNeuTtsBackend_->shutdown();
     ttsBackend_ = selected;
     messageDispatcher_->setBackend(ttsBackend_);
 
     TtsSettings settings = settingsManager_.tts();
-    settings.backend = useGwen ? QStringLiteral("Gwen-TTS") : QStringLiteral("Piper");
+    if (useVieNeu && settings.voice.trimmed().isEmpty()) {
+        settings.voice = QStringLiteral("Minh Đức");
+    }
+    settings.backend = useVieNeu ? QStringLiteral("VieNeu-TTS") : QStringLiteral("Piper");
     settingsManager_.setTts(settings);
+    if (useVieNeu) {
+        vieNeuTtsBackend_->setVoice(settings.voice);
+    }
     ttsAvailable_ = ttsBackend_->isAvailable();
     ttsStatus_ = ttsAvailable_
         ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
         : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
     emit ttsStatusChanged();
-    if (ttsBackend_ == gwenTtsBackend_) gwenTtsBackend_->warmUp();
+    emit availableTtsVoicesChanged();
+    emit ttsVoiceChanged();
+    if (ttsBackend_ == vieNeuTtsBackend_) vieNeuTtsBackend_->warmUp();
+}
+
+QVariantList Application::availableTtsVoices() const
+{
+    QVariantList list;
+    if (settingsManager_.tts().backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) == 0) {
+        const QString voicesJsonPath = QDir(resolveVieNeuModelPath()).filePath(QStringLiteral("voices_v3_turbo.json"));
+        QFile file(voicesJsonPath);
+        QJsonObject presetsObj;
+        if (file.open(QIODevice::ReadOnly)) {
+            const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            presetsObj = doc.object().value(QStringLiteral("presets")).toObject();
+        }
+
+        static const struct {
+            const char* id;
+            const char* fallbackDesc;
+        } kKnownPresets[] = {
+            {"Minh Đức", "Nam · Bắc · Tin tức"},
+            {"Mai Anh", "Nữ · Bắc · Tin tức"},
+            {"Thái Sơn", "Nam · Nam · Kể chuyện"},
+            {"Thanh Bình", "Nam · Bắc · Kể chuyện"},
+            {"Trúc Ly", "Nữ · Bắc · Tự nhiên"},
+            {"Đoan Trang", "Nữ · Bắc · Tự nhiên"},
+            {"Ngọc Linh", "Nữ · Bắc · Kể chuyện"},
+            {"Phạm Tuyên", "Nam · Bắc · Tự nhiên"},
+            {"Xuân Vĩnh", "Nam · Nam · Tự nhiên"},
+            {"Thục Đoan", "Nữ · Nam · Kể chuyện"}
+        };
+
+        for (const auto& item : kKnownPresets) {
+            const QString id = QString::fromUtf8(item.id);
+            QString label = id;
+            if (!presetsObj.isEmpty() && presetsObj.contains(id)) {
+                const QJsonObject p = presetsObj.value(id).toObject();
+                const QString desc = p.value(QStringLiteral("description")).toString();
+                label = desc.isEmpty() ? id : QStringLiteral("%1 (%2)").arg(id, desc);
+            } else {
+                label = QStringLiteral("%1 (%2)").arg(id, QString::fromUtf8(item.fallbackDesc));
+            }
+            list.append(QVariantMap{
+                {QStringLiteral("id"), id},
+                {QStringLiteral("name"), label}
+            });
+        }
+
+        // Dynamically include any custom voices added to voices_v3_turbo.json
+        for (auto it = presetsObj.begin(); it != presetsObj.end(); ++it) {
+            const QString id = it.key();
+            bool alreadyAdded = false;
+            for (const auto& item : kKnownPresets) {
+                if (id == QString::fromUtf8(item.id)) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+            if (!alreadyAdded) {
+                const QJsonObject p = it.value().toObject();
+                const QString desc = p.value(QStringLiteral("description")).toString();
+                const QString label = desc.isEmpty() ? QStringLiteral("%1 (Tùy chỉnh)").arg(id)
+                                                    : QStringLiteral("%1 (%2)").arg(id, desc);
+                list.append(QVariantMap{
+                    {QStringLiteral("id"), id},
+                    {QStringLiteral("name"), label}
+                });
+            }
+        }
+    } else {
+        list.append(QVariantMap{
+            {QStringLiteral("id"), QStringLiteral("vais1000")},
+            {QStringLiteral("name"), QStringLiteral("Mặc định (vais1000-medium)")}
+        });
+    }
+    return list;
+}
+
+void Application::setTtsVoice(const QString& voice)
+{
+    const QString trimmed = voice.trimmed();
+    if (trimmed.isEmpty() || settingsManager_.tts().voice == trimmed) return;
+    auto settings = settingsManager_.tts();
+    settings.voice = trimmed;
+    settingsManager_.setTts(settings);
+    if (vieNeuTtsBackend_) {
+        vieNeuTtsBackend_->setVoice(trimmed);
+    }
+    if (ttsBackend_ == vieNeuTtsBackend_) {
+        ttsStatus_ = ttsAvailable_
+            ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
+            : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
+        emit ttsStatusChanged();
+    }
+    emit ttsVoiceChanged();
+    qCInfo(logTts) << "Selected TTS voice:" << trimmed;
 }
 
 QStringList Application::audioOutputDevices() const
@@ -443,7 +581,7 @@ void Application::setAudioOutputDevice(const QString& description)
     settings.outputDevice = audioOutputDevices().contains(description) ? description : QString{};
     settingsManager_.setTts(settings);
     piperTtsBackend_->setAudioOutputDevice(settings.outputDevice);
-    gwenTtsBackend_->setAudioOutputDevice(settings.outputDevice);
+    vieNeuTtsBackend_->setAudioOutputDevice(settings.outputDevice);
     pttSoundOutput_->setDevice(QMediaDevices::defaultAudioOutput());
     for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
         if (device.description() == settings.outputDevice) {
@@ -452,6 +590,102 @@ void Application::setAudioOutputDevice(const QString& description)
         }
     }
     emit audioOutputChanged();
+}
+
+void Application::refreshAudioInputDevices()
+{
+    QVariantList devices;
+    devices.append(QVariantMap{{QStringLiteral("id"), QString{}},
+        {QStringLiteral("name"), QStringLiteral("Default (System)")}});
+    for (const auto& device : AudioCapture::inputDevices()) {
+        devices.append(QVariantMap{{QStringLiteral("id"), stableAudioInputId(device.id)},
+            {QStringLiteral("name"), device.description}});
+        qCInfo(logAudio) << "Enumerated microphone:" << device.description
+                         << "device_id=" << device.id.toHex();
+    }
+    if (audioInputDevices_ == devices) {
+        return;
+    }
+    audioInputDevices_ = devices;
+    emit audioInputChanged();
+}
+
+QString Application::selectedAudioInput() const
+{
+    const auto& settings = settingsManager_.audioInput();
+    return settings.deviceId.isEmpty() ? QStringLiteral("Default (System)") : settings.deviceName;
+}
+
+QString Application::selectedAudioInputId() const
+{
+    return settingsManager_.audioInput().deviceId;
+}
+
+void Application::setAudioInputDevice(const QString& deviceId)
+{
+    refreshAudioInputDevices();
+    const QString selectedId = deviceId.trimmed();
+    AudioInputSettings settings = settingsManager_.audioInput();
+    if (selectedId.isEmpty()) {
+        settings.deviceId.clear();
+        settings.deviceName = QStringLiteral("Default (System)");
+    } else {
+        bool found = false;
+        for (const auto& device : AudioCapture::inputDevices()) {
+            if (stableAudioInputId(device.id) != selectedId) {
+                continue;
+            }
+            settings.deviceId = selectedId;
+            settings.deviceName = device.description;
+            found = true;
+            break;
+        }
+        if (!found) {
+            qCWarning(logAudio).noquote()
+                << "Refusing unknown microphone selection; retaining current device_id=" << settings.deviceId;
+            return;
+        }
+    }
+    settingsManager_.setAudioInput(settings);
+    microphoneName_ = settings.deviceName;
+    emit microphoneChanged();
+    emit audioInputChanged();
+    qCInfo(logAudio) << "Selected microphone:" << settings.deviceName
+                     << "device_id=" << settings.deviceId;
+    emit requestConfigureAudioInput(audioInputIdBytes(settings.deviceId));
+}
+
+void Application::setTtsVolume(const double volume)
+{
+    auto settings = settingsManager_.tts();
+    settings.volume = std::clamp(static_cast<float>(volume), 0.0F, 1.0F);
+    settingsManager_.setTts(settings);
+    piperTtsBackend_->setVolume(settings.volume);
+    vieNeuTtsBackend_->setVolume(settings.volume);
+    emit ttsVolumeChanged();
+}
+
+void Application::setAudioDuckingEnabled(const bool enabled)
+{
+    auto settings = settingsManager_.tts();
+    if (settings.audioDucking == enabled) return;
+    settings.audioDucking = enabled;
+    settingsManager_.setTts(settings);
+    if (audioDucker_) audioDucker_->setEnabled(enabled);
+    updateAudioDuckingState();
+    emit audioDuckingEnabledChanged();
+}
+
+bool Application::isAudioDucked() const noexcept
+{
+    return audioDucker_ && audioDucker_->isDucked();
+}
+
+void Application::updateAudioDuckingState()
+{
+    if (!audioDucker_) return;
+    const bool shouldDuck = audioDuckingEnabled() && (pushToTalkPressed_ || isSpeaking_);
+    audioDucker_->setDucked(shouldDuck);
 }
 
 void Application::startDirectInput(const quintptr nativeWindowHandle)
@@ -501,9 +735,42 @@ void Application::setUseMockTelemetry(const bool enabled)
     emit requestMockTelemetry(mockEnabled_);
 }
 
+void Application::setApiReasoning(const bool enabled)
+{
+    auto settings = settingsManager_.llm();
+    if (settings.reasoning == enabled) return;
+    settings.reasoning = enabled;
+    settingsManager_.setLlm(settings);
+    llmManager_->configure(settingsManager_.llm(), apiKey_);
+    emit apiSettingsChanged();
+}
+
+void Application::setDriverName(const QString& name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty() || settingsManager_.driverName() == trimmed) return;
+    settingsManager_.setDriverName(trimmed);
+    if (llmManager_) {
+        llmManager_->setDriverName(trimmed);
+    }
+    emit driverNameChanged();
+}
+
+void Application::setResponseStyle(const QString& style)
+{
+    const QString trimmed = style.trimmed();
+    if (trimmed.isEmpty() || settingsManager_.responseStyle() == trimmed) return;
+    settingsManager_.setResponseStyle(trimmed);
+    if (llmManager_) {
+        llmManager_->setResponseStyle(settingsManager_.responseStyle());
+    }
+    emit responseStyleChanged();
+}
+
 void Application::saveAiSettings(const QString& provider, const QString& baseUrl,
     const QString& apiKey, const QString& model, const bool streaming,
-    const int timeoutMilliseconds, const int maximumTokens, const double temperature)
+    const int timeoutMilliseconds, const int maximumTokens, const double temperature,
+    const bool reasoning)
 {
     LlmSettings settings = settingsManager_.llm();
     settings.provider = provider.trimmed().isEmpty() ? QStringLiteral("OpenAI Compatible") : provider.trimmed();
@@ -513,6 +780,7 @@ void Application::saveAiSettings(const QString& provider, const QString& baseUrl
     settings.timeoutMilliseconds = timeoutMilliseconds;
     settings.maximumTokens = maximumTokens;
     settings.temperature = temperature;
+    settings.reasoning = reasoning;
     settingsManager_.setLlm(settings);
     if (!CredentialStore::writeApiKey(apiKey.trimmed())) {
         apiState_ = QStringLiteral("Unavailable");
@@ -525,13 +793,48 @@ void Application::saveAiSettings(const QString& provider, const QString& baseUrl
         && !settingsManager_.llm().model.trimmed().isEmpty();
     llmManager_->configure(settingsManager_.llm(), apiKey_);
     emit apiSettingsChanged();
+    if (apiConfigured_) {
+        llmManager_->testConnection();
+    }
 }
 
-void Application::testApiConnection()
+void Application::testApiConnection(const QString& baseUrl, const QString& apiKey,
+    const QString& model)
 {
+    manualConnectionTestActive_ = true;
     streamedResponse_.clear();
     onVoiceStatusChanged(QStringLiteral("Thinking"));
+    if (!baseUrl.trimmed().isEmpty() && !model.trimmed().isEmpty()) {
+        LlmSettings tempSettings = settingsManager_.llm();
+        tempSettings.baseUrl = baseUrl.trimmed();
+        tempSettings.model = model.trimmed();
+        llmManager_->configure(tempSettings, apiKey.trimmed());
+    }
     llmManager_->testConnection();
+}
+
+void Application::appendConversationMessage(const QString& role, const QString& text)
+{
+    if (text.trimmed().isEmpty()) return;
+    conversationLog_.append(QVariantMap{{QStringLiteral("role"), role},
+        {QStringLiteral("text"), text.trimmed()}});
+    while (conversationLog_.size() > 100) conversationLog_.removeFirst();
+    emit conversationLogChanged();
+}
+
+void Application::updateEngineerMessage(const QString& text)
+{
+    latestEngineerText_ = text;
+    if (!conversationLog_.isEmpty()) {
+        QVariantMap message = conversationLog_.last().toMap();
+        if (message.value(QStringLiteral("role")).toString() == QStringLiteral("engineer")) {
+            message.insert(QStringLiteral("text"), text);
+            conversationLog_.last() = message;
+            emit conversationLogChanged();
+            return;
+        }
+    }
+    appendConversationMessage(QStringLiteral("engineer"), text);
 }
 
 void Application::askText(const QString& text)
@@ -540,6 +843,7 @@ void Application::askText(const QString& text)
     latestUserText_ = text.trimmed();
     latestEngineerText_.clear();
     streamedResponse_.clear();
+    appendConversationMessage(QStringLiteral("driver"), latestUserText_);
     onVoiceStatusChanged(QStringLiteral("Thinking"));
     emit interactionChanged();
     llmManager_->ask(latestUserText_, latestState_, raceHistory_,
@@ -552,6 +856,8 @@ void Application::resetConversation()
     latestUserText_.clear();
     latestEngineerText_.clear();
     streamedResponse_.clear();
+    conversationLog_.clear();
+    emit conversationLogChanged();
     emit interactionChanged();
 }
 
@@ -613,9 +919,10 @@ void Application::onTranscriptionReady(const QString& text, const QString& detec
     latestUserText_ = text;
     latestEngineerText_.clear();
     streamedResponse_.clear();
+    appendConversationMessage(QStringLiteral("driver"), latestUserText_);
     emit interactionChanged();
     if (!apiConfigured_) {
-        latestEngineerText_ = QStringLiteral("Configure the LLM server URL and model in AI & Voice.");
+        updateEngineerMessage(QStringLiteral("Configure the LLM server URL and model in AI & Voice."));
         onVoiceStatusChanged(QStringLiteral("Idle"));
         emit interactionChanged();
         return;
@@ -654,6 +961,7 @@ QVariantMap Application::toVariantMap(const RaceState& state)
     map.insert(QStringLiteral("connected"), state.connected);
 
     if (state.track) map.insert(QStringLiteral("track"), utf8(*state.track));
+    if (state.driverName) map.insert(QStringLiteral("driverName"), utf8(*state.driverName));
     if (state.sessionType) map.insert(QStringLiteral("sessionType"),
         QString::fromLatin1(sessionTypeName(*state.sessionType)));
     addOptional(map, "sessionTimeSeconds", state.sessionTimeSeconds);
@@ -694,6 +1002,8 @@ QVariantMap Application::toVariantMap(const RaceState& state)
     if (state.tyreWear) map.insert(QStringLiteral("tyreWear"), wheelsToList(*state.tyreWear));
     if (state.brakeTemperaturesCelsius) map.insert(QStringLiteral("brakeTemperatures"),
         wheelsToList(*state.brakeTemperaturesCelsius));
+    if (state.suspensionDamage) map.insert(QStringLiteral("suspensionDamage"),
+        wheelsToList(*state.suspensionDamage));
     return map;
 }
 

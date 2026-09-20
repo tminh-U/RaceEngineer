@@ -62,6 +62,20 @@ std::string wideToUtf8(const wchar_t (&source)[N])
 #endif
 }
 
+template <typename StaticPage>
+std::string playerDisplayName(const StaticPage& page)
+{
+    const auto first = wideToUtf8(page.playerName);
+    const auto surname = wideToUtf8(page.playerSurname);
+    const auto nickname = wideToUtf8(page.playerNick);
+    std::string result = first;
+    if (!surname.empty()) {
+        if (!result.empty()) result += ' ';
+        result += surname;
+    }
+    return result.empty() ? nickname : result;
+}
+
 template <std::size_t N>
 WheelValues toWheelValues(const float (&values)[N])
 {
@@ -135,6 +149,8 @@ bool ACCTelemetryProvider::start()
         if (!track.empty()) {
             state_.track = track;
         }
+        const auto driver = playerDisplayName(staticData);
+        if (!driver.empty()) state_.driverName = driver;
         if (std::isfinite(staticData.maxFuel) && staticData.maxFuel > 0.0F) {
             state_.fuelCapacityLiters = staticData.maxFuel;
         }
@@ -171,6 +187,7 @@ bool ACCTelemetryProvider::update()
     state_.brake = clampUnit(physics.brake);
     state_.clutch = clampUnit(physics.clutch);
     state_.steering = physics.steerAngle;
+    state_.heading = physics.heading;
     state_.fuelLiters = std::max(0.0F, physics.fuel);
     state_.tyreTemperaturesCelsius = toWheelValues(physics.tyreCoreTemperature);
     state_.tyrePressuresPsi = toWheelValues(physics.wheelsPressure);
@@ -178,6 +195,7 @@ bool ACCTelemetryProvider::update()
     state_.brakeTemperaturesCelsius = toWheelValues(physics.brakeTemp);
     state_.damage = std::array<double, 5>{physics.carDamage[0], physics.carDamage[1],
         physics.carDamage[2], physics.carDamage[3], physics.carDamage[4]};
+    state_.suspensionDamage = toWheelValues(physics.suspensionDamage);
     state_.waterTemperatureCelsius = physics.waterTemp;
     state_.pitLimiter = physics.pitLimiterOn != 0;
     state_.tractionControl = physics.tc;
@@ -186,6 +204,13 @@ bool ACCTelemetryProvider::update()
     acc::SPageFileGraphic graphics{};
     if (copyStable(graphicsPage_, graphics)) {
         playerCarId_ = graphics.playerCarID;
+        if (playerCarId_ >= 0 && playerCarId_ < 60) {
+            state_.worldPosition = std::array<double, 3>{
+                graphics.carCoordinates[playerCarId_][0],
+                graphics.carCoordinates[playerCarId_][1],
+                graphics.carCoordinates[playerCarId_][2]
+            };
+        }
         state_.sessionType = sessionType(graphics.session);
         state_.currentLap = std::max(1, graphics.completedLaps + 1);
         if (graphics.position > 0) {
@@ -220,6 +245,7 @@ bool ACCTelemetryProvider::update()
 
     broadcast_.update();
     state_.opponents = broadcast_.opponents(playerCarId_);
+    state_.sectorTimesSeconds = broadcast_.playerSectorTimes(playerCarId_);
     state_.opponentAhead.reset();
     state_.opponentBehind.reset();
     if (state_.position) {
@@ -229,6 +255,27 @@ bool ACCTelemetryProvider::update()
             if (*opponent.position == *state_.position + 1) state_.opponentBehind = opponent.driverName;
         }
     }
+
+    for (int i = 0; i < graphics.activeCars && i < 60; ++i) {
+        const int carIndex = graphics.carID[i];
+        if (carIndex == playerCarId_) continue;
+        const std::array<double, 3> coords{
+            graphics.carCoordinates[i][0],
+            graphics.carCoordinates[i][1],
+            graphics.carCoordinates[i][2]
+        };
+        auto it = std::find_if(state_.opponents.begin(), state_.opponents.end(),
+            [carIndex](const OpponentState& o) { return o.carId == carIndex; });
+        if (it != state_.opponents.end()) {
+            it->worldPosition = coords;
+        } else {
+            OpponentState basicOpponent;
+            basicOpponent.carId = carIndex;
+            basicOpponent.worldPosition = coords;
+            state_.opponents.push_back(basicOpponent);
+        }
+    }
+
     return true;
 }
 

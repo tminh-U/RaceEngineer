@@ -14,7 +14,8 @@ public:
     explicit VoiceInputController(QObject* parent = nullptr);
 
 public slots:
-    void start();
+    void start(const QByteArray& deviceId = {});
+    void setInputDevice(const QByteArray& deviceId);
     void stop();
     void beginPushToTalk();
     void endPushToTalk();
@@ -32,6 +33,8 @@ private:
     AudioCapture* capture_;
     QByteArray preRoll_;
     QByteArray recording_;
+    QByteArray inputDeviceId_;
+    bool started_{false};
     bool pushToTalk_{false};
 };
 

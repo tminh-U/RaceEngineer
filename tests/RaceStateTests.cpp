@@ -7,6 +7,10 @@
 #include "llm/providers/OpenAICompatibleProvider.h"
 #include "llm/tools/ToolRegistry.h"
 #include "spotter/SpotterEngine.h"
+#include "telemetry/ac/AcExtensionClient.h"
+#include "tts/RacingTextNormalizer.h"
+#include "audio/AudioDucker.h"
+#include "telemetry/common/WindowsSharedMemory.h"
 #include "structed_file_AC.h"
 #include "structed_file_ACC.h"
 
@@ -28,11 +32,7 @@ int main()
     static_assert(sizeof(SPageFileGraphic) == 284);
     static_assert(sizeof(acc::SPageFileGraphic) == 1588);
     int failures = 0;
-    const auto expect = [&failures](const bool condition) {
-        if (!condition) {
-            ++failures;
-        }
-    };
+#define expect(cond) do { if (!(cond)) { ++failures; fprintf(stderr, "ASSERT FAILED at line %d: %s\n", __LINE__, #cond); } } while(0)
 
     const QByteArray phoWhisperModel = qgetenv("RACEENGINEER_PHOWHISPER_MODEL");
     if (!phoWhisperModel.isEmpty()) {
@@ -116,6 +116,56 @@ int main()
     emitted = events.process(eventState, baseTime + std::chrono::seconds(4));
     expect(emitted.size() == 1 && emitted.front().type == EventType::PitLimiterOn);
 
+    eventState.flag = FlagState::Yellow;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(5));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::YellowFlag
+           && emitted.front().priority == EventPriority::Critical && emitted.front().message == "Cờ vàng.");
+
+    eventState.flag = FlagState::Green;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(11));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::GreenFlag
+           && emitted.front().priority == EventPriority::Important && emitted.front().message == "Cờ xanh lá.");
+
+    eventState.flag = FlagState::Blue;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(17));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::BlueFlag
+           && emitted.front().priority == EventPriority::Important && emitted.front().message == "Cờ xanh dương.");
+
+    eventState.flag = FlagState::White;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(28));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::WhiteFlag
+           && emitted.front().priority == EventPriority::Important && emitted.front().message == "Cờ trắng.");
+
+    eventState.flag = FlagState::Red;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(39));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::RedFlag
+           && emitted.front().priority == EventPriority::Critical && emitted.front().message == "Cờ đỏ.");
+
+    eventState.flag = FlagState::Black;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(50));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::BlackFlag
+           && emitted.front().priority == EventPriority::Critical && emitted.front().message == "Cờ đen.");
+
+    eventState.flag = FlagState::Chequered;
+    emitted = events.process(eventState, baseTime + std::chrono::seconds(61));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::ChequeredFlag
+           && emitted.front().priority == EventPriority::Important && emitted.front().message == "Cờ ca rô.");
+
+    EventEngine connEvents;
+    RaceState connState;
+    connState.connected = false;
+    expect(connEvents.process(connState, baseTime).empty());
+
+    connState.connected = true;
+    auto connEmitted = connEvents.process(connState, baseTime + std::chrono::seconds(1));
+    expect(connEmitted.size() == 1 && connEmitted.front().type == EventType::SessionStarted
+           && connEmitted.front().priority == EventPriority::Engineer
+           && connEmitted.front().message == "Radio check, Minh.");
+
+    connState.connected = false;
+    auto disconnEmitted = connEvents.process(connState, baseTime + std::chrono::seconds(2));
+    expect(disconnEmitted.empty());
+
     ConversationManager conversation(6);
     for (int index = 0; index < 10; ++index) {
         conversation.addUserMessage(QStringLiteral("question %1").arg(index));
@@ -144,6 +194,7 @@ int main()
     opponent.bestLapTimeSeconds = 88.8;
     opponent.recentLapTimesSeconds = {89.6, 89.2};
     lapState.position = 3;
+    lapState.driverName = "Player Driver";
     lapState.bestLapTimeSeconds = 89.1;
     lapState.opponents = {opponent};
     const auto leaderboard = tools.execute(QStringLiteral("get_leaderboard"), lapState, history);
@@ -154,9 +205,184 @@ int main()
     expect(driverPace.value(QStringLiteral("available")).toBool());
     expect(driverPace.value(QStringLiteral("position")).toInt() == 2);
     expect(std::abs(driverPace.value(QStringLiteral("recent_average_seconds")).toDouble() - 89.4) < 0.001);
+    expect(driverPace.value(QStringLiteral("last_lap_mmss")).toString() == QStringLiteral("1:29.200"));
+    expect(driverPace.value(QStringLiteral("best_lap_mmss")).toString() == QStringLiteral("1:28.800"));
     expect(std::abs(driverPace.value(QStringLiteral("best_lap_delta_to_player_seconds")).toDouble() + 0.3) < 0.001);
     const auto position = tools.execute(QStringLiteral("get_position"), lapState, history);
     expect(position.value(QStringLiteral("opponent_ahead")).toString() == QStringLiteral("Lewis Hamilton"));
+    expect(position.value(QStringLiteral("position_label")).toString() == QStringLiteral("P3"));
+    expect(position.value(QStringLiteral("ahead")).toObject().value(QStringLiteral("position")).toInt() == 2);
+
+    RaceState damageState;
+    damageState.connected = true;
+    damageState.damage = std::array<double, 5>{0.12, 0.0, 0.30, 0.0, 0.0};
+    damageState.suspensionDamage = WheelValues{0.04, 0.0, 0.12, 0.0};
+    const auto damage = tools.execute(QStringLiteral("get_damage_status"), damageState, history);
+    expect(damage.value(QStringLiteral("status")).toString() == QStringLiteral("moderate"));
+    expect(!damage.value(QStringLiteral("major_damage")).toBool());
+    expect(damage.value(QStringLiteral("damage_sections")).toArray().at(0).toObject()
+               .value(QStringLiteral("section")).toString() == QStringLiteral("front"));
+    expect(damage.value(QStringLiteral("damage_sections")).toArray().at(0).toObject()
+               .value(QStringLiteral("severity")).toString() == QStringLiteral("minor"));
+    expect(damage.value(QStringLiteral("affected_wheels")).toArray().size() == 2);
+    expect(damage.value(QStringLiteral("affected_wheels")).toArray().at(0).toString() == QStringLiteral("FL"));
+    expect(damage.value(QStringLiteral("affected_wheels")).toArray().at(1).toString() == QStringLiteral("RL"));
+    expect(damage.value(QStringLiteral("wheel_damage_sections")).toArray().at(0).toObject()
+               .value(QStringLiteral("damaged")).toBool());
+    expect(!damage.value(QStringLiteral("wheel_damage_sections")).toArray().at(1).toObject()
+               .value(QStringLiteral("damaged")).toBool());
+    RaceState bodyOnlyDamage = damageState;
+    bodyOnlyDamage.suspensionDamage.reset();
+    const auto unavailableWheelDamage = tools.execute(QStringLiteral("get_damage_status"),
+        bodyOnlyDamage, history);
+    expect(!unavailableWheelDamage.value(QStringLiteral("wheel_damage_available")).toBool());
+    expect(unavailableWheelDamage.value(QStringLiteral("wheel_damage_status")).toString()
+               == QStringLiteral("unavailable"));
+
+    RaceState tyreState;
+    tyreState.connected = true;
+    tyreState.tyreTemperaturesCelsius = WheelValues{104.2, 103.8, 95.1, 94.9};
+    tyreState.brakeTemperaturesCelsius = WheelValues{520.0, 515.0, 430.0, 425.0};
+    const auto tyreResult = tools.execute(QStringLiteral("get_tyre_status"), tyreState, history);
+    expect(tyreResult.value(QStringLiteral("available")).toBool());
+    expect(tyreResult.value(QStringLiteral("front_avg_c")).toDouble() == 104.0);
+    expect(tyreResult.value(QStringLiteral("rear_avg_c")).toDouble() == 95.0);
+    expect(tyreResult.value(QStringLiteral("fl_c")).toDouble() == 104.0);
+    expect(tyreResult.value(QStringLiteral("front_status")).toString() == QStringLiteral("hot"));
+
+    const auto brakeResult = tools.execute(QStringLiteral("get_brake_status"), tyreState, history);
+    expect(brakeResult.value(QStringLiteral("available")).toBool());
+    expect(brakeResult.value(QStringLiteral("front_avg_c")).toDouble() == 518.0);
+    expect(brakeResult.value(QStringLiteral("rear_avg_c")).toDouble() == 428.0);
+
+    SpotterEngine spotter;
+    RaceState spotterState;
+    spotterState.connected = true;
+    spotterState.worldPosition = std::array<double, 3>{0.0, 0.0, 0.0};
+    spotterState.heading = 0.0;
+
+    expect(spotter.process(spotterState).empty());
+
+    OpponentState oppLeft;
+    oppLeft.carId = 1;
+    oppLeft.worldPosition = std::array<double, 3>{-2.5, 0.0, 1.0};
+    spotterState.opponents = {oppLeft};
+
+    auto spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.empty());
+    spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.size() == 1);
+    expect(spotterEvents.front().type == EventType::CarLeft);
+    expect(spotterEvents.front().priority == EventPriority::Spotter);
+    expect(spotter.hasLeft());
+    expect(!spotter.hasRight());
+
+    spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.empty());
+
+    OpponentState oppRight;
+    oppRight.carId = 2;
+    oppRight.worldPosition = std::array<double, 3>{2.5, 0.0, 0.0};
+    spotterState.opponents = {oppLeft, oppRight};
+
+    spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.empty());
+    spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.size() == 1);
+    expect(spotterEvents.front().type == EventType::ThreeWide);
+    expect(spotter.isThreeWide());
+
+    spotterState.opponents.clear();
+    expect(spotter.process(spotterState).empty());
+    expect(spotter.process(spotterState).empty());
+    spotterEvents = spotter.process(spotterState);
+    expect(spotterEvents.empty());
+    expect(!spotter.hasLeft());
+    expect(!spotter.hasRight());
+
+    AcExtensionClient acExt;
+    expect(acExt.start(19996));
+    expect(!acExt.hasData());
+    expect(acExt.opponents().empty());
+    expect(!acExt.gapAhead().has_value());
+    expect(!acExt.gapBehind().has_value());
+    expect(!acExt.opponentAhead().has_value());
+    expect(!acExt.opponentBehind().has_value());
+    expect(!acExt.playerSectors().has_value());
+    expect(!acExt.brakeTemperatures().has_value());
+
+    // Test writing shared memory and having AcExtensionClient read it
+    {
+        WindowsSharedMemory testWriter;
+        if (testWriter.createOrOpen(L"Local\\race_engineer_ac_ext", 10428)) {
+            uint8_t* raw = static_cast<uint8_t*>(const_cast<void*>(testWriter.data()));
+            std::memset(raw, 0, 10428);
+            std::memcpy(raw, "RAEX", 4);
+            uint32_t ver = 1;
+            uint32_t seq = 2; // even = stable
+            int64_t ts = 1234567;
+            int32_t numCars = 1;
+            float gapA = 1.2f;
+            float gapB = 2.4f;
+            float sec[3] = {28.5f, 35.2f, 29.1f};
+            float bt[4] = {450.0f, 452.0f, 410.0f, 408.0f};
+            std::memcpy(raw + 4, &ver, 4);
+            std::memcpy(raw + 8, &seq, 4);
+            std::memcpy(raw + 12, &ts, 8);
+            std::memcpy(raw + 20, &numCars, 4);
+            std::memcpy(raw + 24, &gapA, 4);
+            std::memcpy(raw + 28, &gapB, 4);
+            std::memcpy(raw + 32, sec, 12);
+            std::memcpy(raw + 44, bt, 16);
+            std::memcpy(reinterpret_cast<char*>(raw + 60), "Verstappen", 10);
+            std::memcpy(reinterpret_cast<char*>(raw + 124), "Leclerc", 7);
+
+            // Car 0: id=1, pos=2, speed=215.0, lastLap=92.5, bestLap=91.8, coords={-2.5, 0.0, 1.0}, driver="Verstappen", car="RedBull"
+            uint8_t* carRaw = raw + 188;
+            int32_t cId = 1;
+            int32_t cPos = 2;
+            float cSpd = 215.0f;
+            float cLast = 92.5f;
+            float cBest = 91.8f;
+            float cPos3[3] = {-2.5f, 0.0f, 1.0f};
+            std::memcpy(carRaw, &cId, 4);
+            std::memcpy(carRaw + 4, &cPos, 4);
+            std::memcpy(carRaw + 8, &cSpd, 4);
+            std::memcpy(carRaw + 12, &cLast, 4);
+            std::memcpy(carRaw + 16, &cBest, 4);
+            std::memcpy(carRaw + 20, cPos3, 12);
+            std::memcpy(reinterpret_cast<char*>(carRaw + 32), "Verstappen", 10);
+            std::memcpy(reinterpret_cast<char*>(carRaw + 96), "RedBull", 7);
+
+            acExt.update();
+            expect(acExt.hasData());
+            expect(acExt.opponents().size() == 1);
+            expect(acExt.opponents()[0].carId == 1);
+            expect(acExt.opponents()[0].driverName == "Verstappen");
+            expect(acExt.opponents()[0].teamName == "RedBull");
+            expect(acExt.opponents()[0].position == 2);
+            expect(acExt.opponents()[0].speedKmh.value_or(0.0) == 215.0);
+            expect(acExt.opponents()[0].worldPosition.has_value());
+            expect(acExt.opponents()[0].worldPosition.value()[0] == -2.5);
+            expect(std::abs(acExt.gapAhead().value_or(0.0) - 1.2) < 0.01);
+            expect(std::abs(acExt.gapBehind().value_or(0.0) - 2.4) < 0.01);
+            expect(acExt.opponentAhead().value_or("") == "Verstappen");
+            expect(acExt.opponentBehind().value_or("") == "Leclerc");
+            expect(acExt.playerSectors().has_value());
+            expect(acExt.brakeTemperatures().has_value());
+
+            // Test Spotter with opponents received from AcExtensionClient!
+            spotter.reset();
+            spotterState.opponents = acExt.opponents();
+            auto extSpotterEvents = spotter.process(spotterState);
+            expect(extSpotterEvents.empty());
+            extSpotterEvents = spotter.process(spotterState);
+            expect(extSpotterEvents.size() == 1);
+            expect(extSpotterEvents.front().type == EventType::CarLeft);
+            expect(spotter.hasLeft());
+        }
+    }
+    acExt.stop();
 
     expect(OpenAICompatibleProvider::chatEndpoint(QUrl(QStringLiteral("https://example.test/v1/")))
                == QUrl(QStringLiteral("https://example.test/v1/chat/completions")));
@@ -311,12 +537,244 @@ int main()
     expect(localDefaults.provider == QStringLiteral("OpenAI Compatible"));
     expect(localDefaults.baseUrl == QStringLiteral("http://100.114.125.88:8080/v1"));
     expect(localDefaults.model == QStringLiteral("race-engineer"));
-    expect(localDefaults.maximumTokens == 32);
+    expect(localDefaults.maximumTokens == 64);
     expect(localDefaults.timeoutMilliseconds == 30000);
+    expect(!localDefaults.reasoning);
 
-    SpotterEngine spotter;
-    expect(spotter.process(lapState).empty());
+    // Verify reasoning JSON round-trip serialization
+    QJsonObject savedJson;
+    savedJson.insert(QStringLiteral("reasoning"), true);
+    expect(savedJson.value(QStringLiteral("reasoning")).toBool(false) == true);
+    savedJson.insert(QStringLiteral("reasoning"), false);
+    expect(savedJson.value(QStringLiteral("reasoning")).toBool(true) == false);
+
+    LLMManager llmTestManager(localDefaults, QString{});
+    const QString prompt = llmTestManager.systemPrompt();
+    expect(prompt.contains(QStringLiteral("SPEECH-TO-TEXT")));
+    expect(prompt.contains(QStringLiteral("gap với xe chước bao nhiêu")));
+    expect(prompt.contains(QStringLiteral("lốp chước chái thế nào")));
+    expect(prompt.contains(QStringLiteral("pit láp này không")));
+    expect(prompt.contains(QStringLiteral("If a tool returns available: false, do not call other tools")));
+    expect(prompt.contains(QStringLiteral("MUST call the relevant tool")));
+    expect(prompt.contains(QStringLiteral("major_damage=true")));
+    expect(prompt.contains(QStringLiteral("affected_wheels")));
+    expect(prompt.contains(QStringLiteral("raw simulator levels")));
+    expect(prompt.contains(QStringLiteral("_mmss")));
+    expect(prompt.contains(QStringLiteral("Minh Vũ")));
+    llmTestManager.setDriverName(QStringLiteral("Tuấn Minh"));
+    expect(llmTestManager.systemPrompt().contains(QStringLiteral("Tuấn Minh")));
+    llmTestManager.setDriverName(QStringLiteral("Minh Vũ"));
+
+    SettingsManager settingsManagerTest;
+    expect(settingsManagerTest.driverName() == QStringLiteral("Minh Vũ"));
+    settingsManagerTest.setDriverName(QStringLiteral("Tuấn Minh"));
+    expect(settingsManagerTest.driverName() == QStringLiteral("Tuấn Minh"));
+    settingsManagerTest.setDriverName(QStringLiteral("Minh Vũ"));
+
+    expect(settingsManagerTest.responseStyle() == QStringLiteral("Tiêu chuẩn"));
+    settingsManagerTest.setResponseStyle(QStringLiteral("Tối giản"));
+    expect(settingsManagerTest.responseStyle() == QStringLiteral("Tối giản"));
+    settingsManagerTest.setResponseStyle(QStringLiteral("Chi tiết"));
+    expect(settingsManagerTest.responseStyle() == QStringLiteral("Chi tiết"));
+    settingsManagerTest.setResponseStyle(QStringLiteral("Tiêu chuẩn"));
+    expect(settingsManagerTest.responseStyle() == QStringLiteral("Tiêu chuẩn"));
+
+    expect(llmTestManager.systemPrompt().contains(QStringLiteral("RESPONSE STYLE: STANDARD (Tiêu chuẩn)")));
+    llmTestManager.setResponseStyle(QStringLiteral("Tối giản"));
+    expect(llmTestManager.systemPrompt().contains(QStringLiteral("RESPONSE STYLE: MINIMAL (Tối giản)")));
+    llmTestManager.setResponseStyle(QStringLiteral("Chi tiết"));
+    expect(llmTestManager.systemPrompt().contains(QStringLiteral("RESPONSE STYLE: DETAILED (Chi tiết)")));
+    llmTestManager.setResponseStyle(QStringLiteral("Tiêu chuẩn"));
+
+    // Local model (race-engineer) reasoning OFF vs ON
+    LlmSettings offSettings = localDefaults;
+    offSettings.reasoning = false;
+    const auto offReq = LLMManager::buildChatPayload(offSettings, QJsonArray{}, false, QJsonArray{});
+    expect(offReq.value(QStringLiteral("reasoning_effort")).toString() == QStringLiteral("none"));
+    expect(offReq.value(QStringLiteral("reasoning_budget")).toInt() == 0);
+    expect(!offReq.value(QStringLiteral("chat_template_kwargs")).toObject()
+                .value(QStringLiteral("enable_thinking")).toBool());
+
+    LlmSettings onSettings = localDefaults;
+    onSettings.reasoning = true;
+    const auto onReq = LLMManager::buildChatPayload(onSettings, QJsonArray{}, false, QJsonArray{});
+    expect(onReq.value(QStringLiteral("reasoning_effort")).toString() == QStringLiteral("low"));
+    expect(onReq.value(QStringLiteral("reasoning_budget")).toInt() == 128);
+    expect(onReq.value(QStringLiteral("chat_template_kwargs")).toObject()
+               .value(QStringLiteral("enable_thinking")).toBool());
+
+    // Google Gemini reasoning OFF vs ON
+    LlmSettings geminiOff = localDefaults;
+    geminiOff.baseUrl = QStringLiteral("https://generativelanguage.googleapis.com/v1beta/openai/");
+    geminiOff.model = QStringLiteral("gemini-2.5-flash");
+    geminiOff.reasoning = false;
+    const auto geminiOffReq = LLMManager::buildChatPayload(geminiOff, QJsonArray{}, false, QJsonArray{});
+    expect(geminiOffReq.value(QStringLiteral("reasoning_effort")).toString() == QStringLiteral("none"));
+
+    LlmSettings geminiOn = geminiOff;
+    geminiOn.reasoning = true;
+    const auto geminiOnReq = LLMManager::buildChatPayload(geminiOn, QJsonArray{}, false, QJsonArray{});
+    expect(geminiOnReq.value(QStringLiteral("reasoning_effort")).toString() == QStringLiteral("low"));
+
+    // Google Gemma thinking_config OFF vs ON
+    LlmSettings gemmaOff = geminiOff;
+    gemmaOff.model = QStringLiteral("gemma-4-31b-it");
+    gemmaOff.reasoning = false;
+    const auto gemmaOffReq = LLMManager::buildChatPayload(gemmaOff, QJsonArray{}, false, QJsonArray{});
+    expect(gemmaOffReq.value(QStringLiteral("extra_body")).toObject()
+               .value(QStringLiteral("google")).toObject()
+               .value(QStringLiteral("thinking_config")).toObject()
+               .value(QStringLiteral("thinking_level")).toString() == QStringLiteral("minimal"));
+
+    LlmSettings gemmaOn = gemmaOff;
+    gemmaOn.reasoning = true;
+    const auto gemmaOnReq = LLMManager::buildChatPayload(gemmaOn, QJsonArray{}, false, QJsonArray{});
+    expect(!gemmaOnReq.value(QStringLiteral("extra_body")).toObject()
+               .value(QStringLiteral("google")).toObject()
+               .value(QStringLiteral("thinking_config")).toObject()
+               .value(QStringLiteral("include_thoughts")).toBool());
+
+    // Unsupported model (Ministral): keeps normal inference working without invalid reasoning fields
+    LlmSettings mistralOff = localDefaults;
+    mistralOff.model = QStringLiteral("ministral-3b-latest");
+    mistralOff.reasoning = false;
+    const auto mistralOffReq = LLMManager::buildChatPayload(mistralOff, QJsonArray{}, false, QJsonArray{});
+    expect(!mistralOffReq.contains(QStringLiteral("reasoning_effort")));
+    expect(!mistralOffReq.contains(QStringLiteral("extra_body")));
+
+    LlmSettings mistralOn = mistralOff;
+    mistralOn.reasoning = true;
+    const auto mistralOnReq = LLMManager::buildChatPayload(mistralOn, QJsonArray{}, false, QJsonArray{});
+    expect(!mistralOnReq.contains(QStringLiteral("reasoning_effort")));
+    expect(!mistralOnReq.contains(QStringLiteral("extra_body")));
+
+    SpotterEngine spotterFallback;
+    expect(spotterFallback.process(lapState).empty());
     expect(!SpotterEngine::unavailableReason().empty());
+
+    SettingsManager settingsMgr;
+    expect(settingsMgr.tts().voice == QStringLiteral("Minh Đức"));
+    TtsSettings ttsTest;
+    ttsTest.backend = QStringLiteral("VieNeu-TTS");
+    settingsMgr.setTts(ttsTest);
+    expect(settingsMgr.tts().backend == QStringLiteral("VieNeu-TTS"));
+    expect(settingsMgr.tts().voice == QStringLiteral("Minh Đức"));
+    ttsTest.voice = QStringLiteral("Mai Anh");
+    settingsMgr.setTts(ttsTest);
+    expect(settingsMgr.tts().voice == QStringLiteral("Mai Anh"));
+    ttsTest.voice = QStringLiteral("Thái Sơn");
+    settingsMgr.setTts(ttsTest);
+    expect(settingsMgr.tts().voice == QStringLiteral("Thái Sơn"));
+    ttsTest.voice = QStringLiteral("Minh Quân");
+    settingsMgr.setTts(ttsTest);
+    expect(settingsMgr.tts().voice == QStringLiteral("Minh Quân"));
+    ttsTest.voice = QStringLiteral("Minh Đức");
+    ttsTest.backend = QStringLiteral("Gwen-TTS");
+    settingsMgr.setTts(ttsTest);
+    expect(settingsMgr.tts().backend == QStringLiteral("Piper"));
+    expect(settingsMgr.tts().voice == QStringLiteral("Minh Đức"));
+
+    // RacingTextNormalizer tests
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Box, box, box!")) ==
+           QStringLiteral("vào pít, vào pít, vào pít!"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Lap 5, vào box thay lốp.")) ==
+           QStringLiteral("vòng năm, vào pít thay lốp."));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("P3 rồi, gap là +1.5s.")) ==
+           QStringLiteral("vị trí ba rồi, khoảng cách là nhanh hơn một phẩy năm giây."));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Lap time 1:42.350")) ==
+           QStringLiteral("thời gian vòng một phút bốn mươi hai phẩy ba trăm năm mươi giây"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Tốc độ 250 km/h, áp suất 2.1 bar, nhiệt độ 95°C.")) ==
+           QStringLiteral("Tốc độ hai trăm năm mươi ki lô mét trên giờ, áp suất hai phẩy một ba, nhiệt độ chín mươi lăm độ xê."));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("**Cảnh báo:** Bị understeer ở turn 4!")) ==
+           QStringLiteral("Cảnh báo: Bị thiếu lái ở khúc cua bốn!"));
+    // Number-to-Vietnamese-words edge cases
+    expect(RacingTextNormalizer::normalize(QStringLiteral("75 độ xê")) ==
+           QStringLiteral("bảy mươi lăm độ xê"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Còn 11 lít")) ==
+           QStringLiteral("Còn mười một lít"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Vòng 101")) ==
+           QStringLiteral("Vòng một trăm lẻ một"));
+    // Decimal number handling
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Áp suất 2.15 bar")) ==
+           QStringLiteral("Áp suất hai phẩy mười lăm ba"));
+    // Additional units
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Áp lốp 210 kPa")) ==
+           QStringLiteral("Áp lốp hai trăm mười ki lô pát can"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Động cơ 7500 rpm")) ==
+           QStringLiteral("Động cơ bảy nghìn năm trăm vòng trên phút"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Mô-men 350 Nm")) ==
+           QStringLiteral("Mô men ba trăm năm mươi niu tơn mét"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Nặng 1250 kg")) ==
+           QStringLiteral("Nặng một nghìn hai trăm năm mươi ki lô gam"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Gầm 45 mm")) ==
+           QStringLiteral("Gầm bốn mươi lăm mi li mét"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Nhiệt 180°F")) ==
+           QStringLiteral("Nhiệt một trăm tám mươi độ ép"));
+    // Decimals with leading zeros after decimal point
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Gap 0.05s")) ==
+           QStringLiteral("khoảng cách không phẩy không năm giây"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Áp suất 2.05 bar")) ==
+           QStringLiteral("Áp suất hai phẩy không năm ba"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Chênh lệch 0.005s")) ==
+           QStringLiteral("Chênh lệch không phẩy không không năm giây"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Áp suất 2,5 bar")) ==
+           QStringLiteral("Áp suất hai phẩy năm ba"));
+    // Negative numbers
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Nhiệt độ ngoài trời -5°C")) ==
+           QStringLiteral("Nhiệt độ ngoài trời âm năm độ xê"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Áp suất -2.1 bar")) ==
+           QStringLiteral("Áp suất âm hai phẩy một ba"));
+    // Large numbers and RPM
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Vòng tua 12000 rpm")) ==
+           QStringLiteral("Vòng tua mười hai nghìn vòng trên phút"));
+    // Additional racing units
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Tiêu thụ 2.8 L/lap")) ==
+           QStringLiteral("Tiêu thụ hai phẩy tám lít trên vòng"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Công suất 500 hp")) ==
+           QStringLiteral("Công suất năm trăm mã lực"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Lực phanh 1.8G")) ==
+           QStringLiteral("Lực phanh một phẩy tám Gờ"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Khoảng cách 15 km")) ==
+           QStringLiteral("Khoảng cách mười lăm ki lô mét"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Cách đích 200m")) ==
+           QStringLiteral("Cách đích hai trăm mét"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Độ trễ 150 ms")) ==
+           QStringLiteral("Độ trễ một trăm năm mươi mi li giây"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Điện áp 12.5V")) ==
+           QStringLiteral("Điện áp mười hai phẩy năm Vôn"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Góc lái 45°")) ==
+           QStringLiteral("Góc lái bốn mươi lăm độ"));
+
+    // AudioDucker tests
+    AudioDucker ducker;
+    expect(ducker.isEnabled());
+    expect(std::abs(ducker.duckFactor() - 0.25f) < 0.001f);
+    expect(!ducker.isDucked());
+    ducker.setDucked(true);
+    expect(ducker.isDucked());
+    ducker.setDucked(false);
+    expect(!ducker.isDucked());
+    ducker.setDuckFactor(1.5f);
+    expect(std::abs(ducker.duckFactor() - 0.95f) < 0.001f);
+    ducker.setDuckFactor(-0.5f);
+    expect(std::abs(ducker.duckFactor() - 0.05f) < 0.001f);
+    ducker.setDuckFactor(0.25f);
+    ducker.setEnabled(false);
+    expect(!ducker.isEnabled());
+    ducker.setDucked(true);
+    expect(!ducker.isDucked());
+    ducker.setEnabled(true);
+    expect(ducker.isEnabled());
+
+    // SettingsManager Audio Ducking defaults & roundtrip
+    expect(settingsMgr.tts().audioDucking == true);
+    expect(std::abs(settingsMgr.tts().duckFactor - 0.25f) < 0.001f);
+    TtsSettings duckSettings = settingsMgr.tts();
+    duckSettings.audioDucking = false;
+    duckSettings.duckFactor = 0.5f;
+    settingsMgr.setTts(duckSettings);
+    expect(!settingsMgr.tts().audioDucking);
+    expect(std::abs(settingsMgr.tts().duckFactor - 0.5f) < 0.001f);
 
     return failures == 0 ? 0 : 1;
 }

@@ -62,6 +62,20 @@ std::string wideToUtf8(const wchar_t (&source)[N])
 #endif
 }
 
+template <typename StaticPage>
+std::string playerDisplayName(const StaticPage& page)
+{
+    const auto first = wideToUtf8(page.playerName);
+    const auto surname = wideToUtf8(page.playerSurname);
+    const auto nickname = wideToUtf8(page.playerNick);
+    std::string result = first;
+    if (!surname.empty()) {
+        if (!result.empty()) result += ' ';
+        result += surname;
+    }
+    return result.empty() ? nickname : result;
+}
+
 template <std::size_t N>
 WheelValues toWheelValues(const float (&values)[N])
 {
@@ -115,6 +129,7 @@ bool ACTelemetryProvider::start()
     graphicsPage_.open(L"Local\\acpmf_graphics", sizeof(SPageFileGraphic));
     // The static page enriches telemetry, but physics alone is sufficient to connect.
     staticPage_.open(L"Local\\acpmf_static", sizeof(SPageFileStatic));
+    extensionClient_.start();
 
     state_ = {};
     state_.simulator = Simulator::AssettoCorsa;
@@ -127,6 +142,8 @@ bool ACTelemetryProvider::start()
         if (!track.empty()) {
             state_.track = track;
         }
+        const auto driver = playerDisplayName(staticData);
+        if (!driver.empty()) state_.driverName = driver;
         if (std::isfinite(staticData.maxFuel) && staticData.maxFuel > 0.0F) {
             state_.fuelCapacityLiters = staticData.maxFuel;
         }
@@ -139,6 +156,7 @@ void ACTelemetryProvider::stop() noexcept
     physicsPage_.close();
     graphicsPage_.close();
     staticPage_.close();
+    extensionClient_.stop();
     connected_ = false;
     state_.connected = false;
 }
@@ -160,6 +178,7 @@ bool ACTelemetryProvider::update()
     state_.throttle = clampUnit(physics.gas);
     state_.brake = clampUnit(physics.brake);
     state_.steering = physics.steerAngle;
+    state_.heading = physics.heading;
     state_.fuelLiters = std::max(0.0F, physics.fuel);
     state_.tyreTemperaturesCelsius = toWheelValues(physics.tyreCoreTemperature);
     state_.tyrePressuresPsi = toWheelValues(physics.wheelsPressure);
@@ -172,6 +191,11 @@ bool ACTelemetryProvider::update()
 
     SPageFileGraphic graphics{};
     if (copyStable(graphicsPage_, graphics)) {
+        state_.worldPosition = std::array<double, 3>{
+            graphics.carCoordinates[0],
+            graphics.carCoordinates[1],
+            graphics.carCoordinates[2]
+        };
         state_.sessionType = sessionType(graphics.session);
         state_.currentLap = std::max(1, graphics.completedLaps + 1);
         if (graphics.position > 0) {
@@ -191,6 +215,25 @@ bool ACTelemetryProvider::update()
         state_.pitState = graphics.isInPit != 0 ? PitState::PitBox
             : graphics.isInPitLane != 0 ? PitState::PitLane : PitState::Track;
     }
+
+    // Process companion Python app extended telemetry if available
+    extensionClient_.update();
+    if (extensionClient_.hasData()) {
+        state_.opponents = extensionClient_.opponents();
+        if (extensionClient_.gapAhead()) state_.gapAheadSeconds = extensionClient_.gapAhead();
+        if (extensionClient_.gapBehind()) state_.gapBehindSeconds = extensionClient_.gapBehind();
+        if (extensionClient_.opponentAhead()) state_.opponentAhead = extensionClient_.opponentAhead();
+        if (extensionClient_.opponentBehind()) state_.opponentBehind = extensionClient_.opponentBehind();
+        if (extensionClient_.playerSectors()) state_.sectorTimesSeconds = extensionClient_.playerSectors();
+        if (extensionClient_.brakeTemperatures()) state_.brakeTemperaturesCelsius = extensionClient_.brakeTemperatures();
+    } else {
+        state_.opponents.clear();
+        state_.gapAheadSeconds.reset();
+        state_.gapBehindSeconds.reset();
+        state_.opponentAhead.reset();
+        state_.opponentBehind.reset();
+    }
+
     return true;
 }
 

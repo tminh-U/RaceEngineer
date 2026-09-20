@@ -1,1 +1,429 @@
-{"version":2,"backend":"Piper 1.8.0","voice":"vi_VN-vais1000-medium","fine_tuned":false,"variants_per_phrase":15,"generated_utc":"2026-09-17T13:53:21.0766987Z","entries":[{"id":"session_started","text":"Đã kết nối.","files":["session_started/01.wav","session_started/02.wav","session_started/03.wav","session_started/04.wav","session_started/05.wav","session_started/06.wav","session_started/07.wav","session_started/08.wav","session_started/09.wav","session_started/10.wav","session_started/11.wav","session_started/12.wav","session_started/13.wav","session_started/14.wav","session_started/15.wav"]},{"id":"session_ended","text":"Đã ngắt kết nối.","files":["session_ended/01.wav","session_ended/02.wav","session_ended/03.wav","session_ended/04.wav","session_ended/05.wav","session_ended/06.wav","session_ended/07.wav","session_ended/08.wav","session_ended/09.wav","session_ended/10.wav","session_ended/11.wav","session_ended/12.wav","session_ended/13.wav","session_ended/14.wav","session_ended/15.wav"]},{"id":"fuel_low","text":"Nhiên liệu sắp hết.","files":["fuel_low/01.wav","fuel_low/02.wav","fuel_low/03.wav","fuel_low/04.wav","fuel_low/05.wav","fuel_low/06.wav","fuel_low/07.wav","fuel_low/08.wav","fuel_low/09.wav","fuel_low/10.wav","fuel_low/11.wav","fuel_low/12.wav","fuel_low/13.wav","fuel_low/14.wav","fuel_low/15.wav"]},{"id":"fuel_critical","text":"Nhiên liệu nguy cấp.","files":["fuel_critical/01.wav","fuel_critical/02.wav","fuel_critical/03.wav","fuel_critical/04.wav","fuel_critical/05.wav","fuel_critical/06.wav","fuel_critical/07.wav","fuel_critical/08.wav","fuel_critical/09.wav","fuel_critical/10.wav","fuel_critical/11.wav","fuel_critical/12.wav","fuel_critical/13.wav","fuel_critical/14.wav","fuel_critical/15.wav"]},{"id":"engine_hot","text":"Nhiệt độ động cơ cao.","files":["engine_hot/01.wav","engine_hot/02.wav","engine_hot/03.wav","engine_hot/04.wav","engine_hot/05.wav","engine_hot/06.wav","engine_hot/07.wav","engine_hot/08.wav","engine_hot/09.wav","engine_hot/10.wav","engine_hot/11.wav","engine_hot/12.wav","engine_hot/13.wav","engine_hot/14.wav","engine_hot/15.wav"]},{"id":"engine_critical","text":"Động cơ quá nhiệt.","files":["engine_critical/01.wav","engine_critical/02.wav","engine_critical/03.wav","engine_critical/04.wav","engine_critical/05.wav","engine_critical/06.wav","engine_critical/07.wav","engine_critical/08.wav","engine_critical/09.wav","engine_critical/10.wav","engine_critical/11.wav","engine_critical/12.wav","engine_critical/13.wav","engine_critical/14.wav","engine_critical/15.wav"]},{"id":"yellow_flag","text":"Cờ vàng.","files":["yellow_flag/01.wav","yellow_flag/02.wav","yellow_flag/03.wav","yellow_flag/04.wav","yellow_flag/05.wav","yellow_flag/06.wav","yellow_flag/07.wav","yellow_flag/08.wav","yellow_flag/09.wav","yellow_flag/10.wav","yellow_flag/11.wav","yellow_flag/12.wav","yellow_flag/13.wav","yellow_flag/14.wav","yellow_flag/15.wav"]},{"id":"blue_flag","text":"Cờ xanh dương.","files":["blue_flag/01.wav","blue_flag/02.wav","blue_flag/03.wav","blue_flag/04.wav","blue_flag/05.wav","blue_flag/06.wav","blue_flag/07.wav","blue_flag/08.wav","blue_flag/09.wav","blue_flag/10.wav","blue_flag/11.wav","blue_flag/12.wav","blue_flag/13.wav","blue_flag/14.wav","blue_flag/15.wav"]},{"id":"pit_limiter_on","text":"Đã bật giới hạn tốc độ pit.","files":["pit_limiter_on/01.wav","pit_limiter_on/02.wav","pit_limiter_on/03.wav","pit_limiter_on/04.wav","pit_limiter_on/05.wav","pit_limiter_on/06.wav","pit_limiter_on/07.wav","pit_limiter_on/08.wav","pit_limiter_on/09.wav","pit_limiter_on/10.wav","pit_limiter_on/11.wav","pit_limiter_on/12.wav","pit_limiter_on/13.wav","pit_limiter_on/14.wav","pit_limiter_on/15.wav"]},{"id":"pit_limiter_off","text":"Đã tắt giới hạn tốc độ pit.","files":["pit_limiter_off/01.wav","pit_limiter_off/02.wav","pit_limiter_off/03.wav","pit_limiter_off/04.wav","pit_limiter_off/05.wav","pit_limiter_off/06.wav","pit_limiter_off/07.wav","pit_limiter_off/08.wav","pit_limiter_off/09.wav","pit_limiter_off/10.wav","pit_limiter_off/11.wav","pit_limiter_off/12.wav","pit_limiter_off/13.wav","pit_limiter_off/14.wav","pit_limiter_off/15.wav"]},{"id":"new_best_lap","text":"Vòng chạy nhanh nhất mới.","files":["new_best_lap/01.wav","new_best_lap/02.wav","new_best_lap/03.wav","new_best_lap/04.wav","new_best_lap/05.wav","new_best_lap/06.wav","new_best_lap/07.wav","new_best_lap/08.wav","new_best_lap/09.wav","new_best_lap/10.wav","new_best_lap/11.wav","new_best_lap/12.wav","new_best_lap/13.wav","new_best_lap/14.wav","new_best_lap/15.wav"]}]}
+{
+  "version": 2,
+  "backend": "VieNeu-TTS",
+  "voice": "Minh Quân",
+  "fine_tuned": true,
+  "variants_per_phrase": 15,
+  "entries": [
+    {
+      "id": "fuel_low",
+      "text": "Nhiên liệu sắp hết.",
+      "files": [
+        "fuel_low/01.wav",
+        "fuel_low/02.wav",
+        "fuel_low/03.wav",
+        "fuel_low/04.wav",
+        "fuel_low/05.wav",
+        "fuel_low/06.wav",
+        "fuel_low/07.wav",
+        "fuel_low/08.wav",
+        "fuel_low/09.wav",
+        "fuel_low/10.wav",
+        "fuel_low/11.wav",
+        "fuel_low/12.wav",
+        "fuel_low/13.wav",
+        "fuel_low/14.wav",
+        "fuel_low/15.wav"
+      ]
+    },
+    {
+      "id": "fuel_critical",
+      "text": "Nhiên liệu nguy cấp.",
+      "files": [
+        "fuel_critical/01.wav",
+        "fuel_critical/02.wav",
+        "fuel_critical/03.wav",
+        "fuel_critical/04.wav",
+        "fuel_critical/05.wav",
+        "fuel_critical/06.wav",
+        "fuel_critical/07.wav",
+        "fuel_critical/08.wav",
+        "fuel_critical/09.wav",
+        "fuel_critical/10.wav",
+        "fuel_critical/11.wav",
+        "fuel_critical/12.wav",
+        "fuel_critical/13.wav",
+        "fuel_critical/14.wav",
+        "fuel_critical/15.wav"
+      ]
+    },
+    {
+      "id": "engine_hot",
+      "text": "Nhiệt độ động cơ cao.",
+      "files": [
+        "engine_hot/01.wav",
+        "engine_hot/02.wav",
+        "engine_hot/03.wav",
+        "engine_hot/04.wav",
+        "engine_hot/05.wav",
+        "engine_hot/06.wav",
+        "engine_hot/07.wav",
+        "engine_hot/08.wav",
+        "engine_hot/09.wav",
+        "engine_hot/10.wav",
+        "engine_hot/11.wav",
+        "engine_hot/12.wav",
+        "engine_hot/13.wav",
+        "engine_hot/14.wav",
+        "engine_hot/15.wav"
+      ]
+    },
+    {
+      "id": "engine_critical",
+      "text": "Động cơ quá nhiệt.",
+      "files": [
+        "engine_critical/01.wav",
+        "engine_critical/02.wav",
+        "engine_critical/03.wav",
+        "engine_critical/04.wav",
+        "engine_critical/05.wav",
+        "engine_critical/06.wav",
+        "engine_critical/07.wav",
+        "engine_critical/08.wav",
+        "engine_critical/09.wav",
+        "engine_critical/10.wav",
+        "engine_critical/11.wav",
+        "engine_critical/12.wav",
+        "engine_critical/13.wav",
+        "engine_critical/14.wav",
+        "engine_critical/15.wav"
+      ]
+    },
+    {
+      "id": "yellow_flag",
+      "text": "Cờ vàng.",
+      "files": [
+        "yellow_flag/01.wav",
+        "yellow_flag/02.wav",
+        "yellow_flag/03.wav",
+        "yellow_flag/04.wav",
+        "yellow_flag/05.wav",
+        "yellow_flag/06.wav",
+        "yellow_flag/07.wav",
+        "yellow_flag/08.wav",
+        "yellow_flag/09.wav",
+        "yellow_flag/10.wav",
+        "yellow_flag/11.wav",
+        "yellow_flag/12.wav",
+        "yellow_flag/13.wav",
+        "yellow_flag/14.wav",
+        "yellow_flag/15.wav"
+      ]
+    },
+    {
+      "id": "blue_flag",
+      "text": "Cờ xanh dương.",
+      "files": [
+        "blue_flag/01.wav",
+        "blue_flag/02.wav",
+        "blue_flag/03.wav",
+        "blue_flag/04.wav",
+        "blue_flag/05.wav",
+        "blue_flag/06.wav",
+        "blue_flag/07.wav",
+        "blue_flag/08.wav",
+        "blue_flag/09.wav",
+        "blue_flag/10.wav",
+        "blue_flag/11.wav",
+        "blue_flag/12.wav",
+        "blue_flag/13.wav",
+        "blue_flag/14.wav",
+        "blue_flag/15.wav"
+      ]
+    },
+    {
+      "id": "green_flag",
+      "text": "Cờ xanh lá.",
+      "files": [
+        "green_flag/01.wav",
+        "green_flag/02.wav",
+        "green_flag/03.wav",
+        "green_flag/04.wav",
+        "green_flag/05.wav",
+        "green_flag/06.wav",
+        "green_flag/07.wav",
+        "green_flag/08.wav",
+        "green_flag/09.wav",
+        "green_flag/10.wav",
+        "green_flag/11.wav",
+        "green_flag/12.wav",
+        "green_flag/13.wav",
+        "green_flag/14.wav",
+        "green_flag/15.wav"
+      ]
+    },
+    {
+      "id": "red_flag",
+      "text": "Cờ đỏ.",
+      "files": [
+        "red_flag/01.wav",
+        "red_flag/02.wav",
+        "red_flag/03.wav",
+        "red_flag/04.wav",
+        "red_flag/05.wav",
+        "red_flag/06.wav",
+        "red_flag/07.wav",
+        "red_flag/08.wav",
+        "red_flag/09.wav",
+        "red_flag/10.wav",
+        "red_flag/11.wav",
+        "red_flag/12.wav",
+        "red_flag/13.wav",
+        "red_flag/14.wav",
+        "red_flag/15.wav"
+      ]
+    },
+    {
+      "id": "black_flag",
+      "text": "Cờ đen.",
+      "files": [
+        "black_flag/01.wav",
+        "black_flag/02.wav",
+        "black_flag/03.wav",
+        "black_flag/04.wav",
+        "black_flag/05.wav",
+        "black_flag/06.wav",
+        "black_flag/07.wav",
+        "black_flag/08.wav",
+        "black_flag/09.wav",
+        "black_flag/10.wav",
+        "black_flag/11.wav",
+        "black_flag/12.wav",
+        "black_flag/13.wav",
+        "black_flag/14.wav",
+        "black_flag/15.wav"
+      ]
+    },
+    {
+      "id": "white_flag",
+      "text": "Cờ trắng.",
+      "files": [
+        "white_flag/01.wav",
+        "white_flag/02.wav",
+        "white_flag/03.wav",
+        "white_flag/04.wav",
+        "white_flag/05.wav",
+        "white_flag/06.wav",
+        "white_flag/07.wav",
+        "white_flag/08.wav",
+        "white_flag/09.wav",
+        "white_flag/10.wav",
+        "white_flag/11.wav",
+        "white_flag/12.wav",
+        "white_flag/13.wav",
+        "white_flag/14.wav",
+        "white_flag/15.wav"
+      ]
+    },
+    {
+      "id": "chequered_flag",
+      "text": "Cờ ca rô.",
+      "files": [
+        "chequered_flag/01.wav",
+        "chequered_flag/02.wav",
+        "chequered_flag/03.wav",
+        "chequered_flag/04.wav",
+        "chequered_flag/05.wav",
+        "chequered_flag/06.wav",
+        "chequered_flag/07.wav",
+        "chequered_flag/08.wav",
+        "chequered_flag/09.wav",
+        "chequered_flag/10.wav",
+        "chequered_flag/11.wav",
+        "chequered_flag/12.wav",
+        "chequered_flag/13.wav",
+        "chequered_flag/14.wav",
+        "chequered_flag/15.wav"
+      ]
+    },
+    {
+      "id": "pit_limiter_on",
+      "text": "Đã bật giới hạn tốc độ pit.",
+      "files": [
+        "pit_limiter_on/01.wav",
+        "pit_limiter_on/02.wav",
+        "pit_limiter_on/03.wav",
+        "pit_limiter_on/04.wav",
+        "pit_limiter_on/05.wav",
+        "pit_limiter_on/06.wav",
+        "pit_limiter_on/07.wav",
+        "pit_limiter_on/08.wav",
+        "pit_limiter_on/09.wav",
+        "pit_limiter_on/10.wav",
+        "pit_limiter_on/11.wav",
+        "pit_limiter_on/12.wav",
+        "pit_limiter_on/13.wav",
+        "pit_limiter_on/14.wav",
+        "pit_limiter_on/15.wav"
+      ]
+    },
+    {
+      "id": "pit_limiter_off",
+      "text": "Đã tắt giới hạn tốc độ pit.",
+      "files": [
+        "pit_limiter_off/01.wav",
+        "pit_limiter_off/02.wav",
+        "pit_limiter_off/03.wav",
+        "pit_limiter_off/04.wav",
+        "pit_limiter_off/05.wav",
+        "pit_limiter_off/06.wav",
+        "pit_limiter_off/07.wav",
+        "pit_limiter_off/08.wav",
+        "pit_limiter_off/09.wav",
+        "pit_limiter_off/10.wav",
+        "pit_limiter_off/11.wav",
+        "pit_limiter_off/12.wav",
+        "pit_limiter_off/13.wav",
+        "pit_limiter_off/14.wav",
+        "pit_limiter_off/15.wav"
+      ]
+    },
+    {
+      "id": "new_best_lap",
+      "text": "Vòng chạy nhanh nhất mới.",
+      "files": [
+        "new_best_lap/01.wav",
+        "new_best_lap/02.wav",
+        "new_best_lap/03.wav",
+        "new_best_lap/04.wav",
+        "new_best_lap/05.wav",
+        "new_best_lap/06.wav",
+        "new_best_lap/07.wav",
+        "new_best_lap/08.wav",
+        "new_best_lap/09.wav",
+        "new_best_lap/10.wav",
+        "new_best_lap/11.wav",
+        "new_best_lap/12.wav",
+        "new_best_lap/13.wav",
+        "new_best_lap/14.wav",
+        "new_best_lap/15.wav"
+      ]
+    },
+    {
+      "id": "car_left",
+      "text": "Có xe bên trái.",
+      "files": [
+        "car_left/01.wav",
+        "car_left/02.wav",
+        "car_left/03.wav",
+        "car_left/04.wav",
+        "car_left/05.wav",
+        "car_left/06.wav",
+        "car_left/07.wav",
+        "car_left/08.wav",
+        "car_left/09.wav",
+        "car_left/10.wav",
+        "car_left/11.wav",
+        "car_left/12.wav",
+        "car_left/13.wav",
+        "car_left/14.wav",
+        "car_left/15.wav"
+      ]
+    },
+    {
+      "id": "car_right",
+      "text": "Có xe bên phải.",
+      "files": [
+        "car_right/01.wav",
+        "car_right/02.wav",
+        "car_right/03.wav",
+        "car_right/04.wav",
+        "car_right/05.wav",
+        "car_right/06.wav",
+        "car_right/07.wav",
+        "car_right/08.wav",
+        "car_right/09.wav",
+        "car_right/10.wav",
+        "car_right/11.wav",
+        "car_right/12.wav",
+        "car_right/13.wav",
+        "car_right/14.wav",
+        "car_right/15.wav"
+      ]
+    },
+    {
+      "id": "three_wide",
+      "text": "Kẹp ba, giữ làn.",
+      "files": [
+        "three_wide/01.wav",
+        "three_wide/02.wav",
+        "three_wide/03.wav",
+        "three_wide/04.wav",
+        "three_wide/05.wav",
+        "three_wide/06.wav",
+        "three_wide/07.wav",
+        "three_wide/08.wav",
+        "three_wide/09.wav",
+        "three_wide/10.wav",
+        "three_wide/11.wav",
+        "three_wide/12.wav",
+        "three_wide/13.wav",
+        "three_wide/14.wav",
+        "three_wide/15.wav"
+      ]
+    },
+    {
+      "id": "clear_left",
+      "text": "Bên trái thoáng.",
+      "files": [
+        "clear_left/01.wav",
+        "clear_left/02.wav",
+        "clear_left/03.wav",
+        "clear_left/04.wav",
+        "clear_left/05.wav",
+        "clear_left/06.wav",
+        "clear_left/07.wav",
+        "clear_left/08.wav",
+        "clear_left/09.wav",
+        "clear_left/10.wav",
+        "clear_left/11.wav",
+        "clear_left/12.wav",
+        "clear_left/13.wav",
+        "clear_left/14.wav",
+        "clear_left/15.wav"
+      ]
+    },
+    {
+      "id": "clear_right",
+      "text": "Bên phải thoáng.",
+      "files": [
+        "clear_right/01.wav",
+        "clear_right/02.wav",
+        "clear_right/03.wav",
+        "clear_right/04.wav",
+        "clear_right/05.wav",
+        "clear_right/06.wav",
+        "clear_right/07.wav",
+        "clear_right/08.wav",
+        "clear_right/09.wav",
+        "clear_right/10.wav",
+        "clear_right/11.wav",
+        "clear_right/12.wav",
+        "clear_right/13.wav",
+        "clear_right/14.wav",
+        "clear_right/15.wav"
+      ]
+    },
+    {
+      "id": "clear_all",
+      "text": "Đã thoáng cả hai bên.",
+      "files": [
+        "clear_all/01.wav",
+        "clear_all/02.wav",
+        "clear_all/03.wav",
+        "clear_all/04.wav",
+        "clear_all/05.wav",
+        "clear_all/06.wav",
+        "clear_all/07.wav",
+        "clear_all/08.wav",
+        "clear_all/09.wav",
+        "clear_all/10.wav",
+        "clear_all/11.wav",
+        "clear_all/12.wav",
+        "clear_all/13.wav",
+        "clear_all/14.wav",
+        "clear_all/15.wav"
+      ]
+    }
+  ]
+}

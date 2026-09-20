@@ -34,6 +34,14 @@ public:
     [[nodiscard]] static QString stripReasoning(QString response);
     [[nodiscard]] static QString applyAuthoritativePostValidation(const QString& response,
         const QJsonObject& fuelResult, const QString& responseLanguage);
+    void setDriverName(const QString& name) { driverName_ = name; }
+    [[nodiscard]] QString driverName() const { return driverName_; }
+    void setResponseStyle(const QString& style) { responseStyle_ = style; }
+    [[nodiscard]] QString responseStyle() const { return responseStyle_; }
+    [[nodiscard]] QString systemPrompt() const;
+    [[nodiscard]] QJsonObject buildRequest(bool includeTools) const;
+    [[nodiscard]] static QJsonObject buildChatPayload(const LlmSettings& settings,
+        const QJsonArray& messages, bool includeTools, const QJsonArray& tools);
 
 signals:
     void stateChanged(const QString& state, const QString& detail);
@@ -54,7 +62,6 @@ private:
     void sendCurrentRequest(bool includeTools);
     static QString stateName(ApiState state);
     static QString messageText(const QJsonValue& content);
-    QString systemPrompt() const;
 
     LlmSettings settings_;
     std::unique_ptr<ILLMProvider> provider_;
@@ -63,6 +70,8 @@ private:
     RaceState stateSnapshot_;
     RaceHistory historySnapshot_;
     QString responseLanguage_{QStringLiteral("Vietnamese")};
+    QString driverName_{QStringLiteral("Minh Vũ")};
+    QString responseStyle_{QStringLiteral("Tiêu chuẩn")};
     int toolRounds_{0};
     int requests_{0};
     int failures_{0};

@@ -3,11 +3,13 @@
 #include "utils/Logging.h"
 
 #include <QAudioSource>
+#include <QElapsedTimer>
 #include <QIODevice>
 #include <QMediaDevices>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -23,11 +25,11 @@ AudioCapture::~AudioCapture()
     stop();
 }
 
-QStringList AudioCapture::availableInputDevices()
+QList<AudioCapture::InputDeviceInfo> AudioCapture::inputDevices()
 {
-    QStringList result;
+    QList<InputDeviceInfo> result;
     for (const auto& device : QMediaDevices::audioInputs()) {
-        result.push_back(device.description());
+        result.push_back({device.id(), device.description()});
     }
     return result;
 }
@@ -35,12 +37,24 @@ QStringList AudioCapture::availableInputDevices()
 void AudioCapture::start(const QByteArray& deviceId)
 {
     stop();
-    QAudioDevice selected = QMediaDevices::defaultAudioInput();
+    conversionElapsedUs_ = 0;
+    conversionCalls_ = 0;
+    conversionInputBytes_ = 0;
+    conversionOutputBytes_ = 0;
+    const QAudioDevice defaultDevice = QMediaDevices::defaultAudioInput();
+    QAudioDevice selected = defaultDevice;
+    bool requestedDeviceFound = deviceId.isEmpty();
     for (const auto& device : QMediaDevices::audioInputs()) {
         if (!deviceId.isEmpty() && device.id() == deviceId) {
             selected = device;
+            requestedDeviceFound = true;
             break;
         }
+    }
+    if (!requestedDeviceFound) {
+        qCWarning(logAudio).noquote()
+            << "Configured microphone unavailable; falling back to Default (System)."
+            << "requested_id=" << deviceId.toHex();
     }
     if (selected.isNull()) {
         emit captureError(QStringLiteral("Không tìm thấy microphone."));
@@ -72,11 +86,23 @@ void AudioCapture::start(const QByteArray& deviceId)
     connect(io_, &QIODevice::readyRead, this, &AudioCapture::readAudio);
     emit deviceChanged(selected.description());
     qCInfo(logAudio) << "Microphone started:" << selected.description()
+                     << "device_id=" << selected.id().toHex()
                      << activeFormat_.sampleRate() << "Hz" << activeFormat_.channelCount() << "channels";
 }
 
 void AudioCapture::stop()
 {
+    if (conversionCalls_ > 0) {
+        qCInfo(logAudio) << "Audio preprocessing/resampling average_us="
+                         << (conversionElapsedUs_ / conversionCalls_)
+                         << "calls=" << conversionCalls_
+                         << "input_bytes=" << conversionInputBytes_
+                         << "output_bytes=" << conversionOutputBytes_;
+        conversionElapsedUs_ = 0;
+        conversionCalls_ = 0;
+        conversionInputBytes_ = 0;
+        conversionOutputBytes_ = 0;
+    }
     if (source_) {
         source_->stop();
     }
@@ -90,7 +116,21 @@ void AudioCapture::readAudio()
         return;
     }
     const QByteArray input = io_->readAll();
+    QElapsedTimer conversionTimer;
+    conversionTimer.start();
     const QByteArray pcm = convertToMono16k(input, activeFormat_);
+    const qint64 elapsedUs = conversionTimer.nsecsElapsed() / 1'000;
+    conversionElapsedUs_ += elapsedUs;
+    ++conversionCalls_;
+    conversionInputBytes_ += input.size();
+    conversionOutputBytes_ += pcm.size();
+    if ((conversionCalls_ % 100) == 0) {
+        qCInfo(logAudio) << "Audio preprocessing/resampling average_us="
+                         << (conversionElapsedUs_ / conversionCalls_)
+                         << "last_us=" << elapsedUs
+                         << "input_bytes=" << conversionInputBytes_
+                         << "output_bytes=" << conversionOutputBytes_;
+    }
     if (pcm.isEmpty()) {
         return;
     }
@@ -111,6 +151,10 @@ QByteArray AudioCapture::convertToMono16k(const QByteArray& input, const QAudioF
     if (input.isEmpty() || format.channelCount() <= 0 || format.sampleRate() <= 0) {
         return {};
     }
+    if (format.sampleRate() == 16000 && format.channelCount() == 1
+        && format.sampleFormat() == QAudioFormat::Int16) {
+        return input;
+    }
     const int bytesPerSample = format.bytesPerSample();
     const int frameBytes = bytesPerSample * format.channelCount();
     if (bytesPerSample <= 0 || frameBytes <= 0) {
@@ -121,7 +165,7 @@ QByteArray AudioCapture::convertToMono16k(const QByteArray& input, const QAudioF
         return {};
     }
 
-    std::vector<float> mono(static_cast<std::size_t>(frameCount));
+    monoBuffer_.resize(static_cast<std::size_t>(frameCount));
     const char* data = input.constData();
     for (int frame = 0; frame < frameCount; ++frame) {
         double value = 0.0;
@@ -152,12 +196,15 @@ QByteArray AudioCapture::convertToMono16k(const QByteArray& input, const QAudioF
             case QAudioFormat::Unknown: return {};
             }
         }
-        mono[static_cast<std::size_t>(frame)] = static_cast<float>(value / format.channelCount());
+        monoBuffer_[static_cast<std::size_t>(frame)] = static_cast<float>(value / format.channelCount());
     }
 
     const int outputFrames = static_cast<int>(static_cast<long long>(frameCount) * 16000 / format.sampleRate());
-    QByteArray result(outputFrames * 2, Qt::Uninitialized);
-    auto* output = reinterpret_cast<std::int16_t*>(result.data());
+    if (outputFrames <= 0) {
+        return {};
+    }
+    pcmBuffer_.resize(outputFrames * 2);
+    auto* output = reinterpret_cast<std::int16_t*>(pcmBuffer_.data());
     for (int index = 0; index < outputFrames; ++index) {
         double value = 0.0;
         if (format.sampleRate() > 16000) {
@@ -170,7 +217,7 @@ QByteArray AudioCapture::convertToMono16k(const QByteArray& input, const QAudioF
                 const double weight = std::max(0.0,
                     std::min(end, static_cast<double>(source + 1))
                         - std::max(begin, static_cast<double>(source)));
-                value += mono[static_cast<std::size_t>(source)] * weight;
+                value += monoBuffer_[static_cast<std::size_t>(source)] * weight;
                 weightSum += weight;
             }
             if (weightSum > 0.0) value /= weightSum;
@@ -179,12 +226,12 @@ QByteArray AudioCapture::convertToMono16k(const QByteArray& input, const QAudioF
             const int left = std::min(static_cast<int>(position), frameCount - 1);
             const int right = std::min(left + 1, frameCount - 1);
             const double fraction = position - left;
-            value = mono[static_cast<std::size_t>(left)] * (1.0 - fraction)
-                + mono[static_cast<std::size_t>(right)] * fraction;
+            value = monoBuffer_[static_cast<std::size_t>(left)] * (1.0 - fraction)
+                + monoBuffer_[static_cast<std::size_t>(right)] * fraction;
         }
         output[index] = static_cast<std::int16_t>(std::clamp(value, -1.0, 1.0) * 32767.0);
     }
-    return result;
+    return pcmBuffer_;
 }
 
 } // namespace raceengineer

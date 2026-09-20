@@ -1,5 +1,6 @@
 #pragma once
 
+#include "telemetry/ac/AcExtensionClient.h"
 #include "telemetry/common/ISimTelemetryProvider.h"
 #include "telemetry/common/WindowsSharedMemory.h"
 
@@ -18,6 +19,7 @@ private:
     WindowsSharedMemory physicsPage_;
     WindowsSharedMemory graphicsPage_;
     WindowsSharedMemory staticPage_;
+    AcExtensionClient extensionClient_;
     RaceState state_;
     bool connected_{false};
 };

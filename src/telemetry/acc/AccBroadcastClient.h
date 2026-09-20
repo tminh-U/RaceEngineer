@@ -22,6 +22,7 @@ public:
     void stop() noexcept;
     void update();
     [[nodiscard]] std::vector<OpponentState> opponents(int playerCarId) const;
+    [[nodiscard]] std::optional<std::array<double, 3>> playerSectorTimes(int playerCarId) const;
 
 private:
     struct Impl;

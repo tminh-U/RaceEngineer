@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Multimedia Network)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Multimedia Network Quick QuickControls2)
 
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -16,8 +16,22 @@ set(WHISPER_ALL_WARNINGS_3RD_PARTY OFF CACHE BOOL "" FORCE)
 set(GGML_CUDA OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_CCACHE OFF CACHE BOOL "" FORCE)
+# Enable the Vulkan backend automatically when a Vulkan SDK is present.  The
+# CPU build remains available on machines without glslc/the Vulkan loader.
+if(DEFINED ENV{VULKAN_SDK})
+    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+else()
+    set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
+endif()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/whisper.cpp EXCLUDE_FROM_ALL)
+
+add_library(vieneu-tts SHARED IMPORTED GLOBAL)
+set_target_properties(vieneu-tts PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/bin/vieneu-tts.dll"
+    IMPORTED_IMPLIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/lib/vieneu-tts.lib"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/include"
+)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -36,6 +50,8 @@ qt_add_executable(RaceEngineer
     src/telemetry/TelemetryManager.h
     src/telemetry/ac/ACTelemetryProvider.cpp
     src/telemetry/ac/ACTelemetryProvider.h
+    src/telemetry/ac/AcExtensionClient.cpp
+    src/telemetry/ac/AcExtensionClient.h
     src/telemetry/acc/ACCTelemetryProvider.cpp
     src/telemetry/acc/ACCTelemetryProvider.h
     src/telemetry/acc/AccBroadcastClient.cpp
@@ -52,6 +68,8 @@ qt_add_executable(RaceEngineer
     src/audio/AudioCapture.h
     src/audio/VoiceInputController.cpp
     src/audio/VoiceInputController.h
+    src/audio/AudioDucker.cpp
+    src/audio/AudioDucker.h
     src/audio/MessageDispatcher.cpp
     src/audio/MessageDispatcher.h
     src/stt/WhisperRecognizer.cpp
@@ -70,19 +88,35 @@ qt_add_executable(RaceEngineer
     src/llm/tools/ToolRegistry.cpp
     src/llm/tools/ToolRegistry.h
     src/tts/ITtsBackend.h
-    src/tts/GwenTtsBackend.cpp
-    src/tts/GwenTtsBackend.h
     src/tts/PiperTtsBackend.cpp
     src/tts/PiperTtsBackend.h
+    src/tts/VieNeuTtsBackend.cpp
+    src/tts/VieNeuTtsBackend.h
+    src/tts/RacingTextNormalizer.cpp
+    src/tts/RacingTextNormalizer.h
     src/spotter/SpotterEngine.cpp
     src/spotter/SpotterEngine.h
     src/input/DInputButtonMonitor.cpp
     src/input/DInputButtonMonitor.h
 )
 
+qt_add_qml_module(RaceEngineer
+    URI RaceEngineer
+    VERSION 1.0
+    QML_FILES qml/Main.qml
+    RESOURCES
+        assets/final_icon_64.png
+        assets/final_icon.ico
+)
+
+if(WIN32)
+    target_sources(RaceEngineer PRIVATE assets/final_icon.rc)
+endif()
+
 target_include_directories(RaceEngineer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/include
 )
 
 target_link_libraries(RaceEngineer PRIVATE
@@ -90,52 +124,57 @@ target_link_libraries(RaceEngineer PRIVATE
     Qt6::Gui
     Qt6::Multimedia
     Qt6::Network
+    Qt6::Quick
+    Qt6::QuickControls2
     whisper
+    vieneu-tts
 )
+
+option(RACEENGINEER_ENABLE_LTCG "Enable Link-Time Code Generation (LTCG) for release packages" OFF)
+if(MSVC AND RACEENGINEER_ENABLE_LTCG)
+    # Whole-program optimization for production packaging. Disabled by default
+    # during active development to reduce incremental build/link times by 10x.
+    set_property(TARGET RaceEngineer PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+endif()
 
 add_custom_command(TARGET RaceEngineer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/sound.mp3"
         "$<TARGET_FILE_DIR:RaceEngineer>/sound.mp3"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/final_icon.ico"
+        "$<TARGET_FILE_DIR:RaceEngineer>/final_icon.ico"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/final_icon_64.png"
+        "$<TARGET_FILE_DIR:RaceEngineer>/final_icon_64.png"
 )
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-small-q5_1.bin")
     add_custom_command(TARGET RaceEngineer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/ggml-phowhisper-medium-q5_0.bin"
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-small-q5_1.bin"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/ggml-phowhisper-small-q5_1.bin"
     )
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe")
+add_custom_command(TARGET RaceEngineer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/bin"
+        "$<TARGET_FILE_DIR:RaceEngineer>"
+)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3")
     add_custom_command(TARGET RaceEngineer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/vieneu-v3"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/gwen-tts/crispasr-windows-x86_64-vulkan"
-            "$<TARGET_FILE_DIR:RaceEngineer>/tools/gwen-tts"
+            "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3"
+            "$<TARGET_FILE_DIR:RaceEngineer>/models/vieneu-v3"
     )
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/gwen-tts/khanh_toan.wav")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu")
     add_custom_command(TARGET RaceEngineer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/voices/gwen-tts"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/voices/gwen-tts/khanh_toan.wav"
-            "$<TARGET_FILE_DIR:RaceEngineer>/voices/gwen-tts/khanh_toan.wav"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/voices/gwen-tts/khanh_toan.txt"
-            "$<TARGET_FILE_DIR:RaceEngineer>/voices/gwen-tts/khanh_toan.txt"
-    )
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf")
-    add_custom_command(TARGET RaceEngineer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/gwen-tts-0.6b-q4_k.gguf"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/voices/vieneu"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu"
+            "$<TARGET_FILE_DIR:RaceEngineer>/voices/vieneu"
     )
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter/manifest.json")
@@ -170,6 +209,20 @@ target_compile_definitions(RaceEngineer PRIVATE
     RACEENGINEER_ENABLE_MOCK=$<IF:$<CONFIG:Debug>,1,0>
 )
 
+option(RACEENGINEER_BUILD_STT_BENCHMARK "Build the local whisper.cpp STT benchmark harness" OFF)
+if(RACEENGINEER_BUILD_STT_BENCHMARK)
+    add_executable(RaceEngineerSttBench tools/stt_benchmark.cpp)
+    target_include_directories(RaceEngineerSttBench PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/include
+    )
+    target_link_libraries(RaceEngineerSttBench PRIVATE whisper)
+    if(MSVC)
+        target_compile_options(RaceEngineerSttBench PRIVATE /W4 /permissive- /utf-8)
+    else()
+        target_compile_options(RaceEngineerSttBench PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endif()
+
 if(MSVC)
     target_compile_options(RaceEngineer PRIVATE /W4 /permissive- /utf-8)
 else()
@@ -180,6 +233,7 @@ include(CTest)
 if(BUILD_TESTING)
     add_executable(RaceStateTests
         tests/RaceStateTests.cpp
+        src/config/SettingsManager.cpp
         src/telemetry/common/RaceState.cpp
         src/telemetry/mock/MockTelemetryProvider.cpp
         src/race/RaceHistory.cpp
@@ -193,6 +247,10 @@ if(BUILD_TESTING)
         src/llm/LLMManager.h
         src/utils/Logging.cpp
         src/spotter/SpotterEngine.cpp
+        src/telemetry/ac/AcExtensionClient.cpp
+        src/telemetry/common/WindowsSharedMemory.cpp
+        src/tts/RacingTextNormalizer.cpp
+        src/audio/AudioDucker.cpp
     )
     target_include_directories(RaceStateTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -212,18 +270,20 @@ install(TARGETS RaceEngineer
     RUNTIME DESTINATION bin
 )
 install(FILES sound.mp3 DESTINATION bin)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-medium-q5_0.bin")
-    install(FILES models/ggml-phowhisper-medium-q5_0.bin DESTINATION bin/models)
+install(FILES
+    assets/final_icon.ico
+    assets/final_icon_64.png
+    DESTINATION bin
+)
+install(DIRECTORY third_party/vieneu-bin/bin/ DESTINATION bin)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3")
+    install(DIRECTORY models/vieneu-v3/ DESTINATION bin/models/vieneu-v3)
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe")
-    install(DIRECTORY runtime/gwen-tts/crispasr-windows-x86_64-vulkan/
-        DESTINATION bin/tools/gwen-tts)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu")
+    install(DIRECTORY voices/vieneu/ DESTINATION bin/voices/vieneu)
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/gwen-tts/gwen-tts-0.6b-q8_0.gguf")
-    install(DIRECTORY models/gwen-tts/ DESTINATION bin/models/gwen-tts)
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/gwen-tts/khanh_toan.wav")
-    install(DIRECTORY voices/gwen-tts/ DESTINATION bin/voices/gwen-tts)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-small-q5_1.bin")
+    install(FILES models/ggml-phowhisper-small-q5_1.bin DESTINATION bin/models)
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx")
     install(DIRECTORY models/piper/ DESTINATION bin/models/piper)

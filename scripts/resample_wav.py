@@ -1,7 +1,7 @@
 """Resample a mono 16-bit PCM WAV using a windowed-sinc filter.
 
-This helper intentionally uses only Python's standard library so setup_runtime.ps1
-does not need FFmpeg just to prepare the Gwen-TTS reference voice.
+This helper intentionally uses only Python's standard library so setup scripts
+do not need FFmpeg just to prepare reference voice WAVs.
 """
 
 from __future__ import annotations

@@ -17,11 +17,21 @@ enum class EventType {
     EngineCritical,
     YellowFlag,
     BlueFlag,
+    GreenFlag,
+    RedFlag,
+    BlackFlag,
+    WhiteFlag,
+    ChequeredFlag,
     PitLimiterOn,
     PitLimiterOff,
     SessionStarted,
-    SessionEnded,
-    NewBestLap
+    NewBestLap,
+    CarLeft,
+    CarRight,
+    ThreeWide,
+    ClearLeft,
+    ClearRight,
+    ClearAll
 };
 
 enum class EventPriority { Conversation, Engineer, Important, Spotter, Critical };

@@ -31,6 +31,7 @@ struct OpponentState final {
     std::optional<double> bestLapTimeSeconds;
     std::optional<std::array<double, 3>> sectorTimesSeconds;
     std::vector<double> recentLapTimesSeconds;
+    std::optional<std::array<double, 3>> worldPosition;
     bool inPitLane{false};
 };
 
@@ -40,6 +41,9 @@ struct RaceState final {
     std::chrono::steady_clock::time_point capturedAt{};
 
     std::optional<std::string> track;
+    // Driver name from the simulator static page.  It lets tools identify the
+    // player when the player is the leader or when nearby opponent names exist.
+    std::optional<std::string> driverName;
     std::optional<SessionType> sessionType;
     std::optional<double> sessionTimeSeconds;
     std::optional<double> timeRemainingSeconds;
@@ -55,6 +59,8 @@ struct RaceState final {
     std::optional<double> brake;
     std::optional<double> clutch;
     std::optional<double> steering;
+    std::optional<double> heading;
+    std::optional<std::array<double, 3>> worldPosition;
 
     std::optional<double> currentLapTimeSeconds;
     std::optional<double> previousLapTimeSeconds;
@@ -73,6 +79,9 @@ struct RaceState final {
     std::optional<double> oilTemperatureCelsius;
     std::optional<double> waterTemperatureCelsius;
     std::optional<std::array<double, 5>> damage;
+    // ACC-only per-wheel suspension damage, ordered FL, FR, RL, RR. AC's
+    // shared-memory physics page does not expose an equivalent field.
+    std::optional<WheelValues> suspensionDamage;
     std::optional<bool> pitLimiter;
     std::optional<double> tractionControl;
     std::optional<double> abs;

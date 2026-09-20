@@ -12,6 +12,7 @@ bool MockTelemetryProvider::start()
     state_.simulator = Simulator::Mock;
     state_.connected = true;
     state_.track = "Spa-Francorchamps (Mock)";
+    state_.driverName = "Mock Driver";
     state_.sessionType = SessionType::Race;
     state_.totalLaps = 12;
     state_.fuelCapacityLiters = 110.0;

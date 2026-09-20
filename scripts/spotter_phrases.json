@@ -1,13 +1,5 @@
 [
   {
-    "id": "session_started",
-    "text": "Đã kết nối."
-  },
-  {
-    "id": "session_ended",
-    "text": "Đã ngắt kết nối."
-  },
-  {
     "id": "fuel_low",
     "text": "Nhiên liệu sắp hết."
   },
@@ -32,6 +24,26 @@
     "text": "Cờ xanh dương."
   },
   {
+    "id": "green_flag",
+    "text": "Cờ xanh lá."
+  },
+  {
+    "id": "red_flag",
+    "text": "Cờ đỏ."
+  },
+  {
+    "id": "black_flag",
+    "text": "Cờ đen."
+  },
+  {
+    "id": "white_flag",
+    "text": "Cờ trắng."
+  },
+  {
+    "id": "chequered_flag",
+    "text": "Cờ ca rô."
+  },
+  {
     "id": "pit_limiter_on",
     "text": "Đã bật giới hạn tốc độ pit."
   },
@@ -42,5 +54,29 @@
   {
     "id": "new_best_lap",
     "text": "Vòng chạy nhanh nhất mới."
+  },
+  {
+    "id": "car_left",
+    "text": "Có xe bên trái."
+  },
+  {
+    "id": "car_right",
+    "text": "Có xe bên phải."
+  },
+  {
+    "id": "three_wide",
+    "text": "Kẹp ba, giữ làn."
+  },
+  {
+    "id": "clear_left",
+    "text": "Bên trái thoáng."
+  },
+  {
+    "id": "clear_right",
+    "text": "Bên phải thoáng."
+  },
+  {
+    "id": "clear_all",
+    "text": "Đã thoáng cả hai bên."
   }
 ]

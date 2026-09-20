@@ -21,14 +21,31 @@ VoiceInputController::VoiceInputController(QObject* const parent)
     connect(capture_, &AudioCapture::captureError, this, &VoiceInputController::errorOccurred);
 }
 
-void VoiceInputController::start()
+void VoiceInputController::start(const QByteArray& deviceId)
 {
+    inputDeviceId_ = deviceId;
+    started_ = true;
     emit statusChanged(QStringLiteral("Idle"));
-    capture_->start();
+    capture_->start(inputDeviceId_);
+}
+
+void VoiceInputController::setInputDevice(const QByteArray& deviceId)
+{
+    inputDeviceId_ = deviceId;
+    if (!started_) {
+        return;
+    }
+    pushToTalk_ = false;
+    preRoll_.clear();
+    recording_.clear();
+    capture_->stop();
+    capture_->start(inputDeviceId_);
+    emit statusChanged(QStringLiteral("Idle"));
 }
 
 void VoiceInputController::stop()
 {
+    started_ = false;
     capture_->stop();
     preRoll_.clear();
     recording_.clear();

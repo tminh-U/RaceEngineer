@@ -408,4 +408,13 @@ std::vector<OpponentState> AccBroadcastClient::opponents(const int playerCarId) 
     return result;
 }
 
+std::optional<std::array<double, 3>> AccBroadcastClient::playerSectorTimes(const int playerCarId) const
+{
+    const auto it = impl_->cars.find(playerCarId);
+    if (it != impl_->cars.end()) {
+        return it->second.state.sectorTimesSeconds;
+    }
+    return std::nullopt;
+}
+
 } // namespace raceengineer

@@ -10,8 +10,9 @@ struct LlmSettings final {
     QString model{QStringLiteral("race-engineer")};
     bool streaming{true};
     int timeoutMilliseconds{30000};
-    int maximumTokens{32};
+    int maximumTokens{64};
     double temperature{0.1};
+    bool reasoning{false};
 };
 
 struct PushToTalkSettings final {
@@ -23,9 +24,19 @@ struct PushToTalkSettings final {
 };
 
 struct TtsSettings final {
-    // Piper is deliberately the default; Gwen remains the higher-latency option.
+    // Piper is deliberately the default; local neural backends are optional.
     QString backend{QStringLiteral("Piper")};
+    QString voice{QStringLiteral("Minh Đức")};
     QString outputDevice;
+    float volume{0.85F};
+    bool audioDucking{true};
+    float duckFactor{0.25F};
+};
+
+struct AudioInputSettings final {
+    // Empty means the Windows system default capture endpoint.
+    QString deviceId;
+    QString deviceName{QStringLiteral("Default (System)")};
 };
 
 class SettingsManager final {
@@ -38,6 +49,12 @@ public:
     void setPushToTalk(const PushToTalkSettings& settings);
     [[nodiscard]] const TtsSettings& tts() const noexcept { return tts_; }
     void setTts(const TtsSettings& settings);
+    [[nodiscard]] const AudioInputSettings& audioInput() const noexcept { return audioInput_; }
+    void setAudioInput(const AudioInputSettings& settings);
+    [[nodiscard]] QString driverName() const noexcept { return driverName_; }
+    void setDriverName(const QString& name);
+    [[nodiscard]] QString responseStyle() const noexcept { return responseStyle_; }
+    void setResponseStyle(const QString& style);
     [[nodiscard]] QString filePath() const { return filePath_; }
     [[nodiscard]] bool migratedFromLegacyMistral() const noexcept { return migratedFromLegacyMistral_; }
 
@@ -49,6 +66,9 @@ private:
     LlmSettings llm_;
     PushToTalkSettings pushToTalk_;
     TtsSettings tts_;
+    AudioInputSettings audioInput_;
+    QString driverName_{QStringLiteral("Minh Vũ")};
+    QString responseStyle_{QStringLiteral("Tiêu chuẩn")};
     bool migratedFromLegacyMistral_{false};
 };
 

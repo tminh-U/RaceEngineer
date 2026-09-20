@@ -51,6 +51,16 @@ bool isGoogleGeminiApi(const QString& baseUrl)
         || host.endsWith(QStringLiteral(".generativelanguage.googleapis.com"));
 }
 
+bool isOpenAiReasoningModel(const QString& model)
+{
+    return model.startsWith(QStringLiteral("o1"), Qt::CaseInsensitive)
+        || model.startsWith(QStringLiteral("o3"), Qt::CaseInsensitive)
+        || model.startsWith(QStringLiteral("o4"), Qt::CaseInsensitive)
+        || model.contains(QStringLiteral("deepseek-r1"), Qt::CaseInsensitive)
+        || model.contains(QStringLiteral("reasoner"), Qt::CaseInsensitive)
+        || model.contains(QStringLiteral("thinking"), Qt::CaseInsensitive);
+}
+
 } // namespace
 
 LLMManager::LLMManager(const LlmSettings& settings, const QString& apiKey, QObject* const parent)
@@ -74,9 +84,8 @@ void LLMManager::configure(const LlmSettings& settings, const QString& apiKey)
     connect(provider_.get(), &ILLMProvider::responseReceived, this, &LLMManager::handleResponse);
     connect(provider_.get(), &ILLMProvider::requestFailed, this, &LLMManager::handleFailure);
     connect(provider_.get(), &ILLMProvider::responseChunk, this, [this](const QString& chunk) {
-        // Gemma can put its reasoning channel inside message.content. Buffer it so the
-        // UI never flashes (and accessibility never reads) private reasoning tokens.
-        if (authoritativeFuelResult_.isEmpty() && !isGemmaModel(settings_.model)) {
+        // Hide private reasoning tokens / internal reasoning channels from flashing on UI.
+        if (authoritativeFuelResult_.isEmpty() && !isGemmaModel(settings_.model) && !settings_.reasoning) {
             emit responseChunk(chunk);
         }
     });
@@ -158,7 +167,14 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
     const auto calls = message.value(QStringLiteral("tool_calls")).toArray();
     if (!calls.isEmpty()) {
         if (++toolRounds_ > 2) {
-            handleFailure(ApiState::ProviderError, 200, QStringLiteral("AI requested too many tool rounds."), latencyMilliseconds);
+            qCWarning(logApp) << "AI exceeded tool call rounds limit (" << toolRounds_
+                              << "). Synthesizing fallback radio message.";
+            const bool vietnamese = responseLanguage_.contains(QStringLiteral("Vietnamese"), Qt::CaseInsensitive);
+            const QString fallback = vietnamese
+                ? QStringLiteral("Hiện chưa có dữ liệu telemetry.")
+                : QStringLiteral("No telemetry data available.");
+            conversation_.addAssistantMessage(fallback);
+            emit responseReady(fallback);
             return;
         }
         QJsonArray normalizedCalls;
@@ -210,6 +226,7 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
         normalizedMessage.insert(QStringLiteral("role"), QStringLiteral("assistant"));
         normalizedMessage.insert(QStringLiteral("tool_calls"), normalizedCalls);
         conversation_.addAssistantToolCallMessage(normalizedMessage);
+        bool anyAvailable = false;
         for (const auto& value : normalizedCalls) {
             const auto call = value.toObject();
             const auto function = call.value(QStringLiteral("function")).toObject();
@@ -219,6 +236,9 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
                 function.value(QStringLiteral("arguments")).toString().toUtf8());
             if (argumentsDocument.isObject()) arguments = argumentsDocument.object();
             const QJsonObject result = tools_.execute(name, stateSnapshot_, historySnapshot_, arguments);
+            if (result.value(QStringLiteral("available")).toBool(false)) {
+                anyAvailable = true;
+            }
             lastTool_ = name;
             if (name == QStringLiteral("get_fuel_status")) authoritativeFuelResult_ = result;
             conversation_.addToolResult(call.value(QStringLiteral("id")).toString(), name, result);
@@ -226,14 +246,22 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
             qCInfo(logTool).noquote() << name << QJsonDocument(result).toJson(QJsonDocument::Compact);
         }
         emit statisticsChanged();
-        sendCurrentRequest(true);
+        const bool allowAnotherToolRound = (toolRounds_ < 2) && anyAvailable;
+        sendCurrentRequest(allowAnotherToolRound);
         return;
     }
 
     QString text = stripReasoning(messageText(message.value(QStringLiteral("content"))));
     if (text.isEmpty()) {
-        handleFailure(ApiState::ProviderError, 200, QStringLiteral("AI response was empty."), latencyMilliseconds);
-        return;
+        if (toolRounds_ > 0) {
+            const bool vietnamese = responseLanguage_.contains(QStringLiteral("Vietnamese"), Qt::CaseInsensitive);
+            text = vietnamese
+                ? QStringLiteral("Hiện chưa có dữ liệu telemetry.")
+                : QStringLiteral("No telemetry data available.");
+        } else {
+            handleFailure(ApiState::ProviderError, 200, QStringLiteral("AI response was empty."), latencyMilliseconds);
+            return;
+        }
     }
     text = applyAuthoritativePostValidation(text, authoritativeFuelResult_, responseLanguage_);
     conversation_.addAssistantMessage(text);
@@ -252,40 +280,73 @@ void LLMManager::handleFailure(const ApiState state, const int httpStatus, const
             ? QStringLiteral("AI API rate limit reached.") : message);
 }
 
-void LLMManager::sendCurrentRequest(const bool includeTools)
+QJsonObject LLMManager::buildChatPayload(const LlmSettings& settings,
+    const QJsonArray& messages, const bool includeTools, const QJsonArray& tools)
 {
-    QJsonObject request{{QStringLiteral("messages"), conversation_.messages(systemPrompt())},
-        {QStringLiteral("temperature"), settings_.temperature},
-        {QStringLiteral("max_tokens"), settings_.maximumTokens}};
-    const bool googleApi = isGoogleGeminiApi(settings_.baseUrl);
-    if (googleApi && isGemmaModel(settings_.model)) {
-        // Hosted Gemma 4 uses Gemini ThinkingConfig. For Gemma specifically,
-        // "minimal" is the documented OFF value. Do not send llama.cpp fields to
-        // Google's compatibility endpoint.
-        request.insert(QStringLiteral("extra_body"), QJsonObject{
-            {QStringLiteral("google"), QJsonObject{
-                {QStringLiteral("thinking_config"), QJsonObject{
-                    {QStringLiteral("thinking_level"), QStringLiteral("minimal")},
-                    {QStringLiteral("include_thoughts"), false}}}}}});
-    // Google's OpenAI-compatible endpoint only permits fully disabling thinking on
-    // non-Pro Gemini 2.5 models. Gemini 3 uses "minimal" as its lowest setting.
-    } else if (isGeminiModel(settings_.model)) {
-        request.insert(QStringLiteral("reasoning_effort"),
-            canDisableGeminiReasoning(settings_.model)
-                ? QStringLiteral("none") : QStringLiteral("minimal"));
-    } else if (!googleApi && isLocalThinkingModel(settings_.model)) {
-        // llama.cpp accepts reasoning_effort=none in current builds, while older
-        // builds use the template kwarg. Supplying both keeps the phone server and
-        // named Gemma/Qwen endpoints in no-thinking mode.
-        request.insert(QStringLiteral("reasoning_effort"), QStringLiteral("none"));
-        request.insert(QStringLiteral("reasoning_budget"), 0);
-        request.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{
-            {QStringLiteral("enable_thinking"), false}});
+    QJsonObject request{{QStringLiteral("messages"), messages},
+        {QStringLiteral("temperature"), settings.temperature},
+        {QStringLiteral("max_tokens"), settings.maximumTokens}};
+
+    const bool googleApi = isGoogleGeminiApi(settings.baseUrl);
+    if (settings.reasoning) {
+        if (googleApi && isGemmaModel(settings.model)) {
+            // Hosted Gemma uses Gemini ThinkingConfig without thinking_level (which is rejected with 400 on Gemma).
+            request.insert(QStringLiteral("extra_body"), QJsonObject{
+                {QStringLiteral("google"), QJsonObject{
+                    {QStringLiteral("thinking_config"), QJsonObject{
+                        {QStringLiteral("include_thoughts"), false}}}}}});
+        } else if (isGeminiModel(settings.model)) {
+            request.insert(QStringLiteral("reasoning_effort"), QStringLiteral("low"));
+        } else if (!googleApi && isLocalThinkingModel(settings.model)) {
+            request.insert(QStringLiteral("reasoning_effort"), QStringLiteral("low"));
+            request.insert(QStringLiteral("reasoning_budget"), 128);
+            request.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{
+                {QStringLiteral("enable_thinking"), true}});
+        } else if (isOpenAiReasoningModel(settings.model)) {
+            request.insert(QStringLiteral("reasoning_effort"), QStringLiteral("low"));
+        } else {
+            qCInfo(logApp) << "AI reasoning requested, but model/provider does not support reasoning configuration:"
+                           << settings.model;
+        }
+    } else {
+        // When OFF: explicitly disable reasoning/thinking if provider API supports that parameter.
+        // Do not send unnecessary reasoning configuration to unsupported models.
+        if (googleApi && isGemmaModel(settings.model)) {
+            request.insert(QStringLiteral("extra_body"), QJsonObject{
+                {QStringLiteral("google"), QJsonObject{
+                    {QStringLiteral("thinking_config"), QJsonObject{
+                        {QStringLiteral("thinking_level"), QStringLiteral("minimal")},
+                        {QStringLiteral("include_thoughts"), false}}}}}});
+        } else if (isGeminiModel(settings.model)) {
+            request.insert(QStringLiteral("reasoning_effort"),
+                canDisableGeminiReasoning(settings.model)
+                    ? QStringLiteral("none") : QStringLiteral("minimal"));
+        } else if (!googleApi && isLocalThinkingModel(settings.model)) {
+            request.insert(QStringLiteral("reasoning_effort"), QStringLiteral("none"));
+            request.insert(QStringLiteral("reasoning_budget"), 0);
+            request.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{
+                {QStringLiteral("enable_thinking"), false}});
+        }
     }
-    if (includeTools && provider_->supportsToolCalling()) {
-        request.insert(QStringLiteral("tools"), tools_.definitions());
+
+    if (includeTools && !tools.isEmpty()) {
+        request.insert(QStringLiteral("tools"), tools);
         request.insert(QStringLiteral("tool_choice"), QStringLiteral("auto"));
     }
+
+    return request;
+}
+
+QJsonObject LLMManager::buildRequest(const bool includeTools) const
+{
+    const bool sendTools = includeTools && provider_ && provider_->supportsToolCalling();
+    const QJsonArray toolsDef = sendTools ? tools_.definitions() : QJsonArray{};
+    return buildChatPayload(settings_, conversation_.messages(systemPrompt()), sendTools, toolsDef);
+}
+
+void LLMManager::sendCurrentRequest(const bool includeTools)
+{
+    const QJsonObject request = buildRequest(includeTools);
     ++requests_;
     emit statisticsChanged();
     provider_->sendChatRequest(request);
@@ -364,20 +425,119 @@ QString LLMManager::stripReasoning(QString response)
 
 QString LLMManager::systemPrompt() const
 {
-    return QStringLiteral("You are a calm, clipped and authoritative real-time race engineer. Use an original "
-                          "top-tier Formula race-engineer cadence: restrained, dry, precise, reassuring under "
-                          "pressure, and never chatty. Lead with the action or status and give only one clear "
-                          "instruction per transmission. Use a brief radio acknowledgement such as 'Copy' or its "
-                          "natural local-language equivalent only when it adds value. Reserve urgency for immediate "
-                          "danger, a time-critical strategy call, or a critical mechanical condition. Avoid greetings, "
-                          "filler, hype, jokes, dramatic wording, catchphrases, and repeated telemetry. Reply with one "
-                          "very short radio sentence, preferably 5-15 tokens. Return only the "
-                          "final radio message; never output thoughts, analysis, reasoning, or control tokens. Never "
-                          "invent telemetry; use tools for live facts. Tool status and conclusion "
-                          "fields are authoritative: never recalculate or reinterpret available, enough_fuel, "
-                          "fuel_status, trend, critical, or overheating. Surplus never means deficit. If unavailable, "
-                          "say so briefly. Do not imitate distinctive quotes, impersonate, or claim to be any named "
-                          "real engineer. Answer in %1.").arg(responseLanguage_);
+    QString prompt = QStringLiteral(
+        "You are a calm, clipped and authoritative real-time race engineer. Use an original "
+        "top-tier Formula race-engineer cadence: restrained, dry, precise, reassuring under "
+        "pressure, and never chatty. Lead with the action or status and give only one clear "
+        "instruction per transmission. Use a brief radio acknowledgement such as 'Copy' or its "
+        "natural local-language equivalent only when it adds value. Reserve urgency for immediate "
+        "danger, a time-critical strategy call, or a critical mechanical condition. Avoid greetings, "
+        "filler, hype, jokes, dramatic wording, catchphrases, and repeated telemetry. Reply with one "
+        "short radio sentence, normally 10-25 tokens, but include every fact explicitly requested. Return only the "
+        "final radio message; never output thoughts, analysis, reasoning, or control tokens. Never "
+        "invent telemetry; use tools for live facts. Tool status and conclusion "
+        "fields are authoritative: never recalculate or reinterpret available, enough_fuel, "
+        "fuel_status, trend, critical, overheating, major_damage, and damage section severity. Surplus never means deficit. If unavailable, "
+        "say so briefly. If a tool returns available: false, do not call other tools to search for "
+        "alternative data; immediately answer that the requested data is unavailable. "
+        "For every live telemetry or car-condition question, you MUST call the relevant tool before answering; "
+        "never answer from memory or from a vague generalization. For position/leader/ahead/behind questions "
+        "call get_position. For lap pace or lap-time questions call get_lap_times, get_recent_laps, or "
+        "get_driver_pace. For tyre temperature, pressure, or condition questions call get_tyre_status; when the "
+        "driver asks about tyre temperatures (nhiệt độ lốp) or pressures, ALWAYS state the actual numeric values "
+        "(e.g. front and rear averages, or specific wheels in degrees Celsius) along with the condition status; NEVER "
+        "just say 'quá nhiệt' or 'bình thường' without the temperature numbers. For brake questions call get_brake_status "
+        "and report numeric brake temperatures in degrees Celsius. For body, wheel, or suspension damage questions "
+        "call get_damage_status. For wheel damage, "
+        "use only affected_wheels and wheel_damage_sections when wheel_damage_available=true; FL, FR, RL, RR mean "
+        "front-left, front-right, rear-left, rear-right. Do not infer wheel damage from tyre wear, pressure, or "
+        "temperature. Wheel suspension values are raw simulator levels: report detected/not detected and the wheel, "
+        "but do not label them minor or major. Overall body damage is an aggregate, not a physical location. Include the returned position, "
+        "driver names, section, wheel, severity, or time when the user asks for them. Never call minor or moderate damage "
+        "major unless major_damage=true. Lap display fields ending in _mmss are authoritative M:SS.mmm values; "
+        "say those values instead of converting them to raw seconds. Gap values remain seconds. "
+        "Do not imitate distinctive quotes, impersonate, or claim to be any named "
+        "real engineer. When replying in Vietnamese, state units and telemetry numbers naturally for clear radio speech synthesis (e.g. độ C/độ xê, lít, vòng, giây, bar, kPa) without markdown formatting. Answer in %1.\n\n"
+        "SPEECH-TO-TEXT (STT) INTENT RECOVERY:\n"
+        "- Treat incoming user text as speech-to-text output and assume it may contain transcription mistakes.\n"
+        "- The user primarily speaks Vietnamese, with occasional motorsport/racing English terms mixed in.\n"
+        "- Use the conversation context, current race/telemetry context, and common racing vocabulary to infer "
+        "the most likely intended meaning when the transcription is unclear.\n"
+        "- Correct obvious phonetic/ASR mistakes silently before interpreting the request. Prefer semantic intent "
+        "over literal malformed wording.\n"
+        "- Do not mention STT errors unless the meaning is genuinely ambiguous.\n"
+        "- Do not over-correct text that already makes sense.\n"
+        "- Do not invent a completely new request when the transcript provides insufficient evidence.\n"
+        "- If multiple interpretations remain plausible, ask a short clarification question.\n"
+        "- Correct common racing terms when context strongly supports them, e.g. pit, gap, delta, DRS, ERS, "
+        "brake bias, tyre, understeer, oversteer, front/rear/left/right (trước/sau/trái/phải, lốp, xăng, lap/vòng).\n"
+        "- Examples of internal interpretation:\n"
+        "  * STT 'gap với xe chước bao nhiêu' -> interpret as 'gap với xe trước bao nhiêu'\n"
+        "  * STT 'lốp chước chái thế nào' -> interpret as 'lốp trước trái thế nào'\n"
+        "  * STT 'nhiệt độ lốp bao nhiêu' / 'nhiệt độ lốp' -> call get_tyre_status and report numeric temperatures (e.g. lốp trước 95 độ, sau 92 độ)\n"
+        "  * STT 'pit láp này không' -> interpret as 'pit lap này không'\n"
+        "- Use available telemetry/state as contextual evidence, but do not fabricate telemetry values.\n"
+        "- Preserve numbers, positions, lap counts, tyre positions, and other concrete details unless the ASR "
+        "error is obvious from context.\n"
+        "- The purpose of this correction is to understand the user's intent, not to return a cleaned transcript. "
+        "Do this internally and answer the intended request naturally in your clipped race engineer radio reply."
+    ).arg(responseLanguage_);
+
+    if (stateSnapshot_.connected) {
+        QStringList telemetryParts;
+        if (stateSnapshot_.position) {
+            telemetryParts << QStringLiteral("P%1").arg(*stateSnapshot_.position);
+        }
+        if (stateSnapshot_.currentLap) {
+            if (stateSnapshot_.totalLaps && *stateSnapshot_.totalLaps > 0) {
+                telemetryParts << QStringLiteral("Lap %1/%2").arg(*stateSnapshot_.currentLap).arg(*stateSnapshot_.totalLaps);
+            } else {
+                telemetryParts << QStringLiteral("Lap %1").arg(*stateSnapshot_.currentLap);
+            }
+        }
+        if (stateSnapshot_.sessionType) {
+            switch (*stateSnapshot_.sessionType) {
+            case SessionType::Practice: telemetryParts << QStringLiteral("Practice"); break;
+            case SessionType::Qualifying: telemetryParts << QStringLiteral("Qualifying"); break;
+            case SessionType::Race: telemetryParts << QStringLiteral("Race"); break;
+            case SessionType::Hotlap: telemetryParts << QStringLiteral("Hotlap"); break;
+            default: break;
+            }
+        }
+        if (stateSnapshot_.track && !stateSnapshot_.track->empty()) {
+            telemetryParts << QStringLiteral("Track: %1").arg(QString::fromStdString(*stateSnapshot_.track));
+        }
+        if (!telemetryParts.isEmpty()) {
+            prompt += QStringLiteral("\n\nTelemetry Context: %1.").arg(telemetryParts.join(QStringLiteral(", ")));
+        }
+    }
+
+    if (!driverName_.trimmed().isEmpty()) {
+        prompt += QStringLiteral("\n\nThe driver's name is %1. Address the driver by name when natural and appropriate, but maintain your clipped race-engineer cadence.").arg(driverName_.trimmed());
+    }
+
+    QString styleInstruction;
+    if (responseStyle_.compare(QStringLiteral("Tối giản"), Qt::CaseInsensitive) == 0) {
+        styleInstruction = QStringLiteral(
+            "RESPONSE STYLE: MINIMAL (Tối giản).\n"
+            "- Be extremely concise, clipped, and raw.\n"
+            "- Output only the essential metric, delta, or immediate action in 3 to 8 tokens/words.\n"
+            "- Zero filler, no conversational padding, no elaboration unless requested.");
+    } else if (responseStyle_.compare(QStringLiteral("Chi tiết"), Qt::CaseInsensitive) == 0) {
+        styleInstruction = QStringLiteral(
+            "RESPONSE STYLE: DETAILED (Chi tiết).\n"
+            "- Provide full telemetry context, trends, and analytical reasoning while maintaining a professional engineer tone.\n"
+            "- Target 20 to 40 tokens/words with clear actionable advice.\n"
+            "- Explain tyre condition, fuel pace, or strategic trade-offs when relevant.");
+    } else {
+        styleInstruction = QStringLiteral(
+            "RESPONSE STYLE: STANDARD (Tiêu chuẩn).\n"
+            "- Use standard top-tier race engineer radio cadence: restrained, dry, precise, and clipped.\n"
+            "- Lead with the action or status. Target 10 to 25 tokens/words and include all requested telemetry facts.");
+    }
+    prompt += QStringLiteral("\n\n%1").arg(styleInstruction);
+
+    return prompt;
 }
 
 QString LLMManager::applyAuthoritativePostValidation(const QString& response,

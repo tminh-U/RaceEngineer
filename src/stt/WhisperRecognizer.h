@@ -5,6 +5,7 @@
 #include <QString>
 
 #include <atomic>
+#include <vector>
 
 struct whisper_context;
 
@@ -31,11 +32,18 @@ signals:
 
 private:
     bool ensureModelLoaded();
+    void warmUpInference();
     static QString normalizeRacingTerms(QString text);
 
     QString modelPath_;
     whisper_context* context_{nullptr};
     std::atomic_bool cancelRequested_{false};
+    std::vector<float> samples_;
+    int threadCount_{8};
+    int maxTokens_{48};
+    bool useGpu_{true};
+    bool flashAttention_{true};
+    bool warmupComplete_{false};
 };
 
 } // namespace raceengineer

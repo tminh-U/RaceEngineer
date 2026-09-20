@@ -3,9 +3,11 @@
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QByteArray>
+#include <QList>
 #include <QObject>
 
 #include <memory>
+#include <vector>
 
 class QAudioSource;
 class QIODevice;
@@ -16,10 +18,15 @@ class AudioCapture final : public QObject {
     Q_OBJECT
 
 public:
+    struct InputDeviceInfo final {
+        QByteArray id;
+        QString description;
+    };
+
     explicit AudioCapture(QObject* parent = nullptr);
     ~AudioCapture() override;
 
-    [[nodiscard]] static QStringList availableInputDevices();
+    [[nodiscard]] static QList<InputDeviceInfo> inputDevices();
 
 public slots:
     void start(const QByteArray& deviceId = {});
@@ -35,11 +42,17 @@ private slots:
     void readAudio();
 
 private:
-    static QByteArray convertToMono16k(const QByteArray& input, const QAudioFormat& format);
+    QByteArray convertToMono16k(const QByteArray& input, const QAudioFormat& format);
 
     std::unique_ptr<QAudioSource> source_;
     QIODevice* io_{nullptr};
     QAudioFormat activeFormat_;
+    std::vector<float> monoBuffer_;
+    QByteArray pcmBuffer_;
+    qint64 conversionElapsedUs_{0};
+    qint64 conversionCalls_{0};
+    qint64 conversionInputBytes_{0};
+    qint64 conversionOutputBytes_{0};
 };
 
 } // namespace raceengineer

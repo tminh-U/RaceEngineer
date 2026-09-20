@@ -13,6 +13,12 @@ EventEngine::EventEngine()
     cooldowns_[EventType::EngineCritical] = std::chrono::seconds(10);
     cooldowns_[EventType::YellowFlag] = std::chrono::seconds(5);
     cooldowns_[EventType::BlueFlag] = std::chrono::seconds(10);
+    cooldowns_[EventType::GreenFlag] = std::chrono::seconds(5);
+    cooldowns_[EventType::RedFlag] = std::chrono::seconds(5);
+    cooldowns_[EventType::BlackFlag] = std::chrono::seconds(10);
+    cooldowns_[EventType::WhiteFlag] = std::chrono::seconds(10);
+    cooldowns_[EventType::ChequeredFlag] = std::chrono::seconds(15);
+    cooldowns_[EventType::SessionStarted] = std::chrono::seconds(5);
 }
 
 std::vector<RaceEvent> EventEngine::process(const RaceState& state,
@@ -22,9 +28,11 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
     if (!connected_) {
         connected_ = state.connected;
     } else if (*connected_ != state.connected) {
-        emitIfReady(events, state.connected ? EventType::SessionStarted : EventType::SessionEnded,
-            EventPriority::Engineer,
-            state.connected ? "Đã kết nối với game." : "Đã ngắt kết nối game.", now);
+        if (state.connected) {
+            emitIfReady(events, EventType::SessionStarted,
+                EventPriority::Engineer,
+                "Radio check, Minh.", now);
+        }
         connected_ = state.connected;
     }
     if (!state.connected) return events;
@@ -64,13 +72,44 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         engineLevel_ = nextEngine;
     }
 
-    if (state.flag && (!flag_ || *flag_ != *state.flag)) {
-        if (*state.flag == FlagState::Yellow) {
-            emitIfReady(events, EventType::YellowFlag, EventPriority::Critical, "Cờ vàng.", now);
-        } else if (*state.flag == FlagState::Blue) {
-            emitIfReady(events, EventType::BlueFlag, EventPriority::Important, "Cờ xanh dương.", now);
+    if (state.flag) {
+        if (!flag_) {
+            flag_ = state.flag;
+            if (*state.flag == FlagState::Yellow) {
+                emitIfReady(events, EventType::YellowFlag, EventPriority::Critical, "Cờ vàng.", now);
+            } else if (*state.flag == FlagState::Red) {
+                emitIfReady(events, EventType::RedFlag, EventPriority::Critical, "Cờ đỏ.", now);
+            } else if (*state.flag == FlagState::Black) {
+                emitIfReady(events, EventType::BlackFlag, EventPriority::Critical, "Cờ đen.", now);
+            }
+        } else if (*flag_ != *state.flag) {
+            switch (*state.flag) {
+            case FlagState::Yellow:
+                emitIfReady(events, EventType::YellowFlag, EventPriority::Critical, "Cờ vàng.", now);
+                break;
+            case FlagState::Blue:
+                emitIfReady(events, EventType::BlueFlag, EventPriority::Important, "Cờ xanh dương.", now);
+                break;
+            case FlagState::Green:
+                emitIfReady(events, EventType::GreenFlag, EventPriority::Important, "Cờ xanh lá.", now);
+                break;
+            case FlagState::Red:
+                emitIfReady(events, EventType::RedFlag, EventPriority::Critical, "Cờ đỏ.", now);
+                break;
+            case FlagState::Black:
+                emitIfReady(events, EventType::BlackFlag, EventPriority::Critical, "Cờ đen.", now);
+                break;
+            case FlagState::White:
+                emitIfReady(events, EventType::WhiteFlag, EventPriority::Important, "Cờ trắng.", now);
+                break;
+            case FlagState::Chequered:
+                emitIfReady(events, EventType::ChequeredFlag, EventPriority::Important, "Cờ ca rô.", now);
+                break;
+            default:
+                break;
+            }
+            flag_ = state.flag;
         }
-        flag_ = state.flag;
     }
 
     if (state.pitLimiter) {

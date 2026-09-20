@@ -17,6 +17,7 @@ public:
     WindowsSharedMemory& operator=(const WindowsSharedMemory&) = delete;
 
     bool open(const wchar_t* mappingName, std::size_t bytes) noexcept;
+    bool createOrOpen(const wchar_t* mappingName, std::size_t bytes) noexcept;
     void close() noexcept;
     [[nodiscard]] bool isOpen() const noexcept;
     [[nodiscard]] const void* data() const noexcept { return view_; }
