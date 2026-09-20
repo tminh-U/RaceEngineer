@@ -1,6 +1,6 @@
 # Race Engineer
 
-Native Windows x64 race engineer for Assetto Corsa and Assetto Corsa Competizione. It combines verified shared-memory telemetry, deterministic race logic, local voice processing, an OpenAI-compatible LLM server, and local Gwen-TTS speech output.
+Native Windows x64 race engineer for Assetto Corsa and Assetto Corsa Competizione. It combines verified shared-memory telemetry, deterministic race logic, local voice processing, an OpenAI-compatible LLM server, and local native VieNeu-TTS C++ speech output.
 
 ## What works
 
@@ -8,13 +8,13 @@ Native Windows x64 race engineer for Assetto Corsa and Assetto Corsa Competizion
 - Normalized `RaceState`, bounded `RaceHistory`, fuel/lap calculations, event transitions and cooldowns
 - Mock telemetry in Debug builds
 - Microphone capture with 80 ms fixed pre-roll and held push-to-talk (`Ctrl+Space`)
-- Local `vinai/PhoWhisper-medium` Q5_0 transcription through whisper.cpp (Vietnamese-first with racing English preserved)
+- Local `vinai/PhoWhisper-small` Q5_1 transcription through whisper.cpp (Vietnamese-first with racing English preserved)
 - Configurable push-to-talk using `Ctrl+Space` and/or a held DirectInput wheel button
 - OpenAI-compatible chat completions for llama.cpp and similar local/LAN/cloud servers, with streaming, cancellation, timeout and one bounded transient retry
 - Local telemetry tool calling with bounded conversation history
 - Optional API key storage in Windows Credential Manager; the Authorization header is omitted when the key is empty
-- Local Gwen-TTS 0.6B GGUF speech with the Vietnamese `khanh_toan` voice, served by a persistent low-priority CrispASR process
-- Zero-synthesis-latency static alerts: 15 pre-generated Khánh Toàn WAV variants for each built-in spotter/engineer phrase
+- Local native VieNeu-TTS v3 Turbo C++ speech with Vietnamese voice fine-tuning (Minh Quân LoRA model & studio presets) accelerated on AMD Radeon 680M via Vulkan
+- Piper TTS backend as fallback and low-latency pre-generated spotter alerts
 - Priority audio dispatch; critical/spotter messages interrupt lower-priority speech
 - Dashboard, telemetry viewer, AI settings, API statistics and system tray
 
@@ -27,32 +27,36 @@ The app reads the full AC/ACC graphics page for real lap, position, gap, flag an
 - CMake 3.24+
 - Ninja (or the Visual Studio 2022 generator)
 - Qt 6.5+ MSVC x64 with Core, GUI, Quick, Quick Controls 2, Network, Multimedia and Widgets
-- Python 3 (setup only, used to resample the official Khánh Toàn reference WAV)
+- Python 3 (setup only, used for the one-time PhoWhisper conversion and reference WAV resampling)
+- LunarG Vulkan SDK (optional but recommended for the Radeon 680M path; without it the Release build uses the measured CPU fallback)
 
 The validated local setup is MSVC 17.14, Qt 6.8.3, CMake 4.4.1 and Ninja 1.13.2.
 
 ## Runtime models
 
-Models and binary runtimes are intentionally ignored by Git. Install the `vinai/PhoWhisper-medium` Q5_0 model, the CrispASR Windows Vulkan runtime, Gwen-TTS talker/codec models and the official Vietnamese Khánh Toàn reference voice:
+Models and binary runtimes are intentionally ignored by Git. Install the `vinai/PhoWhisper-small` Q5_1 model, Piper ONNX model, and the native `VieNeu-TTS v3 Turbo` assets:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup_runtime.ps1
 ```
 
-This creates:
+This sets up:
 
 ```text
-models/ggml-phowhisper-medium-q5_0.bin
-models/gwen-tts/gwen-tts-0.6b-q8_0.gguf
-models/gwen-tts/qwen3-tts-tokenizer-12hz.gguf
-runtime/gwen-tts/crispasr-windows-x86_64-vulkan/crispasr.exe
-voices/gwen-tts/khanh_toan.wav
-voices/gwen-tts/khanh_toan.txt
+models/ggml-phowhisper-small-q5_1.bin
+models/piper/vi_VN-vais1000-medium.onnx
+models/vieneu-v3/backbone.gguf
+models/vieneu-v3/config.json
+models/vieneu-v3/tokenizer.json
+models/vieneu-v3/vieneu_v3_heads.npz
+models/vieneu-v3/acoustic/vieneu_acoustic_weights.npz
+models/vieneu-v3/codec/moss_audio_tokenizer_decode_full.onnx
+models/vieneu-v3/voices_v3_turbo.json
 ```
 
-PhoWhisper conversion is pinned to the VinAI checkpoint revision and uses the vendored whisper.cpp converter plus `whisper-quantize q5_0`; Python/PyTorch are used only for this one-time conversion, never at runtime. The Gwen assets use about 1.35 GB before build-directory copies. Reconfigure/rebuild after installation. The app preloads Gwen once and reuses its local HTTP server; the child process runs below normal priority. Missing voice components degrade safely: telemetry and text responses keep working.
+PhoWhisper conversion is pinned to the VinAI `PhoWhisper-small` checkpoint revision and uses the vendored whisper.cpp converter plus `whisper-quantize q5_1`; Python/PyTorch are used only for this one-time conversion, never at runtime. VieNeu-TTS v3 Turbo runs natively in C++ through `third_party/vieneu.cpp`, offloading backbone operations to AMD Radeon 680M via Vulkan, with in-memory PCM playback to `QAudioSink` and zero temporary WAV files. Missing voice components degrade safely: telemetry and text responses keep working.
 
-Built-in alerts are read from `assets/spotter/manifest.json` and play a non-repeating random WAV without calling Gwen at race time. To regenerate the cache after changing a fixed phrase, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/generate_spotter_cache.ps1 -Variants 15`, then rebuild. Dynamic LLM answers still use Gwen-TTS normally.
+Built-in alerts are read from `assets/spotter/manifest.json` and play a non-repeating random WAV for zero-latency spotter callouts. Dynamic LLM answers synthesize through native VieNeu-TTS.
 
 ## Build with MSVC and Ninja
 
@@ -65,6 +69,10 @@ cmake -S . -B build -G Ninja `
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
+
+When `VULKAN_SDK` is set, CMake enables whisper.cpp's Vulkan backend and the app selects Vulkan device 0 by default (the validated machine exposes the Radeon 680M there). If no SDK is available, the same source builds with the measured 8-thread CPU fallback.
+
+To reproduce the local STT measurements, configure with `-DRACEENGINEER_BUILD_STT_BENCHMARK=ON`, then run the harness with `--threads 4|6|8`, `--no-gpu`, `--no-flash`, or `--no-warmup` as needed. It reuses one loaded context and prints model load, warm-up, encoder, decoder and backend-overhead timings for each WAV input.
 
 Deploy Qt dependencies for a standalone build directory:
 
@@ -128,9 +136,9 @@ RaceHistory / EventEngine / SpotterEngine
         ↓
 ToolRegistry → LLMManager → OpenAI-compatible API
         ↓
-MessageDispatcher → GwenTtsBackend → persistent CrispASR/Gwen-TTS server
+MessageDispatcher → VieNeuTtsBackend (native C++ / Vulkan) / PiperTtsBackend
 
-Microphone → AudioCapture → held push-to-talk → PhoWhisper-medium / whisper.cpp → LLMManager
+Microphone → AudioCapture → held push-to-talk → PhoWhisper-small Q5_1 / whisper.cpp → LLMManager
 ```
 
 Main source areas:
@@ -142,7 +150,7 @@ src/events/      transition/cooldown event engine
 src/audio/       capture, voice controller and priority dispatcher
 src/stt/         whisper.cpp recognizer
 src/llm/         providers, conversation manager and telemetry tools
-src/tts/         backend abstraction and persistent Gwen-TTS implementation
+src/tts/         backend abstraction, native VieNeu-TTS and Piper implementations
 src/spotter/     deterministic spotter boundary
 src/config/      JSON settings and Windows credential storage
 src/ui/          Qt Quick interface
