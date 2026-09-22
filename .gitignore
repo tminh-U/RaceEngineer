@@ -23,3 +23,5 @@ voices/
 runtime/
 __pycache__/
 *.pyc
+/AGENTS.md
+/REQUIREMENTS.md
