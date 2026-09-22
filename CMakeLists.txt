@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(RaceEngineer VERSION 0.1.0 LANGUAGES CXX)
+project(RaceEngineer VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +34,24 @@ set_target_properties(vieneu-tts PROPERTIES
 )
 
 qt_standard_project_setup(REQUIRES 6.5)
+
+set(RACEENGINEER_ICON_RESOURCES
+    assets/final_icon_16.png
+    assets/final_icon_24.png
+    assets/final_icon_32.png
+    assets/final_icon_48.png
+    assets/final_icon_64.png
+    assets/final_icon_128.png
+    assets/final_icon_180.png
+    assets/final_icon_192.png
+    assets/final_icon_256.png
+    assets/final_icon_512.png
+    assets/final_icon.ico
+)
+set(RACEENGINEER_ICON_FILES)
+foreach(icon_resource IN LISTS RACEENGINEER_ICON_RESOURCES)
+    list(APPEND RACEENGINEER_ICON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${icon_resource}")
+endforeach()
 
 qt_add_executable(RaceEngineer
     src/main.cpp
@@ -88,8 +106,6 @@ qt_add_executable(RaceEngineer
     src/llm/tools/ToolRegistry.cpp
     src/llm/tools/ToolRegistry.h
     src/tts/ITtsBackend.h
-    src/tts/PiperTtsBackend.cpp
-    src/tts/PiperTtsBackend.h
     src/tts/VieNeuTtsBackend.cpp
     src/tts/VieNeuTtsBackend.h
     src/tts/RacingTextNormalizer.cpp
@@ -100,13 +116,16 @@ qt_add_executable(RaceEngineer
     src/input/DInputButtonMonitor.h
 )
 
+if(WIN32)
+    set_target_properties(RaceEngineer PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
 qt_add_qml_module(RaceEngineer
     URI RaceEngineer
     VERSION 1.0
     QML_FILES qml/Main.qml
     RESOURCES
-        assets/final_icon_64.png
-        assets/final_icon.ico
+        ${RACEENGINEER_ICON_RESOURCES}
 )
 
 if(WIN32)
@@ -142,11 +161,8 @@ add_custom_command(TARGET RaceEngineer POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/sound.mp3"
         "$<TARGET_FILE_DIR:RaceEngineer>/sound.mp3"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/final_icon.ico"
-        "$<TARGET_FILE_DIR:RaceEngineer>/final_icon.ico"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/final_icon_64.png"
-        "$<TARGET_FILE_DIR:RaceEngineer>/final_icon_64.png"
+        ${RACEENGINEER_ICON_FILES}
+        "$<TARGET_FILE_DIR:RaceEngineer>"
 )
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-small-q5_1.bin")
     add_custom_command(TARGET RaceEngineer POST_BUILD
@@ -183,17 +199,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter/manifest.json")
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter"
             "$<TARGET_FILE_DIR:RaceEngineer>/audio/spotter"
-    )
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx")
-    add_custom_command(TARGET RaceEngineer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/piper"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/piper/vi_VN-vais1000-medium.onnx"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx.json"
-            "$<TARGET_FILE_DIR:RaceEngineer>/models/piper/vi_VN-vais1000-medium.onnx.json"
     )
 endif()
 
@@ -270,11 +275,7 @@ install(TARGETS RaceEngineer
     RUNTIME DESTINATION bin
 )
 install(FILES sound.mp3 DESTINATION bin)
-install(FILES
-    assets/final_icon.ico
-    assets/final_icon_64.png
-    DESTINATION bin
-)
+install(FILES ${RACEENGINEER_ICON_FILES} DESTINATION bin)
 install(DIRECTORY third_party/vieneu-bin/bin/ DESTINATION bin)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3")
     install(DIRECTORY models/vieneu-v3/ DESTINATION bin/models/vieneu-v3)
@@ -285,9 +286,20 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml-phowhisper-small-q5_1.bin")
     install(FILES models/ggml-phowhisper-small-q5_1.bin DESTINATION bin/models)
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/piper/vi_VN-vais1000-medium.onnx")
-    install(DIRECTORY models/piper/ DESTINATION bin/models/piper)
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/piper/venv/Scripts/python.exe")
-    install(DIRECTORY runtime/piper/venv/ DESTINATION bin/tools/piper)
+if(WIN32)
+ find_program(RACEENGINEER_WINDEPLOYQT_EXECUTABLE windeployqt
+  HINTS
+   "${CMAKE_PREFIX_PATH}/bin"
+   "${Qt6Core_DIR}/../../../bin"
+ )
+ if(RACEENGINEER_WINDEPLOYQT_EXECUTABLE)
+  add_custom_command(TARGET RaceEngineer POST_BUILD
+   COMMAND "${RACEENGINEER_WINDEPLOYQT_EXECUTABLE}"
+   --qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml"
+   --no-translations
+   --compiler-runtime
+   "$<TARGET_FILE:RaceEngineer>"
+   VERBATIM
+  )
+ endif()
 endif()

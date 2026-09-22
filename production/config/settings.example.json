@@ -1,0 +1,34 @@
+{
+  "settings_version": 9,
+  "driver_name": "Driver",
+  "response_style": "Tiêu chuẩn",
+  "llm": {
+    "provider": "OpenAI Compatible",
+    "base_url": "",
+    "model": "race-engineer",
+    "streaming": true,
+    "timeout_ms": 30000,
+    "maximum_tokens": 64,
+    "temperature": 0.1,
+    "reasoning": false
+  },
+  "push_to_talk": {
+    "keyboard_enabled": true,
+    "directinput_enabled": false,
+    "device_guid": "",
+    "device_name": "",
+    "button_index": -1
+  },
+  "tts": {
+    "backend": "VieNeu-TTS",
+    "voice": "Minh Đức",
+    "output_device": "",
+    "volume": 0.85,
+    "audio_ducking": true,
+    "duck_factor": 0.25
+  },
+  "audio_input": {
+    "device_id": "",
+    "device_name": "Default (System)"
+  }
+}

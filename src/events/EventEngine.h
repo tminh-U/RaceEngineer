@@ -29,9 +29,7 @@ enum class EventType {
     CarLeft,
     CarRight,
     ThreeWide,
-    ClearLeft,
-    ClearRight,
-    ClearAll
+    DamageDetected
 };
 
 enum class EventPriority { Conversation, Engineer, Important, Spotter, Critical };
@@ -65,6 +63,8 @@ private:
     std::optional<bool> pitLimiter_;
     std::optional<bool> connected_;
     std::optional<double> bestLap_;
+    std::optional<std::array<double, 5>> previousDamage_;
+    std::optional<WheelValues> previousSuspensionDamage_;
     std::unordered_map<EventType, std::chrono::milliseconds> cooldowns_;
     std::unordered_map<EventType, std::chrono::steady_clock::time_point> lastEmitted_;
 };

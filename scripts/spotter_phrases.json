@@ -66,17 +66,5 @@
   {
     "id": "three_wide",
     "text": "Kẹp ba, giữ làn."
-  },
-  {
-    "id": "clear_left",
-    "text": "Bên trái thoáng."
-  },
-  {
-    "id": "clear_right",
-    "text": "Bên phải thoáng."
-  },
-  {
-    "id": "clear_all",
-    "text": "Đã thoáng cả hai bên."
   }
 ]

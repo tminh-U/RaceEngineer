@@ -44,11 +44,7 @@ void SettingsManager::setPushToTalk(const PushToTalkSettings& settings)
 void SettingsManager::setTts(const TtsSettings& settings)
 {
     tts_ = settings;
-    if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) == 0) {
-        tts_.backend = QStringLiteral("VieNeu-TTS");
-    } else {
-        tts_.backend = QStringLiteral("Piper");
-    }
+    tts_.backend = QStringLiteral("VieNeu-TTS");
     tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
     save();
 }
@@ -141,12 +137,9 @@ void SettingsManager::load()
     }
     tts_.outputDevice = tts.value(QStringLiteral("output_device")).toString();
     tts_.volume = static_cast<float>(tts.value(QStringLiteral("volume")).toDouble(tts_.volume));
-    if (tts_.backend.compare(QStringLiteral("Gwen-TTS"), Qt::CaseInsensitive) == 0) {
+    if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) != 0) {
         tts_.backend = QStringLiteral("VieNeu-TTS");
-        tts_.voice = QStringLiteral("Minh Đức");
         shouldSave = true;
-    } else if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) != 0) {
-        tts_.backend = QStringLiteral("Piper");
     }
     tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
     tts_.audioDucking = tts.value(QStringLiteral("audio_ducking")).toBool(tts_.audioDucking);

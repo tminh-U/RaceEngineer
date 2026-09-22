@@ -9,6 +9,7 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QTextStream>
 #include <iostream>
 
 #ifdef _WIN32
@@ -30,9 +31,9 @@ int main(int argc, char* argv[])
     SetConsoleCtrlHandler(consoleHandler, TRUE);
 #endif
     QQuickStyle::setStyle(QStringLiteral("Basic"));
-    QGuiApplication::setApplicationName(QStringLiteral("Race Engineer"));
+    QGuiApplication::setApplicationName(QStringLiteral("RaceEngineer"));
     QGuiApplication::setOrganizationName(QStringLiteral("RaceEngineer"));
-    QGuiApplication::setApplicationVersion(QStringLiteral("0.9.0"));
+    QGuiApplication::setApplicationVersion(QStringLiteral("1.0.1"));
     qSetMessagePattern(QStringLiteral("[%{time hh:mm:ss.zzz}] [%{category}] %{message}"));
     QGuiApplication qtApplication(argc, argv);
     // Keep the STT Vulkan backend on the integrated adapter by default.  The
@@ -62,7 +63,14 @@ int main(int argc, char* argv[])
     }
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Race Engineer - native AC/ACC companion"));
+    parser.setApplicationDescription(QStringLiteral("RaceEngineer - native AC/ACC companion"));
+    const QStringList commandLineArguments = QCoreApplication::arguments();
+    if (commandLineArguments.contains(QStringLiteral("--version"))
+        || commandLineArguments.contains(QStringLiteral("-v"))) {
+        QTextStream(stdout) << QGuiApplication::applicationName() << ' '
+                            << QGuiApplication::applicationVersion() << '\n';
+        return 0;
+    }
     parser.addHelpOption();
     parser.addVersionOption();
     const QCommandLineOption mockOption(QStringLiteral("mock"), QStringLiteral("Bật mock telemetry để kiểm thử."));

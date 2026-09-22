@@ -43,9 +43,14 @@ WhisperRecognizer::~WhisperRecognizer()
 
 void WhisperRecognizer::warmUp()
 {
-    if (ensureModelLoaded() && !warmupComplete_) {
-        warmUpInference();
+    QString error;
+    if (!ensureModelLoaded(&error)
+        || (!warmupComplete_ && !warmUpInference(&error))) {
+        qCWarning(logStt).noquote() << "STT startup warm-up failed:" << error;
+        emit warmUpFinished(false, error);
+        return;
     }
+    emit warmUpFinished(true, {});
 }
 
 void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& language)
@@ -54,7 +59,9 @@ void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& lang
     totalTimer.start();
     cancelRequested_ = false;
     emit recognitionStarted();
-    if (!ensureModelLoaded()) {
+    QString loadError;
+    if (!ensureModelLoaded(&loadError)) {
+        emit recognitionError(loadError);
         emit recognitionFinished();
         return;
     }
@@ -194,13 +201,13 @@ void WhisperRecognizer::cancel() noexcept
     cancelRequested_ = true;
 }
 
-bool WhisperRecognizer::ensureModelLoaded()
+bool WhisperRecognizer::ensureModelLoaded(QString* const error)
 {
     if (context_ != nullptr) {
         return true;
     }
     if (!QFileInfo::exists(modelPath_)) {
-        emit recognitionError(QStringLiteral("Không tìm thấy mô hình Whisper: %1").arg(modelPath_));
+        if (error) *error = QStringLiteral("Không tìm thấy mô hình Whisper: %1").arg(modelPath_);
         return false;
     }
     auto parameters = whisper_context_default_params();
@@ -212,7 +219,7 @@ bool WhisperRecognizer::ensureModelLoaded()
     loadTimer.start();
     context_ = whisper_init_from_file_with_params(path.constData(), parameters);
     if (context_ == nullptr) {
-        emit recognitionError(QStringLiteral("Không thể nạp mô hình Whisper."));
+        if (error) *error = QStringLiteral("Không thể nạp mô hình Whisper.");
         return false;
     }
     qCInfo(logStt) << "PhoWhisper-small Q5_1 model loaded:" << modelPath_
@@ -226,7 +233,7 @@ bool WhisperRecognizer::ensureModelLoaded()
     return true;
 }
 
-void WhisperRecognizer::warmUpInference()
+bool WhisperRecognizer::warmUpInference(QString* const error)
 {
     std::array<float, 16'000> silence{};
     auto parameters = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
@@ -254,6 +261,10 @@ void WhisperRecognizer::warmUpInference()
     warmupComplete_ = result == 0;
     qCInfo(logStt) << "STT warmup result=" << result
                    << "warmup_ms=" << timer.nsecsElapsed() / 1'000'000.0;
+    if (!warmupComplete_ && error) {
+        *error = QStringLiteral("PhoWhisper inference warm-up failed (code %1).").arg(result);
+    }
+    return warmupComplete_;
 }
 
 QString WhisperRecognizer::normalizeRacingTerms(QString text)

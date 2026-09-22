@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumWidth: 880
     minimumHeight: 576
     visible: true
-    title: "Race Engineer"
+    title: "RaceEngineer"
     color: "#131315"
     flags: Qt.Window | Qt.FramelessWindowHint
 
@@ -32,6 +32,14 @@ ApplicationWindow {
     readonly property color amber: "#ffb868"
     property int currentPage: 0
 
+    function formatTelemetryValue(value, suffix) {
+        if (value === undefined || value === null || value === "") {
+            return "—"
+        }
+        var number = Number(value)
+        return isNaN(number) ? "—" : number.toFixed(3) + suffix
+    }
+
     font.family: "Segoe UI"
     font.pixelSize: 14 * ui
 
@@ -39,7 +47,7 @@ ApplicationWindow {
         color: root.textMain
         font.family: "Segoe UI"
         font.pixelSize: 14 * root.ui
-        renderType: Text.NativeRendering
+        renderType: Text.QtRendering
     }
     component MutedText: BodyText { color: root.textMuted; font.pixelSize: 13 * root.ui }
     component HeadingText: BodyText { font.family: "Segoe UI"; font.pixelSize: 20 * root.ui; font.weight: Font.DemiBold }
@@ -219,13 +227,13 @@ ApplicationWindow {
                 Image {
                     width: 40 * root.ui
                     height: width
-                    source: "../assets/final_icon_64.png"
+                    source: "../assets/final_icon_128.png"
                     fillMode: Image.PreserveAspectFit
                     mipmap: true
                     smooth: true
                 }
                 Column { anchors.verticalCenter: parent.verticalCenter; spacing: 2
-                    BodyText { text: "Kỹ sư Đua xe AI"; font.family: "Segoe UI"; font.weight: Font.DemiBold; font.pixelSize: 15*root.ui }
+                    BodyText { text: "RaceEngineer"; font.family: "Segoe UI"; font.weight: Font.DemiBold; font.pixelSize: 15*root.ui }
                     MutedText { text: backend.simulatorName; width: root.sideWidth-80*root.ui; elide: Text.ElideRight; font.pixelSize: 11*root.ui }
                 }
             }
@@ -250,7 +258,7 @@ ApplicationWindow {
         }
         Column { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 20*root.ui; spacing: 8*root.ui
             StatusPill { anchors.horizontalCenter: parent.horizontalCenter; text: backend.connected ? "Đã kết nối ACC" : "Đang chờ AC / ACC"; statusColor: backend.connected ? root.green : root.amber }
-            MutedText { anchors.horizontalCenter: parent.horizontalCenter; text: "v0.1.0  •  Sẵn sàng"; font.pixelSize: 11*root.ui }
+            MutedText { anchors.horizontalCenter: parent.horizontalCenter; text: "v1.0.1  •  Sẵn sàng"; font.pixelSize: 11*root.ui }
         }
     }
 
@@ -405,7 +413,7 @@ ApplicationWindow {
                         }
                     }
                     Card { Layout.fillWidth: true; Layout.preferredHeight: 145*root.ui; title: "TRẠNG THÁI LIÊN KẾT HỆ THỐNG"
-                        Row { spacing: 8*root.ui; StatusPill { text: backend.connected?"ACC UDP 9000":"SIMULATOR OFF"; statusColor: backend.connected?root.green:root.amber } StatusPill { text: "DIRECTINPUT"; statusColor: root.green } StatusPill { text: backend.apiState; statusColor: backend.apiConfigured?root.green:root.amber } }
+                Row { spacing: 8*root.ui; StatusPill { text: backend.connected?"ACC UDP 9000":"SIMULATOR OFF"; statusColor: backend.connected?root.green:root.amber } StatusPill { text: "DIRECTINPUT"; statusColor: root.green } StatusPill { text: "AI API: " + backend.apiState; statusColor: backend.apiConfigured?root.green:root.amber } }
                     }
                 }
             }
@@ -414,28 +422,15 @@ ApplicationWindow {
 
     Component { id: engineerPage
         PageScroll { Column { width: parent.width; padding: 28*root.ui; spacing: 14*root.ui
-            HeadingText { text: "Thiết lập Kỹ sư & Cảnh giới" }
+            HeadingText { text: "Thiết lập Kỹ sư & Spotter" }
             MutedText { text: "Tùy chỉnh cá tính giọng nói, đề xuất chiến thuật chủ động và cảnh báo khoảng cách xe." }
             RowLayout { width: parent.width-56*root.ui; spacing: 12*root.ui
-                Repeater { model: [{t: backend.ttsBackend === "VieNeu-TTS" ? "Động cơ VieNeu v3 Turbo" : "Động cơ Piper", s:backend.ttsStatus, c:root.green},{t:"Radar không gian",s:"Luồng ACC gốc",c:root.green},{t:"PhoWhisper ASR",s:"Q5 • Cục bộ",c:root.amber}]
+                Repeater { model: [{t:"Động cơ VieNeu v3 Turbo",s:backend.ttsStatus,c:root.green},{t:"Radar không gian",s:"Luồng ACC gốc",c:root.green},{t:"PhoWhisper ASR",s:"Q5 • Cục bộ",c:root.amber}]
                     delegate: Card { required property var modelData; Layout.fillWidth: true; height: 78*root.ui; title: modelData.t; BodyText { text: modelData.s; color: modelData.c; font.pixelSize: 12*root.ui } }
                 }
             }
             MutedText { text: "KỸ SƯ ĐUA XE AI" }
             Card { width: parent.width-56*root.ui; title: ""
-                Item { width:parent.width; height:54*root.ui
-                    Column { anchors.left:parent.left; anchors.verticalCenter:parent.verticalCenter; spacing:2*root.ui
-                        BodyText{text:"Động cơ Giọng nói (TTS Backend)"; font.family:"Segoe UI"; font.weight:Font.DemiBold}
-                        MutedText{text:"Lựa chọn hệ thống phát giọng nói của kỹ sư"}
-                    }
-                    AppComboBox {
-                        id:engTtsEngineCombo; width:340*root.ui; anchors.right:parent.right; anchors.verticalCenter:parent.verticalCenter
-                        model: ["Piper (Mặc định · Tối ưu độ trễ)", "VieNeu-TTS v3 Turbo (Tiếng Việt · Native)"]
-                        currentIndex: backend.ttsBackend === "VieNeu-TTS" ? 1 : 0
-                        onActivated: backend.setTtsBackend(index === 1 ? "VieNeu-TTS" : "Piper")
-                    }
-                    Rectangle { anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; height:1; color:Qt.rgba(.25,.28,.33,.35) }
-                }
                 Item {
                     width: parent.width
                     height: 54 * root.ui
@@ -564,9 +559,9 @@ ApplicationWindow {
                     delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:modelData.v||""; showSwitch:modelData.x===true }
                 }
             }
-            MutedText { text: "CẢNH GIỚI ÂM THANH (SPOTTER)" }
+            MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
-                Repeater { model: [{t:"Kích hoạt Cảnh giới",s:"Cảnh báo âm thanh cho các xe kế bên"},{t:"Âm lượng Cảnh giới",s:"Âm lượng phát cục bộ"},{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Thông báo cơ học khẩn cấp",s:"Ưu tiên trước phản hồi AI"}]
+                Repeater { model: [{t:"Kích hoạt Spotter",s:"Cảnh báo âm thanh cho các xe kế bên"},{t:"Âm lượng Spotter",s:"Âm lượng phát cục bộ"},{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Thông báo cơ học khẩn cấp",s:"Ưu tiên trước phản hồi AI"}]
                     delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; showSwitch:true }
                 }
             }
@@ -575,7 +570,7 @@ ApplicationWindow {
                 SettingRow { width: parent.width; title:"Phím tắt Nói (PTT)"; subtitle:"Nhấn giữ để trò chuyện"; value:backend.directInputBinding }
                 SettingRow { width: parent.width; title:"PTT bàn phím"; subtitle:"Phím cách (Spacebar)"; showSwitch:true; checked:backend.keyboardPttEnabled; onToggled: backend.setPushToTalkOptions(checked,backend.directInputPttEnabled) }
                 SettingRow { width: parent.width; title:"PTT DirectInput"; subtitle:"Vô lăng hoặc tay cầm"; showSwitch:true; checked:backend.directInputPttEnabled; onToggled: backend.setPushToTalkOptions(backend.keyboardPttEnabled,checked) }
-                AppButton { text:"Gán lại nút"; onClicked:backend.beginDirectInputMapping() }
+                AppButton { width: 132 * root.ui; text:"Gán lại nút"; onClicked:backend.beginDirectInputMapping() }
             }
             Item { width:1; height:20*root.ui }
         } }
@@ -603,7 +598,7 @@ ApplicationWindow {
                             ProgressLine { Layout.fillWidth: true; value: (backend.telemetry.rpm || 0)/8500; fillColor: root.amber }
                         }
                     }
-                    SettingRow { width:parent.width; title:"Vận tốc di chuyển"; value:(backend.telemetry.speedKmh||"—")+" km/h" }
+                        SettingRow { width:parent.width; title:"Vận tốc di chuyển"; value:root.formatTelemetryValue(backend.telemetry.speedKmh, " km/h") }
                     ProgressLine { width:parent.width; value:(backend.telemetry.speedKmh||0)/330 }
                     SettingRow { width:parent.width; title:"Bướm ga (Throttle)"; value:Math.round((backend.telemetry.throttle||0)*100)+"%" }
                     ProgressLine { width:parent.width; value:backend.telemetry.throttle||0; fillColor:root.green }
@@ -614,8 +609,8 @@ ApplicationWindow {
                     Card { Layout.fillWidth:true; Layout.preferredHeight:400*root.ui; title:"Diễn biến chặng đua"
                         RowLayout { width:parent.width; MonoText{text:"P"+(backend.telemetry.position||"—");color:root.primary;font.pixelSize:34*root.ui} BodyText{text:"+ Vị trí";color:root.green} Item{Layout.fillWidth:true} BodyText{text:"Vòng "+(backend.telemetry.currentLap||"—")} }
                         ProgressLine { width:parent.width; value:backend.telemetry.lapProgress||0 }
-                        SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE TRƯỚC"; value:(backend.telemetry.gapAheadSeconds||"—")+" s" }
-                        SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE SAU"; value:(backend.telemetry.gapBehindSeconds||"—")+" s" }
+                    SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE TRƯỚC"; subtitle:backend.telemetry.opponentAhead ? "Xe: " + backend.telemetry.opponentAhead : "Chưa có xe trước"; value:root.formatTelemetryValue(backend.telemetry.gapAheadSeconds, " s") }
+                    SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE SAU"; subtitle:backend.telemetry.opponentBehind ? "Xe: " + backend.telemetry.opponentBehind : "Chưa có xe sau"; value:root.formatTelemetryValue(backend.telemetry.gapBehindSeconds, " s") }
                         MutedText { text:backend.latestEvent||"Khô ráo • Telemetry thời gian thực" }
                     }
                     Card { Layout.fillWidth:true; Layout.preferredHeight:90*root.ui; title:"Thời gian vòng mục tiêu"; MonoText { text:"--:--.---"; anchors.right:parent.right } }
@@ -655,7 +650,7 @@ ApplicationWindow {
                         MutedText { text:"TRẠNG THÁI MÁY CHỦ & KẾT NỐI" }
                         Card { Layout.fillWidth:true; Layout.preferredHeight:215*root.ui; title:"OpenAI Compatible API"
                             StatusPill {
-                                text: backend.apiState
+                    text: "AI API: " + backend.apiState
                                 statusColor: backend.apiState === "Connected" ? root.green :
                                              backend.apiState === "Requesting" ? root.primary :
                                              (!backend.apiConfigured || backend.apiState === "Unavailable") ? root.amber : "#ff6b6b"
@@ -730,20 +725,10 @@ ApplicationWindow {
                 SettingRow{width:parent.width;title:"Thiết bị phát hiện";subtitle:backend.directInputStatus;value:backend.directInputBinding}
                 SettingRow{width:parent.width;title:"PTT bàn phím";subtitle:"Phím cách (Spacebar)";showSwitch:true;checked:backend.keyboardPttEnabled;onToggled:backend.setPushToTalkOptions(checked,backend.directInputPttEnabled)}
                 SettingRow{width:parent.width;title:"Nút đàm thoại PTT";subtitle:"Nhấn giữ trên vô lăng";showSwitch:true;checked:backend.directInputPttEnabled;onToggled:backend.setPushToTalkOptions(backend.keyboardPttEnabled,checked)}
-                AppButton{text:"Gán lại";onClicked:backend.beginDirectInputMapping()}
+                AppButton{width:132*root.ui;text:"Gán lại";onClicked:backend.beginDirectInputMapping()}
             }
             MutedText{text:"BỘ MÁY GIỌNG NÓI & ĐỊNH TUYẾN ÂM THANH"}
             Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                Item { width:parent.width; height:54*root.ui
-                    BodyText{text:"Động cơ Giọng nói (TTS Backend)";anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;font.family:"Segoe UI";font.weight:Font.DemiBold}
-                    AppComboBox {
-                        id:ttsEngineCombo; width:390*root.ui; anchors.right:parent.right; anchors.verticalCenter:parent.verticalCenter
-                        model: ["Piper (Mặc định · Tối ưu độ trễ)", "VieNeu-TTS v3 Turbo (Tiếng Việt · Native)"]
-                        currentIndex: backend.ttsBackend === "VieNeu-TTS" ? 1 : 0
-                        onActivated: backend.setTtsBackend(index === 1 ? "VieNeu-TTS" : "Piper")
-                    }
-                    Rectangle { anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; height:1; color:Qt.rgba(.25,.28,.33,.35) }
-                }
                 Item {
                     width: parent.width
                     height: 54 * root.ui
@@ -786,17 +771,70 @@ ApplicationWindow {
                 }
                 SettingRow{width:parent.width;title:"Tự động giảm âm lượng trò chơi";subtitle:"Giảm âm game khi kỹ sư AI phát giọng nói (-12dB)";showSwitch:true;checked:backend.audioDuckingEnabled;onToggled:checked => backend.setAudioDuckingEnabled(checked)}
             }
-            MutedText{text:"BẢO TRÌ & NHẬT KÝ HOẠT ĐỘ"}
-            Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                SettingRow{width:parent.width;title:"Trạng thái hệ thống";value:backend.connectionText}
-                SettingRow{width:parent.width;title:"Máy chủ AI";subtitle:backend.apiDetail;value:backend.apiState}
-                SettingRow{visible:backend.mockAvailable;width:parent.width;title:"Mock telemetry";showSwitch:true;checked:backend.mockEnabled;onToggled:backend.setUseMockTelemetry(checked)}
-            }
-            Item{width:1;height:28*root.ui}
         } }
     }
 
     MouseArea { width:7; anchors.left:parent.left; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.LeftEdge) }
     MouseArea { width:7; anchors.right:parent.right; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.RightEdge) }
     MouseArea { height:7; anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; cursorShape:Qt.SizeVerCursor; onPressed:root.startSystemResize(Qt.BottomEdge) }
+
+    Item {
+        id: startupOverlay
+        z: 1000
+        anchors.fill: parent
+        visible: !backend.startupReady || opacity > 0
+        opacity: backend.startupReady ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+
+        Rectangle { anchors.fill: parent; color: root.bg }
+        MouseArea { anchors.fill: parent; enabled: startupOverlay.visible }
+
+        Image {
+            id: startupLogo
+            anchors.centerIn: parent
+            width: 88 * root.ui
+            height: width
+            source: "../assets/final_icon_128.png"
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+        }
+        Rectangle {
+            id: startupBar
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: startupLogo.bottom
+            anchors.topMargin: 24 * root.ui
+            width: 190 * root.ui
+            height: 3 * root.ui
+            color: root.raised
+            Rectangle {
+                width: startupBar.width * backend.startupProgress
+                height: parent.height
+                color: root.primary
+                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            }
+        }
+        BodyText {
+            id: startupErrorText
+            visible: backend.startupError.length > 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: startupBar.bottom
+            anchors.topMargin: 18 * root.ui
+            width: Math.min(480 * root.ui, parent.width - 48 * root.ui)
+            text: backend.startupError
+            color: "#ffb4ab"
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+        }
+        AppButton {
+            visible: startupErrorText.visible
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: startupErrorText.bottom
+            anchors.topMargin: 14 * root.ui
+            width: 120 * root.ui
+            text: "Thử lại"
+            highlighted: true
+            onClicked: backend.retryStartup()
+        }
+    }
 }

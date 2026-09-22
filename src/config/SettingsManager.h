@@ -6,7 +6,7 @@ namespace raceengineer {
 
 struct LlmSettings final {
     QString provider{QStringLiteral("OpenAI Compatible")};
-    QString baseUrl{QStringLiteral("http://100.114.125.88:8080/v1")};
+    QString baseUrl;
     QString model{QStringLiteral("race-engineer")};
     bool streaming{true};
     int timeoutMilliseconds{30000};
@@ -24,8 +24,8 @@ struct PushToTalkSettings final {
 };
 
 struct TtsSettings final {
-    // Piper is deliberately the default; local neural backends are optional.
-    QString backend{QStringLiteral("Piper")};
+    // VieNeu-TTS is the only supported local backend.
+    QString backend{QStringLiteral("VieNeu-TTS")};
     QString voice{QStringLiteral("Minh Đức")};
     QString outputDevice;
     float volume{0.85F};

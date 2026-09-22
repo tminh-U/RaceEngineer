@@ -189,6 +189,7 @@ bool ACTelemetryProvider::update()
     state_.tractionControl = physics.tc;
     state_.abs = physics.abs;
 
+    state_.position.reset();
     SPageFileGraphic graphics{};
     if (copyStable(graphicsPage_, graphics)) {
         state_.worldPosition = std::array<double, 3>{
@@ -220,18 +221,23 @@ bool ACTelemetryProvider::update()
     extensionClient_.update();
     if (extensionClient_.hasData()) {
         state_.opponents = extensionClient_.opponents();
-        if (extensionClient_.gapAhead()) state_.gapAheadSeconds = extensionClient_.gapAhead();
-        if (extensionClient_.gapBehind()) state_.gapBehindSeconds = extensionClient_.gapBehind();
-        if (extensionClient_.opponentAhead()) state_.opponentAhead = extensionClient_.opponentAhead();
-        if (extensionClient_.opponentBehind()) state_.opponentBehind = extensionClient_.opponentBehind();
-        if (extensionClient_.playerSectors()) state_.sectorTimesSeconds = extensionClient_.playerSectors();
-        if (extensionClient_.brakeTemperatures()) state_.brakeTemperaturesCelsius = extensionClient_.brakeTemperatures();
+        if (extensionClient_.playerPosition()) {
+            state_.position = extensionClient_.playerPosition();
+        }
+        state_.gapAheadSeconds = extensionClient_.gapAhead();
+        state_.gapBehindSeconds = extensionClient_.gapBehind();
+        state_.opponentAhead = extensionClient_.opponentAhead();
+        state_.opponentBehind = extensionClient_.opponentBehind();
+        state_.sectorTimesSeconds = extensionClient_.playerSectors();
+        state_.brakeTemperaturesCelsius = extensionClient_.brakeTemperatures();
     } else {
         state_.opponents.clear();
         state_.gapAheadSeconds.reset();
         state_.gapBehindSeconds.reset();
         state_.opponentAhead.reset();
         state_.opponentBehind.reset();
+        state_.sectorTimesSeconds.reset();
+        state_.brakeTemperaturesCelsius.reset();
     }
 
     return true;

@@ -39,13 +39,15 @@ private:
 
     bool leftEngaged_{false};
     bool rightEngaged_{false};
-    int leftConsecutive_{0};
-    int rightConsecutive_{0};
-    int leftClearConsecutive_{0};
-    int rightClearConsecutive_{0};
+    std::chrono::steady_clock::time_point leftActiveSince_{};
+    std::chrono::steady_clock::time_point rightActiveSince_{};
+    std::chrono::steady_clock::time_point leftClearSince_{};
+    std::chrono::steady_clock::time_point rightClearSince_{};
 
     std::chrono::steady_clock::time_point lastCallout_{};
-    EventType lastType_{EventType::ClearAll};
+    std::chrono::steady_clock::time_point lastLeftCallout_{};
+    std::chrono::steady_clock::time_point lastRightCallout_{};
+    std::chrono::steady_clock::time_point lastThreeWideCallout_{};
 };
 
 } // namespace raceengineer

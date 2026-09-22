@@ -32,7 +32,7 @@ public:
     void setVoice(const QString& voice);
 
 public slots:
-    void warmUp();
+    void warmUp() override;
     void speak(const QString& text) override;
     void stop() override;
     void shutdown();
@@ -75,6 +75,7 @@ private:
     quint64 activeRequestId_{0};
     bool ready_{false};
     bool initializing_{false};
+    QString deferredText_;
     bool synthesizing_{false};
     bool playbackActive_{false};
     bool shuttingDown_{false};

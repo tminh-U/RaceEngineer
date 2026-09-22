@@ -62,6 +62,9 @@ public slots:
         const QByteArray codecDirLocal = codecDir.toLocal8Bit();
         init_params.codec_dir = codecDirLocal.constData();
         init_params.n_threads = 4;
+        if (!qEnvironmentVariableIsSet("OMP_NUM_THREADS")) {
+            qputenv("OMP_NUM_THREADS", QByteArrayLiteral("6"));
+        }
 
         qCInfo(logTts) << "Initializing native VieNeu-TTS from" << modelDir_;
         ctx_ = vieneu_init_v2(&init_params);
@@ -213,7 +216,18 @@ bool VieNeuTtsBackend::isAvailable() const
 
 void VieNeuTtsBackend::warmUp()
 {
-    if (!isAvailable() || ready_ || initializing_) return;
+    if (ready_) {
+        emit warmUpFinished(true, {});
+        return;
+    }
+    if (initializing_) return;
+    if (!isAvailable()) {
+        const QString error = QStringLiteral("Thiếu mô hình VieNeu-TTS v3 Turbo.");
+        emit statusChanged(QStringLiteral("Lỗi khởi tạo VieNeu-TTS"));
+        emit warmUpFinished(false, error);
+        emit errorOccurred(error);
+        return;
+    }
     initializing_ = true;
     emit statusChanged(QStringLiteral("Đang chuẩn bị mô hình VieNeu-TTS..."));
     QMetaObject::invokeMethod(worker_, "initialize", Qt::QueuedConnection);
@@ -221,12 +235,14 @@ void VieNeuTtsBackend::warmUp()
 
 void VieNeuTtsBackend::onWorkerInitialized(bool success, const QString& error)
 {
-    initializing_ = false;
-    ready_ = success;
     if (success) {
-        emit statusChanged(QStringLiteral("VieNeu-TTS sẵn sàng"));
+        emit statusChanged(QStringLiteral("Đang chạy inference khởi động VieNeu-TTS..."));
+        emit requestSynthesis(0, QStringLiteral("Kiểm tra giọng nói."));
     } else {
+        initializing_ = false;
+        ready_ = false;
         emit statusChanged(QStringLiteral("Lỗi khởi tạo VieNeu-TTS"));
+        emit warmUpFinished(false, error);
         emit errorOccurred(error);
     }
 }
@@ -245,6 +261,12 @@ void VieNeuTtsBackend::speak(const QString& text)
     const QString normalized = RacingTextNormalizer::normalize(text);
     if (normalized.isEmpty()) return;
 
+    if (!ready_) {
+        deferredText_ = normalized;
+        warmUp();
+        return;
+    }
+
     if (playCachedSpotter(normalized)) return;
 
     if (!isAvailable()) {
@@ -253,11 +275,9 @@ void VieNeuTtsBackend::speak(const QString& text)
         return;
     }
 
-    if (!ready_) {
-        warmUp();
-    }
-
-    stop();
+    activeRequestId_ = 0;
+    synthesizing_ = false;
+    stopPlayback();
 
     const quint64 reqId = nextRequestId_++;
     activeRequestId_ = reqId;
@@ -321,6 +341,16 @@ void VieNeuTtsBackend::setAudioOutputDevice(const QString& description)
 void VieNeuTtsBackend::onAudioReady(quint64 requestId, const QString& text, const QByteArray& pcmData, int sampleRate, double elapsedMs)
 {
     Q_UNUSED(elapsedMs);
+    if (requestId == 0 && initializing_ && !shuttingDown_) {
+        initializing_ = false;
+        ready_ = true;
+        emit statusChanged(QStringLiteral("VieNeu-TTS sẵn sàng"));
+        emit warmUpFinished(true, {});
+        const QString deferred = deferredText_;
+        deferredText_.clear();
+        if (!deferred.isEmpty()) speak(deferred);
+        return; // Discard warm-up audio; never play it to the driver.
+    }
     if (requestId != activeRequestId_ || shuttingDown_) {
         return;
     }
@@ -330,6 +360,14 @@ void VieNeuTtsBackend::onAudioReady(quint64 requestId, const QString& text, cons
 
 void VieNeuTtsBackend::onSynthesisFailed(quint64 requestId, const QString& error)
 {
+    if (requestId == 0 && initializing_ && !shuttingDown_) {
+        initializing_ = false;
+        ready_ = false;
+        emit statusChanged(QStringLiteral("Lỗi khởi chạy inference VieNeu-TTS"));
+        emit warmUpFinished(false, error);
+        emit errorOccurred(error);
+        return;
+    }
     if (requestId != activeRequestId_ || shuttingDown_) {
         return;
     }
@@ -370,6 +408,7 @@ void VieNeuTtsBackend::startPlayback(const QString& text, const QByteArray& pcmD
             // stateChanged(StoppedState) synchronously within the same call stack,
             // which would re-enter stopPlayback() while audioSink_ is mid-teardown.
             QMetaObject::invokeMethod(this, [this] {
+                if (!playbackActive_) return;
                 stopPlayback();
                 emit speakingFinished();
             }, Qt::QueuedConnection);
@@ -465,7 +504,9 @@ bool VieNeuTtsBackend::playCachedSpotter(const QString& text)
 
     const QByteArray pcmData(data.constData() + dataOffset, dataSize);
 
-    stop();
+    activeRequestId_ = 0;
+    synthesizing_ = false;
+    stopPlayback();
     emit statusChanged(QStringLiteral("Đang phát spotter VieNeu đã lưu"));
     startPlayback(text, pcmData, sampleRate > 0 ? sampleRate : 48000);
     return true;

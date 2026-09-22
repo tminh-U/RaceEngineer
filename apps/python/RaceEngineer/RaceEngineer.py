@@ -6,6 +6,7 @@ and local UDP (127.0.0.1:9996) if socket is available.
 """
 
 import mmap
+import math
 import struct
 import time
 
@@ -26,11 +27,11 @@ except Exception:
 
 APP_NAME = "RaceEngineer"
 SHM_NAME = "race_engineer_ac_ext"
-UPDATE_INTERVAL = 0.05  # 50ms = 20 Hz update rate
+UPDATE_INTERVAL = 1.0 / 30.0  # Target 30 Hz update rate.
 UDP_IP = "127.0.0.1"
 UDP_PORT = 9996
 
-# Header: magic(4s), version(I), sequence(I), timestamp_ms(q), num_cars(i),
+# Header: magic(4s), version(I), sequence(I), timestamp_ms(q), num_records(i),
 #         gap_ahead(f), gap_behind(f), sectors(3f), brake_temps(4f),
 #         opp_ahead(64s), opp_behind(64s)
 HDR_FMT = "<4sIIqiff3f4f64s64s"
@@ -104,6 +105,61 @@ def acMain(ac_version):
     return APP_NAME
 
 
+def car_position(car_id):
+    for getter_name in (
+        "getCarRealTimeLeaderboardPosition",
+        "getCarLeaderboardPosition",
+    ):
+        getter = getattr(ac, getter_name, None)
+        if getter is None:
+            continue
+        try:
+            # AC returns a zero-based leaderboard index; RaceEngineer exposes
+            # the human-facing one-based position.
+            position = int(getter(car_id))
+            if position >= 0:
+                return position + 1
+        except Exception:
+            pass
+    return 0
+
+
+def car_state_float(car_id, state_name):
+    try:
+        value = float(ac.getCarState(car_id, getattr(acsys.CS, state_name)))
+        return value if math.isfinite(value) else None
+    except Exception:
+        return None
+
+
+def car_progress(car_id):
+    spline = car_state_float(car_id, "NormalizedSplinePosition")
+    laps = car_state_float(car_id, "LapCount")
+    if spline is None or laps is None or not 0.0 <= spline <= 1.0:
+        return None
+    return laps + spline
+
+
+def relative_gap_seconds(player_progress, player_speed, other_progress,
+                         other_speed, ahead):
+    if player_progress is None or other_progress is None:
+        return None
+    try:
+        track_length = float(ac.getTrackLength(0))
+    except Exception:
+        return None
+    average_speed_mps = (player_speed + other_speed) / 7.2
+    if not math.isfinite(track_length) or track_length <= 0.0:
+        return None
+    if not math.isfinite(average_speed_mps) or average_speed_mps <= 0.5:
+        return None
+    delta = (other_progress - player_progress) if ahead else (player_progress - other_progress)
+    delta %= 1.0
+    if delta <= 0.0:
+        return None
+    return delta * track_length / average_speed_mps
+
+
 def acUpdate(delta_t):
     global last_update, sequence, shm, sock, status_label
     now = time.time()
@@ -127,16 +183,23 @@ def acUpdate(delta_t):
                 ac.setText(status_label, "RaceEngineer: No cars")
             return
 
-        try:
-            player_pos = int(ac.getCarLeaderboardPosition(0))
-        except Exception:
-            player_pos = 1
+        player_pos = car_position(0)
+        player_speed = car_state_float(0, "SpeedKMH") or 0.0
+        player_progress = car_progress(0)
 
         cars_data = []
+        # Reserve car id 0 for the player in the fixed-size shared-memory
+        # stream; the native client consumes its live position and excludes it
+        # from the opponent list.
+        if player_pos > 0:
+            cars_data.append((0, player_pos, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, b"", b""))
         opp_ahead = ""
         opp_behind = ""
         gap_ahead = -1.0
         gap_behind = -1.0
+        ahead_car = None
+        behind_car = None
 
         for car_id in range(1, min(car_count, MAX_CARS + 1)):
             try:
@@ -155,10 +218,7 @@ def acUpdate(delta_t):
                 if not isinstance(coords, (tuple, list)) or len(coords) < 3:
                     continue
 
-                try:
-                    pos = int(ac.getCarLeaderboardPosition(car_id))
-                except Exception:
-                    pos = car_id + 1
+                pos = car_position(car_id) or (car_id + 1)
 
                 try:
                     speed = float(ac.getCarState(car_id, acsys.CS.SpeedKMH))
@@ -191,10 +251,25 @@ def acUpdate(delta_t):
 
                 if pos == player_pos - 1:
                     opp_ahead = str(name)
+                    ahead_car = (speed, car_progress(car_id))
                 elif pos == player_pos + 1:
                     opp_behind = str(name)
+                    behind_car = (speed, car_progress(car_id))
             except Exception:
                 continue
+
+        if ahead_car:
+            gap = relative_gap_seconds(
+                player_progress, player_speed, ahead_car[1], ahead_car[0], True
+            )
+            if gap is not None:
+                gap_ahead = gap
+        if behind_car:
+            gap = relative_gap_seconds(
+                player_progress, player_speed, behind_car[1], behind_car[0], False
+            )
+            if gap is not None:
+                gap_behind = gap
 
         # Player splits
         player_splits = [0.0, 0.0, 0.0]
@@ -282,6 +357,7 @@ def acUpdate(delta_t):
                         for c in cars_data
                     ],
                     "player": {
+                        "position": player_pos,
                         "opp_ahead": opp_ahead,
                         "opp_behind": opp_behind,
                         "sectors": player_splits

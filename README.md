@@ -1,166 +1,159 @@
-# Race Engineer
+<div align="center">
 
-Native Windows x64 race engineer for Assetto Corsa and Assetto Corsa Competizione. It combines verified shared-memory telemetry, deterministic race logic, local voice processing, an OpenAI-compatible LLM server, and local native VieNeu-TTS C++ speech output.
+[![Contributors][contributors-shield]][contributors-url] [![Forks][forks-shield]][forks-url] [![Stars][stars-shield]][stars-url] [![Issues][issues-shield]][issues-url] [![MIT License][license-shield]][license-url]
 
-## What works
+</div>
 
-- AC/ACC auto-detection and read-only shared-memory telemetry
-- Normalized `RaceState`, bounded `RaceHistory`, fuel/lap calculations, event transitions and cooldowns
-- Mock telemetry in Debug builds
-- Microphone capture with 80 ms fixed pre-roll and held push-to-talk (`Ctrl+Space`)
-- Local `vinai/PhoWhisper-small` Q5_1 transcription through whisper.cpp (Vietnamese-first with racing English preserved)
-- Configurable push-to-talk using `Ctrl+Space` and/or a held DirectInput wheel button
-- OpenAI-compatible chat completions for llama.cpp and similar local/LAN/cloud servers, with streaming, cancellation, timeout and one bounded transient retry
-- Local telemetry tool calling with bounded conversation history
-- Optional API key storage in Windows Credential Manager; the Authorization header is omitted when the key is empty
-- Local native VieNeu-TTS v3 Turbo C++ speech with Vietnamese voice fine-tuning (Minh Quân LoRA model & studio presets) accelerated on AMD Radeon 680M via Vulkan
-- Piper TTS backend as fallback and low-latency pre-generated spotter alerts
-- Priority audio dispatch; critical/spotter messages interrupt lower-priority speech
-- Dashboard, telemetry viewer, AI settings, API statistics and system tray
+<a id="readme-top"></a>
 
-The app reads the full AC/ACC graphics page for real lap, position, gap, flag and pit-state data. ACC opponent names, leaderboard position and lap pace use ACC's official UDP Broadcasting interface. Set `updListenerPort` to a non-zero port (for example `9000`) in `Documents/Assetto Corsa Competizione/Config/broadcasting.json` before starting ACC; the connection and command passwords remain supported. If broadcasting is disabled, the core shared-memory telemetry continues working and opponent fields remain unavailable rather than being fabricated.
+<div align="center">
+  <a href="https://github.com/tminh-U/RaceEngineer">
+    <img src="assets/final_icon_256.png" alt="RaceEngineer logo" width="160">
+  </a>
 
-## Requirements
+  <h1 align="center">RaceEngineer</h1>
 
-- Windows 10/11 x64
-- Visual Studio 2022 Build Tools with Desktop development with C++
-- CMake 3.24+
-- Ninja (or the Visual Studio 2022 generator)
-- Qt 6.5+ MSVC x64 with Core, GUI, Quick, Quick Controls 2, Network, Multimedia and Widgets
-- Python 3 (setup only, used for the one-time PhoWhisper conversion and reference WAV resampling)
-- LunarG Vulkan SDK (optional but recommended for the Radeon 680M path; without it the Release build uses the measured CPU fallback)
+  <p align="center">
+    A race engineer for sim racing
+    <br>
+    <a href="https://github.com/tminh-U/RaceEngineer/issues">Report a bug</a>
+    ·
+    <a href="https://github.com/tminh-U/RaceEngineer/issues">Request a feature</a>
+  </p>
+</div>
 
-The validated local setup is MSVC 17.14, Qt 6.8.3, CMake 4.4.1 and Ninja 1.13.2.
+<!-- TODO: Replace the text, links, screenshots, and roadmap items below with your final project details. -->
 
-## Runtime models
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li><a href="#project-information">Project Information</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="#documentation">Documentation</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ol>
+</details>
 
-Models and binary runtimes are intentionally ignored by Git. Install the `vinai/PhoWhisper-small` Q5_1 model, Piper ONNX model, and the native `VieNeu-TTS v3 Turbo` assets:
+## Project Information
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup_runtime.ps1
-```
+RaceEngineer is a local race-engineering application that processes telemetry data from the game, calculates race logic, and handles voice input and output.
 
-This sets up:
+#### Features
 
-```text
-models/ggml-phowhisper-small-q5_1.bin
-models/piper/vi_VN-vais1000-medium.onnx
-models/vieneu-v3/backbone.gguf
-models/vieneu-v3/config.json
-models/vieneu-v3/tokenizer.json
-models/vieneu-v3/vieneu_v3_heads.npz
-models/vieneu-v3/acoustic/vieneu_acoustic_weights.npz
-models/vieneu-v3/codec/moss_audio_tokenizer_decode_full.onnx
-models/vieneu-v3/voices_v3_turbo.json
-```
+- Read and analyze telemetry from Assetto Corsa and Assetto Corsa Competizone.
+- Predict fuel usage, lap times, the distance between cars, and more.
+- Communicate with the driver in real time in Vietnamese using `Phowhisper` and `VieNeu-TTS`.
+- Important spotter messages remain available even without an LLM or network connection.
+- Intuitive settings with features that can be enabled or disabled during use.
+- Multiple voices to choose from, with files for training a custom voice for each user.
+- Compatible with OpenAI-style LLMs.
 
-PhoWhisper conversion is pinned to the VinAI `PhoWhisper-small` checkpoint revision and uses the vendored whisper.cpp converter plus `whisper-quantize q5_1`; Python/PyTorch are used only for this one-time conversion, never at runtime. VieNeu-TTS v3 Turbo runs natively in C++ through `third_party/vieneu.cpp`, offloading backbone operations to AMD Radeon 680M via Vulkan, with in-memory PCM playback to `QAudioSink` and zero temporary WAV files. Missing voice components degrade safely: telemetry and text responses keep working.
+<!-- TODO: Add a screenshot or a short demo GIF here. -->
 
-Built-in alerts are read from `assets/spotter/manifest.json` and play a non-repeating random WAV for zero-latency spotter callouts. Dynamic LLM answers synthesize through native VieNeu-TTS.
+<!--
+<p align="center">
+  <img src="path/to/screenshot.png" alt="RaceEngineer screenshot">
+</p>
+-->
 
-## Build with MSVC and Ninja
+## Built with
 
-From an x64 Native Tools Command Prompt:
+- C++20
+- CMake
+- Qt 6 / Qt Quick
+- MSVC Windows x64
+- whisper.cpp and PhoWhisper-small Q5_1
+- Native VieNeu-TTS v3 Turbo
+- Vulkan acceleration
 
-```powershell
-cmake -S . -B build -G Ninja `
-  -DCMAKE_BUILD_TYPE=Release `
-  -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-```
+## Supported games
 
-When `VULKAN_SDK` is set, CMake enables whisper.cpp's Vulkan backend and the app selects Vulkan device 0 by default (the validated machine exposes the Radeon 680M there). If no SDK is available, the same source builds with the measured 8-thread CPU fallback.
+- Assetto Corsa
+- Assetto Corsa Competizone
 
-To reproduce the local STT measurements, configure with `-DRACEENGINEER_BUILD_STT_BENCHMARK=ON`, then run the harness with `--threads 4|6|8`, `--no-gpu`, `--no-flash`, or `--no-warmup` as needed. It reuses one loaded context and prints model load, warm-up, encoder, decoder and backend-overhead timings for each WAV input.
+## Getting Started
 
-Deploy Qt dependencies for a standalone build directory:
+### Requirements
 
-```powershell
-C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe `
-  --debug --qmldir src\ui --no-translations --compiler-runtime `
-  build\RaceEngineer.exe
-```
+- Windows x64
+- Visual Studio 2022 with an x64 MSVC toolchain
+- CMake 3.24 or newer
+- Ninja
+- Qt 6.5 or newer
+- Assetto Corsa and/or Assetto Corsa Competizione
+- Runtime models and voice assets
+- Vulkan SDK (optional; recommended for GPU acceleration)
 
-Run normally or with synthetic telemetry:
+### Installation
 
-```powershell
-.\build\RaceEngineer.exe
-.\build\RaceEngineer.exe --mock
-```
+1. Download `RaceEngineer-X.X.X-Setup.exe` from [Releases](https://github.com/tminh-U/RaceEngineer/releases).
+2. Run `RaceEngineer-X.X.X-Setup.exe`.
+3. Launch `RaceEngineer` and start using it.
 
-CLI options:
+### AC Python App
 
-- `.\build\RaceEngineer.exe --help`: xem danh sách tham số
-- `.\build\RaceEngineer.exe --map-button`: gán nút Push-to-Talk trên vô lăng (DirectInput)
-- `.\build\RaceEngineer.exe --set-key <api_key>`: lưu API key vào Windows Credential Manager
-- `.\build\RaceEngineer.exe --test-llm`: kiểm tra kết nối tới LLM server
-
-## Moza / DirectInput push-to-talk
-
-1. Kết nối vô lăng vào máy tính.
-2. Chạy lệnh: `.\build\RaceEngineer.exe --map-button`
-3. Nhấn nút mong muốn trên vô lăng (ví dụ nút Radio trên Moza ES) một lần. Cấu hình sẽ tự động lưu vào `settings.json`.
-
-Input được quét trên worker độ ưu tiên thấp qua chế độ background non-exclusive, không làm gián đoạn game đọc vô lăng. Giữ nút để bắt đầu ghi âm; nhả nút để gửi ngay lập tức tới PhoWhisper.
-
-## AI setup
-
-Cấu hình được lưu trữ dạng JSON tại `settings.json` trong thư mục AppData của Windows.
-API key được lưu trữ an toàn trong Windows Credential Manager (`RaceEngineer/LLMApiKey`).
-
-Để lưu API key từ dòng lệnh:
-```powershell
-.\build\RaceEngineer.exe --set-key "your_api_key_here"
-```
-
-Để kiểm tra kết nối API:
-```powershell
-.\build\RaceEngineer.exe --test-llm
-```
-
-Live telemetry questions use OpenAI-style tool calls. Tool results carry deterministic semantic fields such as `fuel_status`, `enough_fuel`, `spare_laps`, `missing_laps`, temperature status and gap trend. These conclusions are authoritative so a small local model does not need to recalculate them.
-
-AI replies prefer Vietnamese by default. Clearly English input still receives an English response; unknown or ambiguous detected language falls back to Vietnamese.
-
-Network/API failure never stops telemetry, local history, event detection or the deterministic audio queue. No automatic LLM request is made per telemetry frame.
-
-## Architecture
+This is an optional addon for getting additional data from Assetto Corsa. The installer includes the addon at:
 
 ```text
-AC / ACC shared memory
-        ↓
-normalized RaceState
-        ↓
-RaceHistory / EventEngine / SpotterEngine
-        ↓
-ToolRegistry → LLMManager → OpenAI-compatible API
-        ↓
-MessageDispatcher → VieNeuTtsBackend (native C++ / Vulkan) / PiperTtsBackend
-
-Microphone → AudioCapture → held push-to-talk → PhoWhisper-small Q5_1 / whisper.cpp → LLMManager
+<RaceEngineer install>\extras\AssettoCorsa\apps\python\RaceEngineer
 ```
 
-Main source areas:
+Copy the `RaceEngineer` folder into Assetto Corsa's `apps\python` folder, or drag it into Content Manager.
+
+### ACC Broadcasting
+
+To use additional data such as opponent positions or the leaderboard, configure the ACC Broadcasting listener at:
 
 ```text
-src/telemetry/   simulator providers and normalized state
-src/race/        bounded history and deterministic analysis
-src/events/      transition/cooldown event engine
-src/audio/       capture, voice controller and priority dispatcher
-src/stt/         whisper.cpp recognizer
-src/llm/         providers, conversation manager and telemetry tools
-src/tts/         backend abstraction, native VieNeu-TTS and Piper implementations
-src/spotter/     deterministic spotter boundary
-src/config/      JSON settings and Windows credential storage
-src/ui/          Qt Quick interface
-tests/           offline tests; no simulator, microphone or internet needed
+Documents\Assetto Corsa Competizione\Config\broadcasting.json
 ```
 
-## Telemetry provenance
+Then set it to a port that is not being used by another application, for example:
 
-AC opens `Local\acpmf_physics` and `Local\acpmf_static`; ACC uses the same mapping names with ACC-specific layouts. [`structed_file_AC.h`](structed_file_AC.h) and [`structed_file_ACC.h`](structed_file_ACC.h) are the supplied source of truth. Simulator structs stay inside their providers and never reach the LLM layer.
+```json
+{
+  "udpListenerPort": 9000
+}
+```
 
-## Test coverage
+## Documentation
 
-The offline test executable covers normalization helpers, mock telemetry, fuel averaging, lap history, event transitions/cooldowns, conversation trimming, telemetry tool JSON, provider endpoint/error parsing and the explicit no-fabrication spotter behavior.
+## Contributing
+
+Contributions are welcome.
+
+1. Fork the project.
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make and test your changes.
+4. Commit your changes: `git commit -m "Add my feature"`
+5. Push the branch and open a pull request.
+
+Please keep simulator-specific telemetry inside its provider and preserve deterministic behavior for safety-critical spotter messages.
+
+## Contact
+
+Le Dinh Tue Minh — [@tminh-U](https://github.com/tminh-U)
+
+## Acknowledgments
+
+- [VieNeu-TTS](https://github.com/pnnbao97/VieNeu-TTS)
+- [Phowhisper](https://github.com/VinAIResearch/PhoWhisper)
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+- [Qt](https://www.qt.io/)
+- Assetto Corsa and Assetto Corsa Competizione shared-memory telemetry
+
+<!-- MARKDOWN LINKS & IMAGES -->
+
+[license-shield]: https://img.shields.io/github/license/tminh-U/RaceEngineer.svg?style=for-the-badge
+[license-url]: https://github.com/tminh-U/RaceEngineer/blob/main/LICENSE
+[windows-shield]: https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=for-the-badge&logo=windows
+[windows-url]: https://github.com/tminh-U/RaceEngineer
+[contributors-shield]: https://img.shields.io/github/contributors/tminh-U/RaceEngineer.svg?style=for-the-badge
+[contributors-url]: https://github.com/tminh-U/RaceEngineer/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/tminh-U/RaceEngineer.svg?style=for-the-badge
+[forks-url]: https://github.com/tminh-U/RaceEngineer/network/members
+[stars-shield]: https://img.shields.io/github/stars/tminh-U/RaceEngineer.svg?style=for-the-badge
+[stars-url]: https://github.com/tminh-U/RaceEngineer/stargazers
+[issues-shield]: https://img.shields.io/github/issues/tminh-U/RaceEngineer.svg?style=for-the-badge
+[issues-url]: https://github.com/tminh-U/RaceEngineer/issues

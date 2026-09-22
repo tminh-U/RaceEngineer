@@ -1,15 +1,8 @@
 param(
-    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
-    [switch]$Piper
+    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
 $ErrorActionPreference = "Stop"
-
-if ($Piper) {
-    $generator = Join-Path $PSScriptRoot "generate_piper_spotter_cache.ps1"
-    & $generator -ProjectRoot $ProjectRoot
-    exit $LASTEXITCODE
-}
 
 # Default: High-fidelity native VieNeu-TTS (Minh Quân preset, GPU Vulkan offload)
 $exe = Join-Path $ProjectRoot "build\generate_spotter_cache.exe"

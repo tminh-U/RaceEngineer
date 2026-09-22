@@ -24,7 +24,6 @@ class VoiceInputController;
 class WhisperRecognizer;
 class LLMManager;
 class ITtsBackend;
-class PiperTtsBackend;
 class VieNeuTtsBackend;
 class MessageDispatcher;
 class DInputButtonMonitor;
@@ -79,6 +78,9 @@ class Application final : public QObject {
     Q_PROPERTY(QString directInputStatus READ directInputStatus NOTIFY directInputStatusChanged)
     Q_PROPERTY(bool audioDuckingEnabled READ audioDuckingEnabled WRITE setAudioDuckingEnabled NOTIFY audioDuckingEnabledChanged)
     Q_PROPERTY(bool isAudioDucked READ isAudioDucked NOTIFY audioDuckingStateChanged)
+    Q_PROPERTY(bool startupReady READ startupReady NOTIFY startupChanged)
+    Q_PROPERTY(double startupProgress READ startupProgress NOTIFY startupChanged)
+    Q_PROPERTY(QString startupError READ startupError NOTIFY startupChanged)
 
 public:
     explicit Application(bool startWithMock, QObject* parent = nullptr);
@@ -88,7 +90,9 @@ public:
     [[nodiscard]] bool connected() const noexcept { return connected_; }
     [[nodiscard]] QString connectionText() const
     {
-        return connected_ ? QStringLiteral("Connected") : QStringLiteral("Waiting for AC or ACC");
+        return connected_
+            ? QStringLiteral("Đã kết nối %1").arg(simulatorName_)
+            : QStringLiteral("Chưa kết nối AC / ACC");
     }
     [[nodiscard]] QVariantMap telemetry() const { return telemetry_; }
     [[nodiscard]] bool mockAvailable() const noexcept;
@@ -137,7 +141,14 @@ public:
     [[nodiscard]] QString directInputStatus() const { return directInputStatus_; }
     [[nodiscard]] bool audioDuckingEnabled() const noexcept { return settingsManager_.tts().audioDucking; }
     [[nodiscard]] bool isAudioDucked() const noexcept;
+    [[nodiscard]] bool startupReady() const noexcept { return startupReady_; }
+    [[nodiscard]] double startupProgress() const noexcept
+    {
+        return (static_cast<int>(sttWarmUpReady_) + static_cast<int>(ttsWarmUpReady_)) / 2.0;
+    }
+    [[nodiscard]] QString startupError() const { return startupError_; }
     Q_INVOKABLE void setAudioDuckingEnabled(bool enabled);
+    Q_INVOKABLE void retryStartup();
 
     Q_INVOKABLE void setUseMockTelemetry(bool enabled);
     Q_INVOKABLE void beginPushToTalk();
@@ -194,6 +205,7 @@ signals:
     void directInputStatusChanged();
     void audioDuckingEnabledChanged();
     void audioDuckingStateChanged();
+    void startupChanged();
     void requestStartDirectInput(quintptr nativeWindowHandle);
     void requestConfigureDirectInput(bool enabled, const QString& deviceGuid, int buttonIndex);
     void requestDirectInputMapping();
@@ -205,11 +217,14 @@ private slots:
     void onVoiceStatusChanged(const QString& status);
     void onUtteranceReady(const QByteArray& pcm16k);
     void onTranscriptionReady(const QString& text, const QString& detectedLanguage);
+    void onSttWarmUpFinished(bool success, const QString& error);
+    void onTtsWarmUpFinished(bool success, const QString& error);
 
 private:
     static QVariantMap toVariantMap(const RaceState& state);
     void appendConversationMessage(const QString& role, const QString& text);
     void updateEngineerMessage(const QString& text);
+    void finishStartupIfReady();
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     SettingsManager settingsManager_;
@@ -220,7 +235,6 @@ private:
     TelemetryManager* telemetryManager_{nullptr};
     VoiceInputController* voiceInput_{nullptr};
     WhisperRecognizer* speechRecognizer_{nullptr};
-    PiperTtsBackend* piperTtsBackend_{nullptr};
     VieNeuTtsBackend* vieNeuTtsBackend_{nullptr};
     ITtsBackend* ttsBackend_{nullptr};
     DInputButtonMonitor* directInput_{nullptr};
@@ -260,6 +274,10 @@ private:
     void updateAudioDuckingState();
     std::unique_ptr<AudioDucker> audioDucker_;
     bool isSpeaking_{false};
+    bool sttWarmUpReady_{false};
+    bool ttsWarmUpReady_{false};
+    bool startupReady_{false};
+    QString startupError_;
 };
 
 } // namespace raceengineer

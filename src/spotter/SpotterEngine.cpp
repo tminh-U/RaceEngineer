@@ -5,12 +5,33 @@
 namespace raceengineer {
 namespace {
 
-constexpr double kMaxDistanceSquared = 400.0;  // 20m cutoff
-constexpr double kMaxLongitudinalOverlap = 4.8; // ~GT3 car length (4.6m) + margin
-constexpr double kMinLateralDistance = 1.2;     // Door rubbing distance
-constexpr double kMaxLateralDistance = 4.2;     // 1 lane width alongside
-constexpr int kEngageConsecutive = 2;           // ~100-200ms of consistent overlap
-constexpr int kClearConsecutive = 3;            // ~150-300ms clear before declaring clear
+// GT3 / touring-car sized overlap zones, measured between car centres.
+constexpr double kEngageLongitudinalOverlap = 4.0;
+constexpr double kEngageLateralMin = 1.0;
+constexpr double kEngageLateralMax = 3.8;
+constexpr double kClearLongitudinalOverlap = 5.4;
+constexpr double kClearLateralMin = 0.6;
+constexpr double kClearLateralMax = 4.6;
+constexpr double kMaxDistanceSquared = 400.0;
+constexpr double kMinSpeedKmh = 15.0;
+
+// Require several 10 Hz telemetry publications before changing state.
+constexpr auto kEngageDuration = std::chrono::milliseconds{180};
+constexpr auto kClearHoldDuration = std::chrono::milliseconds{1500};
+constexpr auto kRepeatCooldown = std::chrono::seconds{8};
+constexpr auto kMinCalloutInterval = std::chrono::milliseconds{2500};
+
+bool validPoint(const std::array<double, 3>& point)
+{
+    return std::isfinite(point[0]) && std::isfinite(point[1]) && std::isfinite(point[2]);
+}
+
+bool elapsed(const std::chrono::steady_clock::time_point now,
+    const std::chrono::steady_clock::time_point since,
+    const std::chrono::steady_clock::duration duration)
+{
+    return since != std::chrono::steady_clock::time_point{} && now - since >= duration;
+}
 
 } // namespace
 
@@ -20,12 +41,14 @@ void SpotterEngine::reset()
 {
     leftEngaged_ = false;
     rightEngaged_ = false;
-    leftConsecutive_ = 0;
-    rightConsecutive_ = 0;
-    leftClearConsecutive_ = 0;
-    rightClearConsecutive_ = 0;
+    leftActiveSince_ = {};
+    rightActiveSince_ = {};
+    leftClearSince_ = {};
+    rightClearSince_ = {};
     lastCallout_ = {};
-    lastType_ = EventType::ClearAll;
+    lastLeftCallout_ = {};
+    lastRightCallout_ = {};
+    lastThreeWideCallout_ = {};
 }
 
 SpotterEngine::RelativeVector SpotterEngine::computeRelative(
@@ -46,95 +69,109 @@ SpotterEngine::RelativeVector SpotterEngine::computeRelative(
 std::vector<RaceEvent> SpotterEngine::process(const RaceState& state,
     const std::chrono::steady_clock::time_point now)
 {
-    if (!state.connected || !state.worldPosition || !state.heading
-        || (state.opponents.empty() && !leftEngaged_ && !rightEngaged_)) {
+    if (!state.connected) {
+        reset();
+        return {};
+    }
+    if (!state.worldPosition || !state.heading || !validPoint(*state.worldPosition)
+        || !std::isfinite(*state.heading)) {
+        return {};
+    }
+    if (state.opponents.empty() && !leftEngaged_ && !rightEngaged_) {
+        return {};
+    }
+    if (state.speedKmh && *state.speedKmh < kMinSpeedKmh && !leftEngaged_ && !rightEngaged_) {
         return {};
     }
 
     bool activeLeft = false;
     bool activeRight = false;
-
     for (const auto& opponent : state.opponents) {
-        if (!opponent.worldPosition) continue;
-        const auto rel = computeRelative(*state.worldPosition, *state.heading, *opponent.worldPosition);
-        if (rel.distanceSquared > kMaxDistanceSquared) continue;
+        if (!opponent.worldPosition || !validPoint(*opponent.worldPosition)) continue;
 
-        if (std::abs(rel.longitudinal) <= kMaxLongitudinalOverlap) {
-            if (rel.lateral <= -kMinLateralDistance && rel.lateral >= -kMaxLateralDistance) {
-                activeLeft = true;
-            } else if (rel.lateral >= kMinLateralDistance && rel.lateral <= kMaxLateralDistance) {
-                activeRight = true;
-            }
-        }
+        const auto relative = computeRelative(*state.worldPosition, *state.heading,
+            *opponent.worldPosition);
+        if (relative.distanceSquared > kMaxDistanceSquared) continue;
+
+        const double longitudinal = std::abs(relative.longitudinal);
+        const double lateral = std::abs(relative.lateral);
+        const bool left = relative.lateral < 0.0;
+        const bool engaged = left ? leftEngaged_ : rightEngaged_;
+        const bool alongside = longitudinal <= (engaged
+            ? kClearLongitudinalOverlap : kEngageLongitudinalOverlap)
+            && lateral >= (engaged ? kClearLateralMin : kEngageLateralMin)
+            && lateral <= (engaged ? kClearLateralMax : kEngageLateralMax);
+
+        if (left) activeLeft = activeLeft || alongside;
+        else if (relative.lateral > 0.0) activeRight = activeRight || alongside;
     }
 
     if (activeLeft) {
-        ++leftConsecutive_;
-        leftClearConsecutive_ = 0;
+        leftClearSince_ = {};
+        if (!leftEngaged_ && leftActiveSince_ == std::chrono::steady_clock::time_point{}) {
+            leftActiveSince_ = now;
+        }
     } else {
-        leftConsecutive_ = 0;
-        ++leftClearConsecutive_;
+        leftActiveSince_ = {};
+        if (leftEngaged_ && leftClearSince_ == std::chrono::steady_clock::time_point{}) {
+            leftClearSince_ = now;
+        }
     }
 
     if (activeRight) {
-        ++rightConsecutive_;
-        rightClearConsecutive_ = 0;
+        rightClearSince_ = {};
+        if (!rightEngaged_ && rightActiveSince_ == std::chrono::steady_clock::time_point{}) {
+            rightActiveSince_ = now;
+        }
     } else {
-        rightConsecutive_ = 0;
-        ++rightClearConsecutive_;
+        rightActiveSince_ = {};
+        if (rightEngaged_ && rightClearSince_ == std::chrono::steady_clock::time_point{}) {
+            rightClearSince_ = now;
+        }
     }
 
-    const bool shouldEngageLeft = leftConsecutive_ >= kEngageConsecutive;
-    const bool shouldEngageRight = rightConsecutive_ >= kEngageConsecutive;
-    const bool shouldClearLeft = leftClearConsecutive_ >= kClearConsecutive;
-    const bool shouldClearRight = rightClearConsecutive_ >= kClearConsecutive;
+    const bool previousLeft = leftEngaged_;
+    const bool previousRight = rightEngaged_;
+    if (!leftEngaged_ && elapsed(now, leftActiveSince_, kEngageDuration)) {
+        leftEngaged_ = true;
+        leftActiveSince_ = {};
+    } else if (leftEngaged_ && elapsed(now, leftClearSince_, kClearHoldDuration)) {
+        leftEngaged_ = false;
+        leftClearSince_ = {};
+    }
+    if (!rightEngaged_ && elapsed(now, rightActiveSince_, kEngageDuration)) {
+        rightEngaged_ = true;
+        rightActiveSince_ = {};
+    } else if (rightEngaged_ && elapsed(now, rightClearSince_, kClearHoldDuration)) {
+        rightEngaged_ = false;
+        rightClearSince_ = {};
+    }
 
-    const bool prevLeft = leftEngaged_;
-    const bool prevRight = rightEngaged_;
-
-    if (shouldEngageLeft) leftEngaged_ = true;
-    else if (shouldClearLeft) leftEngaged_ = false;
-
-    if (shouldEngageRight) rightEngaged_ = true;
-    else if (shouldClearRight) rightEngaged_ = false;
-
+    const auto canCall = [now](const auto last, const auto cooldown) {
+        return last == std::chrono::steady_clock::time_point{} || now - last >= cooldown;
+    };
+    const bool cadenceReady = canCall(lastCallout_, kMinCalloutInterval);
     std::vector<RaceEvent> events;
 
-    if (leftEngaged_ && rightEngaged_) {
-        if (!prevLeft || !prevRight || lastType_ != EventType::ThreeWide) {
-            events.push_back(RaceEvent{
-                EventType::ThreeWide,
-                EventPriority::Spotter,
-                "Kẹp ba, giữ làn.",
-                now
-            });
-            lastType_ = EventType::ThreeWide;
-            lastCallout_ = now;
-        }
-    } else if (leftEngaged_ && !rightEngaged_) {
-        if (!prevLeft || (prevRight && lastType_ == EventType::ThreeWide)) {
-            events.push_back(RaceEvent{
-                EventType::CarLeft,
-                EventPriority::Spotter,
-                "Có xe bên trái.",
-                now
-            });
-            lastType_ = EventType::CarLeft;
-            lastCallout_ = now;
-        }
-    } else if (!leftEngaged_ && rightEngaged_) {
-        if (!prevRight || (prevLeft && lastType_ == EventType::ThreeWide)) {
-            events.push_back(RaceEvent{
-                EventType::CarRight,
-                EventPriority::Spotter,
-                "Có xe bên phải.",
-                now
-            });
-            lastType_ = EventType::CarRight;
-            lastCallout_ = now;
-        }
-    } else if (!leftEngaged_ && !rightEngaged_) {
-        lastType_ = EventType::ClearAll;
+    // Escalation to two-sided overlap gets one unambiguous callout.
+    if (events.empty() && leftEngaged_ && rightEngaged_ && (!previousLeft || !previousRight)
+        && canCall(lastThreeWideCallout_, kRepeatCooldown)) {
+        events.push_back({EventType::ThreeWide, EventPriority::Spotter,
+            "Kẹp ba, giữ làn.", now});
+        lastThreeWideCallout_ = now;
+        lastCallout_ = now;
+    } else if (events.empty() && leftEngaged_ && !rightEngaged_ && !previousLeft
+        && cadenceReady && canCall(lastLeftCallout_, kRepeatCooldown)) {
+        events.push_back({EventType::CarLeft, EventPriority::Spotter,
+            "Có xe bên trái.", now});
+        lastLeftCallout_ = now;
+        lastCallout_ = now;
+    } else if (events.empty() && !leftEngaged_ && rightEngaged_ && !previousRight
+        && cadenceReady && canCall(lastRightCallout_, kRepeatCooldown)) {
+        events.push_back({EventType::CarRight, EventPriority::Spotter,
+            "Có xe bên phải.", now});
+        lastRightCallout_ = now;
+        lastCallout_ = now;
     }
 
     return events;

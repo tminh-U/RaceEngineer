@@ -27,6 +27,7 @@ public:
 
     [[nodiscard]] bool hasData() const noexcept;
     [[nodiscard]] const std::vector<OpponentState>& opponents() const noexcept { return opponents_; }
+    [[nodiscard]] std::optional<int> playerPosition() const noexcept { return playerPosition_; }
     [[nodiscard]] std::optional<double> gapAhead() const noexcept { return gapAhead_; }
     [[nodiscard]] std::optional<double> gapBehind() const noexcept { return gapBehind_; }
     [[nodiscard]] const std::optional<std::string>& opponentAhead() const noexcept { return opponentAhead_; }
@@ -39,6 +40,7 @@ private:
     std::unique_ptr<Impl> impl_;
 
     std::vector<OpponentState> opponents_;
+    std::optional<int> playerPosition_;
     std::optional<double> gapAhead_;
     std::optional<double> gapBehind_;
     std::optional<std::string> opponentAhead_;

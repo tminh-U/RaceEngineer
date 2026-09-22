@@ -201,6 +201,7 @@ bool ACCTelemetryProvider::update()
     state_.tractionControl = physics.tc;
     state_.abs = physics.abs;
 
+    state_.position.reset();
     acc::SPageFileGraphic graphics{};
     if (copyStable(graphicsPage_, graphics)) {
         playerCarId_ = graphics.playerCarID;
@@ -244,6 +245,8 @@ bool ACCTelemetryProvider::update()
     }
 
     broadcast_.update();
+    const auto broadcastPosition = broadcast_.playerPosition(playerCarId_);
+    if (!state_.position && broadcastPosition) state_.position = broadcastPosition;
     state_.opponents = broadcast_.opponents(playerCarId_);
     state_.sectorTimesSeconds = broadcast_.playerSectorTimes(playerCarId_);
     state_.opponentAhead.reset();

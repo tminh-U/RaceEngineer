@@ -19,7 +19,7 @@ struct AcExtHeader {
     uint32_t version;       // 1
     uint32_t sequence;      // Seqlock counter: odd during write, even when stable
     int64_t timestampMs;    // Unix millisecond timestamp
-    int32_t numCars;        // Number of opponents (0..64)
+    int32_t numCars;        // Number of records: player id 0 plus opponents (0..64)
     float gapAhead;         // Seconds, < 0 if none
     float gapBehind;        // Seconds, < 0 if none
     float playerSectors[3]; // Sector times, <= 0 if none
@@ -102,6 +102,7 @@ void AcExtensionClient::stop() noexcept
     }
     impl_->shm.close();
     opponents_.clear();
+    playerPosition_.reset();
     gapAhead_.reset();
     gapBehind_.reset();
     opponentAhead_.reset();
@@ -156,9 +157,14 @@ void AcExtensionClient::update()
                     const int numCars = std::clamp(snapshot.header.numCars, 0, 64);
                     std::vector<OpponentState> parsedOpponents;
                     parsedOpponents.reserve(numCars);
+                    playerPosition_.reset();
 
                     for (int i = 0; i < numCars; ++i) {
                         const auto& car = snapshot.cars[i];
+                        if (car.carId == 0) {
+                            if (car.position > 0) playerPosition_ = car.position;
+                            continue;
+                        }
                         OpponentState opp;
                         opp.carId = car.carId;
                         opp.position = car.position;
@@ -259,6 +265,11 @@ void AcExtensionClient::update()
 
                     OpponentState opp;
                     opp.carId = carObj.value(QStringLiteral("id")).toInt(-1);
+                    if (opp.carId == 0) {
+                        const int position = carObj.value(QStringLiteral("pos")).toInt();
+                        if (position > 0) playerPosition_ = position;
+                        continue;
+                    }
                     opp.driverName = carObj.value(QStringLiteral("driver")).toString().toStdString();
                     opp.teamName = carObj.value(QStringLiteral("car")).toString().toStdString();
                     if (carObj.contains(QStringLiteral("pos"))) {
@@ -291,6 +302,11 @@ void AcExtensionClient::update()
             // Parse player extras (gaps, opponent names, sectors, brake temps)
             if (root.contains(QStringLiteral("player"))) {
                 const auto playerObj = root.value(QStringLiteral("player")).toObject();
+                if (playerObj.contains(QStringLiteral("position"))) {
+                    const int position = playerObj.value(QStringLiteral("position")).toInt();
+                    if (position > 0) playerPosition_ = position;
+                    else playerPosition_.reset();
+                }
                 if (playerObj.contains(QStringLiteral("gap_ahead"))) {
                     gapAhead_ = playerObj.value(QStringLiteral("gap_ahead")).toDouble();
                 }
@@ -332,6 +348,7 @@ void AcExtensionClient::update()
 
     if (!packetProcessed && !hasData()) {
         opponents_.clear();
+        playerPosition_.reset();
         gapAhead_.reset();
         gapBehind_.reset();
         opponentAhead_.reset();

@@ -258,8 +258,10 @@ QString RacingTextNormalizer::normalize(const QString& text)
                    QStringLiteral("\\1 phẩy \\2"));
 
     // 8. Positions & Classes
-    result.replace(QRegularExpression(QStringLiteral("\\bP([1-9]|1\\d|2\\d)\\b")),
-                   QStringLiteral("vị trí \\1"));
+    result.replace(QRegularExpression(QStringLiteral("(\\bvị trí|\\bhạng)\\s*[Pp](\\d{1,3})\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("\\1 pê \\2"));
+    result.replace(QRegularExpression(QStringLiteral("\\b[Pp](\\d{1,3})\\b")),
+                   QStringLiteral("pê \\1"));
     result.replace(QRegularExpression(QStringLiteral("\\bGT3\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("G T ba"));
     result.replace(QRegularExpression(QStringLiteral("\\bGT4\\b"), QRegularExpression::CaseInsensitiveOption),
@@ -268,6 +270,14 @@ QString RacingTextNormalizer::normalize(const QString& text)
                    QStringLiteral("L M P hai"));
     result.replace(QRegularExpression(QStringLiteral("\\bF1\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("F một"));
+    result.replace(QRegularExpression(QStringLiteral("\\bpole\\s*position\\b|\\bpole\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("vị trí xuất phát đầu"));
+    result.replace(QRegularExpression(QStringLiteral("\\bDNF\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("bỏ cuộc"));
+    result.replace(QRegularExpression(QStringLiteral("\\bDNS\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("không xuất phát"));
+    result.replace(QRegularExpression(QStringLiteral("\\bDSQ\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("bị loại"));
 
     // 9. Racing terminology & compound phrases
     // Box / Pit
@@ -306,9 +316,9 @@ QString RacingTextNormalizer::normalize(const QString& text)
     result.replace(QRegularExpression(QStringLiteral("\\bpace\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("tốc độ chạy"));
     result.replace(QRegularExpression(QStringLiteral("\\bundersteer\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("thiếu lái"));
+                   QStringLiteral("ân đờ stia"));
     result.replace(QRegularExpression(QStringLiteral("\\boversteer\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("thừa lái"));
+                   QStringLiteral("ô vờ stia"));
     result.replace(QRegularExpression(QStringLiteral("\\bapex\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("đỉnh cua"));
     result.replace(QRegularExpression(QStringLiteral("\\bkerbs?|curbs?\\b"), QRegularExpression::CaseInsensitiveOption),
@@ -336,7 +346,7 @@ QString RacingTextNormalizer::normalize(const QString& text)
 
     // Tyres
     result.replace(QRegularExpression(QStringLiteral("\\btyres?|tires?\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("lốp"));
+                   QStringLiteral("thai"));
     result.replace(QRegularExpression(QStringLiteral("\\bsofts?\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("lốp mềm"));
     result.replace(QRegularExpression(QStringLiteral("\\bmediums?\\b"), QRegularExpression::CaseInsensitiveOption),
@@ -352,15 +362,19 @@ QString RacingTextNormalizer::normalize(const QString& text)
 
     // Systems
     result.replace(QRegularExpression(QStringLiteral("\\bdrs\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("đê rờ ét"));
+                   QStringLiteral("đi a rờ ét"));
     result.replace(QRegularExpression(QStringLiteral("\\bers\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("e rờ ét"));
+                   QStringLiteral("i a rờ ét"));
+    result.replace(QRegularExpression(QStringLiteral("\\bbrakes?\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("brây k"));
+    result.replace(QRegularExpression(QStringLiteral("\\bengine\\b"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("en jin"));
     result.replace(QRegularExpression(QStringLiteral("\\btcs?\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("kiểm soát lực kéo"));
     result.replace(QRegularExpression(QStringLiteral("\\babs\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("chống bó cứng phanh"));
     result.replace(QRegularExpression(QStringLiteral("\\bfuel\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("nhiên liệu"));
+                   QStringLiteral("phiu ồ"));
 
     // Sessions & Comms
     result.replace(QRegularExpression(QStringLiteral("\\bquali|qualifying\\b"), QRegularExpression::CaseInsensitiveOption),
@@ -370,7 +384,7 @@ QString RacingTextNormalizer::normalize(const QString& text)
     result.replace(QRegularExpression(QStringLiteral("\\bcopy\\b"), QRegularExpression::CaseInsensitiveOption),
                    QStringLiteral("đã rõ"));
     result.replace(QRegularExpression(QStringLiteral("\\bradio\\s*check\\b"), QRegularExpression::CaseInsensitiveOption),
-                   QStringLiteral("kiểm tra sóng vô tuyến"));
+                   QStringLiteral("ra đi ô check"));
     // 11. Convert remaining bare integers to Vietnamese words so TTS reads them naturally.
     //     Applied last so earlier unit rules (km/h, °C, %, etc.) have already consumed
     //     their numeric operands and won't be double-converted.

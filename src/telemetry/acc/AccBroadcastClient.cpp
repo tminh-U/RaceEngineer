@@ -408,6 +408,15 @@ std::vector<OpponentState> AccBroadcastClient::opponents(const int playerCarId) 
     return result;
 }
 
+std::optional<int> AccBroadcastClient::playerPosition(const int playerCarId) const
+{
+    const auto it = impl_->cars.find(playerCarId);
+    if (it != impl_->cars.end()) {
+        return it->second.state.position;
+    }
+    return std::nullopt;
+}
+
 std::optional<std::array<double, 3>> AccBroadcastClient::playerSectorTimes(const int playerCarId) const
 {
     const auto it = impl_->cars.find(playerCarId);

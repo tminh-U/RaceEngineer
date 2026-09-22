@@ -32,7 +32,7 @@ void TelemetryManager::start()
 
     pollTimer_ = new QTimer(this);
     pollTimer_->setTimerType(Qt::PreciseTimer);
-    pollTimer_->setInterval(20); // Cheap shared-memory reads; UI publication is throttled below.
+    pollTimer_->setInterval(33); // Approx. 30 Hz shared-memory polling.
     connect(pollTimer_, &QTimer::timeout, this, &TelemetryManager::pollTelemetry);
 
     detectionTimer_ = new QTimer(this);
@@ -100,7 +100,7 @@ void TelemetryManager::pollTelemetry()
     if (!active_->update()) {
         return;
     }
-    if (uiPublishClock_.elapsed() >= 100) {
+    if (uiPublishClock_.elapsed() >= 33) {
         emit stateUpdated(active_->getCurrentState());
         uiPublishClock_.restart();
     }

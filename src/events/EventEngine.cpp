@@ -1,6 +1,8 @@
 #include "events/EventEngine.h"
 
 #include <algorithm>
+#include <cmath>
+#include <string>
 #include <utility>
 
 namespace raceengineer {
@@ -35,7 +37,63 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         }
         connected_ = state.connected;
     }
-    if (!state.connected) return events;
+    if (!state.connected) {
+        previousDamage_.reset();
+        previousSuspensionDamage_.reset();
+        return events;
+    }
+
+    const auto damageBand = [](const double value) {
+        if (!std::isfinite(value) || value <= 0.01) return 0;
+        if (value < 0.25) return 1;
+        if (value <= 0.50) return 2;
+        return 3;
+    };
+    const auto wheelDamaged = [](const double value) {
+        return std::isfinite(value) && value > 0.0001;
+    };
+    std::vector<std::string> newlyDamaged;
+    if (state.damage) {
+        if (previousDamage_) {
+            static constexpr std::array<const char*, 5> kBodyParts{
+                "phía trước", "phía sau", "bên trái", "bên phải", "tổng thể"
+            };
+            for (std::size_t i = 0; i < state.damage->size(); ++i) {
+                if (damageBand((*state.damage)[i]) > damageBand((*previousDamage_)[i])) {
+                    newlyDamaged.emplace_back(kBodyParts[i]);
+                }
+            }
+        }
+        previousDamage_ = state.damage;
+    } else {
+        previousDamage_.reset();
+    }
+    if (state.suspensionDamage) {
+        if (previousSuspensionDamage_) {
+            static constexpr std::array<const char*, 4> kWheels{
+                "bánh trước trái", "bánh trước phải", "bánh sau trái", "bánh sau phải"
+            };
+            for (std::size_t i = 0; i < state.suspensionDamage->size(); ++i) {
+                if (wheelDamaged((*state.suspensionDamage)[i])
+                    && !wheelDamaged((*previousSuspensionDamage_)[i])) {
+                    newlyDamaged.emplace_back(kWheels[i]);
+                }
+            }
+        }
+        previousSuspensionDamage_ = state.suspensionDamage;
+    } else {
+        previousSuspensionDamage_.reset();
+    }
+    if (!newlyDamaged.empty()) {
+        std::string message = "Va chạm hoặc hư hại mới: ";
+        for (std::size_t i = 0; i < newlyDamaged.size(); ++i) {
+            if (i != 0) message += ", ";
+            message += newlyDamaged[i];
+        }
+        message += ".";
+        emitIfReady(events, EventType::DamageDetected, EventPriority::Spotter,
+            std::move(message), now);
+    }
 
     FuelLevel nextFuel = FuelLevel::Unknown;
     if (state.fuelLiters && state.fuelCapacityLiters && *state.fuelCapacityLiters > 0.0) {
@@ -142,6 +200,8 @@ void EventEngine::reset()
     pitLimiter_.reset();
     connected_.reset();
     bestLap_.reset();
+    previousDamage_.reset();
+    previousSuspensionDamage_.reset();
     lastEmitted_.clear();
 }
 

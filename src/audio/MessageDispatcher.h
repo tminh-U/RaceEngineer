@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QMetaObject>
 #include <QString>
+#include <chrono>
 #include <vector>
 
 namespace raceengineer {
@@ -33,8 +34,12 @@ private:
     std::vector<QMetaObject::Connection> backendConnections_;
     std::vector<Message> queue_;
     quint64 nextSequence_{0};
+    quint64 currentSpokenSequence_{0};
     bool speaking_{false};
     EventPriority activePriority_{EventPriority::Conversation};
+    QString currentText_{};
+    QString lastSpokenText_{};
+    std::chrono::steady_clock::time_point lastSpokenTime_{};
 };
 
 } // namespace raceengineer

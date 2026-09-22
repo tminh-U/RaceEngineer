@@ -1,5 +1,5 @@
 param(
-    [string]$SourcePath = (Join-Path $PSScriptRoot '..\final_icon.png'),
+    [string]$SourcePath = (Join-Path $PSScriptRoot '..\final_icon_redraw.png'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\assets')
 )
 
@@ -27,19 +27,31 @@ try {
             $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
             $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
             $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-            $graphics.DrawImage($sourceBitmap, 0, 0, $size, $size)
+            $graphics.Clear([System.Drawing.Color]::Transparent)
+            $scale = [Math]::Min(
+                $size / [double]$sourceBitmap.Width,
+                $size / [double]$sourceBitmap.Height)
+            $drawWidth = [int][Math]::Round($sourceBitmap.Width * $scale)
+            $drawHeight = [int][Math]::Round($sourceBitmap.Height * $scale)
+            $drawX = [int][Math]::Round(($size - $drawWidth) / 2.0)
+            $drawY = [int][Math]::Round(($size - $drawHeight) / 2.0)
+            $graphics.DrawImage($sourceBitmap, $drawX, $drawY, $drawWidth, $drawHeight)
         } finally {
             $graphics.Dispose()
         }
         return $bitmap
     }
 
-    $pngSize = 64
-    $pngBitmap = New-IconBitmap $pngSize
-    try {
-        $pngBitmap.Save((Join-Path $outputPath 'final_icon_64.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-    } finally {
-        $pngBitmap.Dispose()
+    $pngSizes = @(16, 24, 32, 48, 64, 128, 180, 192, 256, 512)
+    foreach ($size in $pngSizes) {
+        $bitmap = New-IconBitmap $size
+        try {
+            $bitmap.Save(
+                (Join-Path $outputPath "final_icon_${size}.png"),
+                [System.Drawing.Imaging.ImageFormat]::Png)
+        } finally {
+            $bitmap.Dispose()
+        }
     }
 
     $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
@@ -95,4 +107,4 @@ try {
     $sourceBitmap.Dispose()
 }
 
-Write-Host "Generated $outputPath\final_icon_64.png and $outputPath\final_icon.ico from $sourcePath"
+Write-Host "Generated PNG sizes $($pngSizes -join ', '), plus $outputPath\final_icon.ico, from $sourcePath"

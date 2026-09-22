@@ -23,9 +23,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QFileInfo>
+#include <QCoreApplication>
 
-int main()
+int main(int argc, char* argv[])
 {
+    QCoreApplication app(argc, argv);
     using namespace raceengineer;
     static_assert(sizeof(SPageFilePhysics) == 256);
     static_assert(sizeof(acc::SPageFilePhysics) == 716);
@@ -166,6 +168,26 @@ int main()
     auto disconnEmitted = connEvents.process(connState, baseTime + std::chrono::seconds(2));
     expect(disconnEmitted.empty());
 
+    EventEngine damageEvents;
+    RaceState damageEventState;
+    damageEventState.connected = true;
+    damageEventState.damage = std::array<double, 5>{0.0, 0.0, 0.0, 0.0, 0.0};
+    damageEventState.suspensionDamage = WheelValues{0.0, 0.0, 0.0, 0.0};
+    expect(damageEvents.process(damageEventState, baseTime).empty());
+    damageEventState.damage = std::array<double, 5>{0.12, 0.0, 0.0, 0.0, 0.0};
+    damageEventState.suspensionDamage = WheelValues{0.04, 0.0, 0.0, 0.0};
+    emitted = damageEvents.process(damageEventState, baseTime + std::chrono::seconds(1));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::DamageDetected);
+    expect(emitted.front().priority == EventPriority::Spotter);
+    expect(emitted.front().message.find("phía trước") != std::string::npos);
+    expect(emitted.front().message.find("bánh trước trái") != std::string::npos);
+    expect(damageEvents.process(damageEventState, baseTime + std::chrono::seconds(2)).empty());
+    damageEventState.damage = std::array<double, 5>{0.30, 0.0, 0.0, 0.0, 0.0};
+    emitted = damageEvents.process(damageEventState, baseTime + std::chrono::seconds(3));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::DamageDetected);
+    damageEventState.connected = false;
+    expect(damageEvents.process(damageEventState, baseTime + std::chrono::seconds(4)).empty());
+
     ConversationManager conversation(6);
     for (int index = 0; index < 10; ++index) {
         conversation.addUserMessage(QStringLiteral("question %1").arg(index));
@@ -260,24 +282,25 @@ int main()
     spotterState.connected = true;
     spotterState.worldPosition = std::array<double, 3>{0.0, 0.0, 0.0};
     spotterState.heading = 0.0;
+    const auto spotterBase = std::chrono::steady_clock::now();
 
-    expect(spotter.process(spotterState).empty());
+    expect(spotter.process(spotterState, spotterBase).empty());
 
     OpponentState oppLeft;
     oppLeft.carId = 1;
     oppLeft.worldPosition = std::array<double, 3>{-2.5, 0.0, 1.0};
     spotterState.opponents = {oppLeft};
 
-    auto spotterEvents = spotter.process(spotterState);
+    auto spotterEvents = spotter.process(spotterState, spotterBase);
     expect(spotterEvents.empty());
-    spotterEvents = spotter.process(spotterState);
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(200));
     expect(spotterEvents.size() == 1);
     expect(spotterEvents.front().type == EventType::CarLeft);
     expect(spotterEvents.front().priority == EventPriority::Spotter);
     expect(spotter.hasLeft());
     expect(!spotter.hasRight());
 
-    spotterEvents = spotter.process(spotterState);
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(300));
     expect(spotterEvents.empty());
 
     OpponentState oppRight;
@@ -285,25 +308,43 @@ int main()
     oppRight.worldPosition = std::array<double, 3>{2.5, 0.0, 0.0};
     spotterState.opponents = {oppLeft, oppRight};
 
-    spotterEvents = spotter.process(spotterState);
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(300));
     expect(spotterEvents.empty());
-    spotterEvents = spotter.process(spotterState);
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(500));
     expect(spotterEvents.size() == 1);
     expect(spotterEvents.front().type == EventType::ThreeWide);
+    expect(spotter.hasLeft());
+    expect(spotter.hasRight());
     expect(spotter.isThreeWide());
 
     spotterState.opponents.clear();
-    expect(spotter.process(spotterState).empty());
-    expect(spotter.process(spotterState).empty());
-    spotterEvents = spotter.process(spotterState);
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(600)).empty());
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2099)).empty());
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2200));
     expect(spotterEvents.empty());
     expect(!spotter.hasLeft());
     expect(!spotter.hasRight());
+
+    // Test: Quick re-engagement within repeat cooldown (8.0s) must NOT repeat verbal callout
+    spotterState.opponents = {oppLeft};
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2300)).empty());
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2500));
+    expect(spotter.hasLeft());
+    expect(spotterEvents.empty()); // Suppressed: quiet tracking, no radio spam!
+
+    // Test: Speed gating below 15 km/h suppresses spotter chatter
+    spotter.reset();
+    spotterState.speedKmh = 10.0;
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2600)).empty());
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2800)).empty());
+    expect(!spotter.hasLeft());
+    spotterState.speedKmh.reset();
 
     AcExtensionClient acExt;
     expect(acExt.start(19996));
     expect(!acExt.hasData());
     expect(acExt.opponents().empty());
+    expect(!acExt.playerPosition().has_value());
     expect(!acExt.gapAhead().has_value());
     expect(!acExt.gapBehind().has_value());
     expect(!acExt.opponentAhead().has_value());
@@ -321,7 +362,7 @@ int main()
             uint32_t ver = 1;
             uint32_t seq = 2; // even = stable
             int64_t ts = 1234567;
-            int32_t numCars = 1;
+            int32_t numCars = 2;
             float gapA = 1.2f;
             float gapB = 2.4f;
             float sec[3] = {28.5f, 35.2f, 29.1f};
@@ -337,8 +378,15 @@ int main()
             std::memcpy(reinterpret_cast<char*>(raw + 60), "Verstappen", 10);
             std::memcpy(reinterpret_cast<char*>(raw + 124), "Leclerc", 7);
 
-            // Car 0: id=1, pos=2, speed=215.0, lastLap=92.5, bestLap=91.8, coords={-2.5, 0.0, 1.0}, driver="Verstappen", car="RedBull"
+            // Car 0 is the player record; the native client consumes its live position.
             uint8_t* carRaw = raw + 188;
+            int32_t playerId = 0;
+            int32_t playerPos = 5;
+            std::memcpy(carRaw, &playerId, 4);
+            std::memcpy(carRaw + 4, &playerPos, 4);
+            carRaw += 160;
+
+            // Car 1: id=1, pos=2, speed=215.0, lastLap=92.5, bestLap=91.8, coords={-2.5, 0.0, 1.0}, driver="Verstappen", car="RedBull"
             int32_t cId = 1;
             int32_t cPos = 2;
             float cSpd = 215.0f;
@@ -357,6 +405,7 @@ int main()
             acExt.update();
             expect(acExt.hasData());
             expect(acExt.opponents().size() == 1);
+            expect(acExt.playerPosition().value_or(0) == 5);
             expect(acExt.opponents()[0].carId == 1);
             expect(acExt.opponents()[0].driverName == "Verstappen");
             expect(acExt.opponents()[0].teamName == "RedBull");
@@ -374,9 +423,10 @@ int main()
             // Test Spotter with opponents received from AcExtensionClient!
             spotter.reset();
             spotterState.opponents = acExt.opponents();
-            auto extSpotterEvents = spotter.process(spotterState);
+            auto extSpotterEvents = spotter.process(spotterState, spotterBase);
             expect(extSpotterEvents.empty());
-            extSpotterEvents = spotter.process(spotterState);
+            extSpotterEvents = spotter.process(spotterState,
+                spotterBase + std::chrono::milliseconds(200));
             expect(extSpotterEvents.size() == 1);
             expect(extSpotterEvents.front().type == EventType::CarLeft);
             expect(spotter.hasLeft());
@@ -420,10 +470,11 @@ int main()
     offlineProof.stop();
     expect(OpenAICompatibleProvider::authorizationHeader(QString{}).isEmpty());
     expect(OpenAICompatibleProvider::authorizationHeader(QStringLiteral("secret"))
-               == QByteArrayLiteral("Bearer secret"));
+        == QByteArrayLiteral("Bearer secret"));
+    expect(LlmSettings{}.baseUrl.isEmpty());
     expect(OpenAICompatibleProvider::modelsEndpoint(
-               QUrl(QStringLiteral("http://100.114.125.88:8080/v1/")))
-               == QUrl(QStringLiteral("http://100.114.125.88:8080/v1/models")));
+               QUrl(QStringLiteral("https://example.test/v1/")))
+               == QUrl(QStringLiteral("https://example.test/v1/models")));
     const QByteArray modelList = QByteArrayLiteral(
         R"({"object":"list","data":[{"id":"race-engineer","object":"model"}]})");
     expect(OpenAICompatibleProvider::modelListContains(modelList, QStringLiteral("race-engineer")));
@@ -535,7 +586,7 @@ int main()
 
     LlmSettings localDefaults;
     expect(localDefaults.provider == QStringLiteral("OpenAI Compatible"));
-    expect(localDefaults.baseUrl == QStringLiteral("http://100.114.125.88:8080/v1"));
+    expect(localDefaults.baseUrl.isEmpty());
     expect(localDefaults.model == QStringLiteral("race-engineer"));
     expect(localDefaults.maximumTokens == 64);
     expect(localDefaults.timeoutMilliseconds == 30000);
@@ -669,9 +720,9 @@ int main()
     settingsMgr.setTts(ttsTest);
     expect(settingsMgr.tts().voice == QStringLiteral("Minh Quân"));
     ttsTest.voice = QStringLiteral("Minh Đức");
-    ttsTest.backend = QStringLiteral("Gwen-TTS");
+    ttsTest.backend = QStringLiteral("Legacy-TTS");
     settingsMgr.setTts(ttsTest);
-    expect(settingsMgr.tts().backend == QStringLiteral("Piper"));
+    expect(settingsMgr.tts().backend == QStringLiteral("VieNeu-TTS"));
     expect(settingsMgr.tts().voice == QStringLiteral("Minh Đức"));
 
     // RacingTextNormalizer tests
@@ -680,13 +731,24 @@ int main()
     expect(RacingTextNormalizer::normalize(QStringLiteral("Lap 5, vào box thay lốp.")) ==
            QStringLiteral("vòng năm, vào pít thay lốp."));
     expect(RacingTextNormalizer::normalize(QStringLiteral("P3 rồi, gap là +1.5s.")) ==
-           QStringLiteral("vị trí ba rồi, khoảng cách là nhanh hơn một phẩy năm giây."));
+           QStringLiteral("pê ba rồi, khoảng cách là nhanh hơn một phẩy năm giây."));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Xe đang ở p9.")) ==
+           QStringLiteral("Xe đang ở pê chín."));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Vị trí P9")) ==
+           QStringLiteral("Vị trí pê chín"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Hạng p12")) ==
+           QStringLiteral("Hạng pê mười hai"));
     expect(RacingTextNormalizer::normalize(QStringLiteral("Lap time 1:42.350")) ==
            QStringLiteral("thời gian vòng một phút bốn mươi hai phẩy ba trăm năm mươi giây"));
     expect(RacingTextNormalizer::normalize(QStringLiteral("Tốc độ 250 km/h, áp suất 2.1 bar, nhiệt độ 95°C.")) ==
            QStringLiteral("Tốc độ hai trăm năm mươi ki lô mét trên giờ, áp suất hai phẩy một ba, nhiệt độ chín mươi lăm độ xê."));
     expect(RacingTextNormalizer::normalize(QStringLiteral("**Cảnh báo:** Bị understeer ở turn 4!")) ==
-           QStringLiteral("Cảnh báo: Bị thiếu lái ở khúc cua bốn!"));
+           QStringLiteral("Cảnh báo: Bị ân đờ stia ở khúc cua bốn!"));
+    expect(RacingTextNormalizer::normalize(
+               QStringLiteral("tyre, brake, fuel, engine, DRS, ERS, understeer, oversteer")) ==
+           QStringLiteral("thai, brây k, phiu ồ, en jin, đi a rờ ét, i a rờ ét, ân đờ stia, ô vờ stia"));
+    expect(RacingTextNormalizer::normalize(QStringLiteral("Radio check, Minh.")) ==
+           QStringLiteral("ra đi ô check, Minh."));
     // Number-to-Vietnamese-words edge cases
     expect(RacingTextNormalizer::normalize(QStringLiteral("75 độ xê")) ==
            QStringLiteral("bảy mươi lăm độ xê"));

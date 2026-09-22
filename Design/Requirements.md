@@ -1,266 +1,333 @@
-You are the PRIMARY implementation agent for this project.
+Rebuild the entire Race Engineer GUI FROM SCRATCH using Dear ImGui.
 
-Your job is to REIMPLEMENT the application's UI so it matches the approved Google Stitch design as closely as practical in native Qt 6 / QML.
+The old GUI has been intentionally deleted.
+Do NOT restore, reuse, imitate, or port the old QML/Qt Quick UI.
 
-The Stitch design is the SOURCE OF TRUTH for the UI.
+SOURCE OF TRUTH
+1. Everything under `Design/`, especially the Google Stitch screenshots/HTML/exports.
+2. Stitch screenshots define the exact visual target.
+3. Existing C++ backend defines existing functionality.
+4. REQUIREMENTS.md / AGENTS.md define project constraints.
 
-Read these first:
-- AGENTS.md
-- project documentation
-- everything under /design
-- DESIGN.md
-- all Stitch screenshots/reference exports
-
-Then inspect the CURRENT implementation before editing anything.
+The final application must reproduce Stitch as closely as practically possible, both VISUALLY and FUNCTIONALLY.
 
 ==================================================
-ABSOLUTE RULE: DO NOT FAKE THE REDESIGN
+TECH STACK
 ==================================================
 
-Do NOT "approximate" the Stitch design by decorating the existing UI.
+Implement the GUI with native C++ + Dear ImGui.
 
-Specifically, DO NOT:
-- add outlines/borders around old components just to make them look closer
-- put new rectangles/cards on top of incorrect old layouts
-- wrap existing wrong components in decorative containers instead of replacing them
-- add arbitrary separators, frames, shadows, gradients, or backgrounds that do not exist in Stitch
-- keep an incorrect component hierarchy merely because it is already implemented
-- leave the old design underneath and visually patch over it
-- implement screenshots as static images
-- use WebView/HTML/CSS to display the Stitch export
-- create placeholder UI and call the task complete
+Do NOT use:
+- Qt Quick / QML
+- HTML/CSS/WebView
+- Electron
+- embedded Stitch HTML
+- screenshot-as-UI hacks
 
-If the existing layout fundamentally differs from Stitch:
-DELETE/REFACTOR the relevant QML layout and rebuild it properly.
+Use the existing Windows native application/backend.
+Integrate Dear ImGui properly into the current CMake project.
 
-An edit is only successful when the ACTUAL component structure, spacing, sizing,
-typography, hierarchy, navigation and visual behavior match Stitch.
+Use a suitable Windows renderer/backend such as:
+- Win32 + DirectX 11
+or the existing compatible native rendering stack if one already exists.
+
+Keep the implementation lightweight and appropriate for running alongside AC/ACC.
 
 ==================================================
-DESIGN FIDELITY
+STITCH MUST BE COPIED, NOT INTERPRETED
 ==================================================
 
-Match Stitch as closely as possible:
+This is NOT a redesign.
 
-- page structure
-- component hierarchy
-- sidebar/navigation
-- spacing
-- margins/padding
+Do not make the UI:
+- “Stitch inspired”
+- “similar”
+- “cleaner”
+- “more native”
+- “more ImGui-like”
+
+Reproduce Stitch.
+
+For every screen, match as closely as possible:
+- exact overall geometry
+- sidebar width
+- header height
+- page margins
+- padding
+- gaps
+- card dimensions
+- panel proportions
 - typography hierarchy
-- font weights
-- corner radii
-- control dimensions
-- alignment
-- icon placement
-- cards/groups only where Stitch actually has them
-- backgrounds/materials
+- font size
+- font weight
+- text alignment
+- colors
 - opacity
-- shadows
-- state colors
-- hover/pressed/selected states
-- charts/status areas
-- empty states
-- scroll behavior
-- transitions/animations
+- border thickness
+- corner radius
+- separators
+- icons
+- buttons
+- switches
+- combo boxes
+- text fields
+- sliders
+- status pills
+- telemetry displays
+- message bubbles
+- scroll areas
+- hover state
+- pressed state
+- selected state
+- disabled state
+- empty state
 
-Do not invent a new design language.
+Do NOT globally scale arbitrary values to “look better”.
+Use the actual geometry from Stitch.
 
-The target is:
-"native QML implementation of the Stitch design",
-NOT
-"existing app with some Stitch-inspired styling".
-
-Prefer reusable components and design tokens, for example:
-- Theme.qml
-- AppSidebar.qml
-- SettingsGroup.qml
-- StatusCard.qml
-- SectionHeader.qml
-- shared controls where appropriate
-
-But do not over-abstract tiny one-off components.
+If Stitch says 230 px sidebar, implement 230 px.
+If Stitch says 56 px header, implement 56 px.
+Do not invent another size.
 
 ==================================================
-FEATURE RULES
+FONTS AND ICONS
 ==================================================
 
-Stitch controls VISUAL DESIGN.
+Use the same typography intent as Stitch.
 
-The existing application/backend controls existing FUNCTIONALITY.
+Where Stitch uses:
+- Inter -> use Inter if available in project/runtime
+- JetBrains Mono -> use JetBrains Mono for telemetry/numeric values
 
-Therefore:
+Load appropriate font weights into Dear ImGui.
 
-1. If a feature exists in BOTH Stitch and the current app:
-   -> implement it using the Stitch UI.
+Use proper icon assets/icon font where appropriate.
+Do NOT replace Stitch icons with random Unicode characters such as:
+`◉ ♬ ♙ ▦`.
 
-2. If Stitch shows a feature that the current app does NOT have:
-   -> implement the feature if reasonably possible and connect it properly.
-   -> do not create a dead fake control.
+If an exact icon asset exists in `Design/`, use/recreate it appropriately.
 
-3. If the current app has an important feature that Stitch does NOT show:
-   -> KEEP the feature.
-   -> redesign its UI so it fits naturally into the Stitch design language.
-   -> do not silently delete functionality.
+==================================================
+DEAR IMGUI IMPLEMENTATION QUALITY
+==================================================
 
-4. Preserve working backend systems unless a UI integration genuinely requires changes:
-   - telemetry
-   - RaceState / RaceHistory
-   - EventEngine
-   - SpotterEngine
-   - audio
-   - VAD/STT/TTS
-   - LLM provider/tool system
-   - settings persistence
-   - game integration
+Do not let the UI look like default Dear ImGui.
 
-Do NOT rewrite working backend code merely to make UI implementation easier.
+Create a proper reusable design layer for Stitch, e.g.:
+- colors/tokens
+- typography
+- spacing
+- rounded panels
+- buttons
+- status chips
+- nav items
+- input controls
+- telemetry cards
+- switches
+- message bubbles
+
+Use ImDrawList/custom rendering where standard ImGui widgets cannot reproduce Stitch accurately.
+
+It is acceptable and expected to custom-draw components when required for fidelity.
+
+Do NOT force everything through default `ImGui::Button`, default table styling, default frames, etc. if that makes the UI look unlike Stitch.
+
+Do NOT solve layout issues using arbitrary invisible spacers or clipping hacks.
+
+Calculate layout deliberately from the Stitch geometry.
+
+==================================================
+FUNCTIONALITY
+==================================================
+
+Every visible interactive feature in Stitch must actually work.
+
+Do NOT implement dead controls.
+
+If Stitch contains a feature that already exists in backend:
+connect it.
+
+If Stitch contains a feature that does not exist yet:
+implement the real backend functionality when reasonably possible.
+
+If an existing important backend feature is not represented in Stitch:
+preserve the feature and integrate it naturally without changing the approved Stitch layout unnecessarily.
+
+Preserve and wire existing systems including:
+- AC / ACC telemetry
+- RaceState / RaceHistory
+- EventEngine
+- SpotterEngine
+- Push-to-Talk
+- DirectInput wheel button mapping
+- PhoWhisper STT
+- LLM configuration
+- OpenAI-compatible/local LLM
+- tool calling
+- Piper / Gwen TTS
+- microphone/audio device handling
+- telemetry status
+- API state/statistics
+- settings persistence
+- tray/application lifecycle
+
+Do NOT rewrite working backend systems unless integration genuinely requires it.
 
 ==================================================
 SCREENS
 ==================================================
 
-Implement the entire approved UI, not only the currently visible screen.
+Implement ALL Stitch screens, not only Dashboard.
 
-At minimum inspect/implement all existing Stitch designs for:
-
-- Dashboard
-- Engineer
+At minimum:
+- Dashboard / Bảng điều khiển
+- Engineer / Kỹ sư
 - Telemetry
-- Voice
-- AI
-- Settings
+- AI / Trí tuệ nhân tạo
+- Settings / Cài đặt
 
-Navigation between every page must work.
+If the current Stitch export contains additional pages/features, implement those too.
 
-Do not stop after implementing the sidebar or first page.
+Navigation must work.
 
 ==================================================
-IMPLEMENTATION METHOD
+DASHBOARD
 ==================================================
 
-Work in two passes.
+Reproduce the Stitch Dashboard structure exactly, including where present:
 
-PASS 1 — STRUCTURE
+- fixed sidebar
+- fixed/top session header
+- Quick Race Bar
+- radio conversation area
+- PTT / microphone state
+- driver/engineer message bubbles
+- text command entry
+- quick radio commands
+- cockpit quick settings
+- system-link status panel
+- footer/status area
 
-Implement:
-- correct page/component hierarchy
-- navigation
-- reusable QML components
-- data bindings
-- interactions
-- settings
-- missing functional controls
-- responsive sizing where needed
+Do NOT substitute generic large telemetry cards where Stitch uses compact cells.
 
-The result must already be functional.
+==================================================
+RESPONSIVENESS
+==================================================
 
-PASS 2 — VISUAL FIDELITY
+The primary target is the Stitch reference resolution/layout.
 
-Compare every screen against its Stitch reference and fix:
-- geometry
-- spacing
+First make that target visually accurate.
+
+Then make resizing degrade gracefully without changing the design unnecessarily.
+
+Never sacrifice fidelity at the target resolution just to create a generic responsive layout.
+
+==================================================
+IMPLEMENTATION PROCESS
+==================================================
+
+Work SCREEN BY SCREEN.
+
+For each screen:
+
+1. Open the corresponding Stitch screenshot.
+2. Inspect the Stitch HTML/export for exact dimensions/styles.
+3. Inspect backend functionality needed by that screen.
+4. Implement the Dear ImGui screen.
+5. Build the application.
+6. Run it.
+7. Capture a screenshot of the implemented screen.
+8. Compare that screenshot directly against Stitch.
+9. Fix visible discrepancies.
+10. Repeat until the major differences are gone.
+
+DO NOT implement all screens blindly and only inspect them at the end.
+
+==================================================
+VISUAL VERIFICATION IS REQUIRED
+==================================================
+
+Compilation alone is NOT completion.
+
+`build succeeded` != `matches Stitch`.
+
+You must actually run the application and visually compare the result against the Stitch references.
+
+Check:
+- dimensions
 - alignment
-- typography
-- component size
-- radius
-- opacity
-- visual hierarchy
-- iconography
-- states
-- animations
-- unnecessary elements
+- overflow
+- spacing
+- font scale
+- colors
+- card heights
+- clipping
+- text truncation
+- navigation state
 
-Do NOT use borders/outlines as a shortcut for geometry or hierarchy problems.
-
-If something looks wrong, first ask:
-"Is the component/layout structure itself wrong?"
-
-Fix structure before adding styling.
+If you cannot run or screenshot the application in your environment,
+state that explicitly instead of claiming visual fidelity.
 
 ==================================================
-SCREENSHOT-DRIVEN REVIEW
+STRICTLY FORBIDDEN
 ==================================================
 
-For EACH page:
+Do NOT:
+- reintroduce QML
+- port the deleted GUI
+- approximate Stitch from memory
+- redesign Stitch
+- use generic Dear ImGui styling
+- add random borders/wrappers
+- use clip regions to hide broken sizing
+- use fake/static controls
+- use placeholder functionality and claim completion
+- replace real icons with random Unicode glyphs
+- alter `Design/`
+- stop after Dashboard
+- claim pixel-perfect fidelity without visual comparison
 
-1. Open/read the Stitch reference.
-2. Inspect the corresponding QML page.
-3. Identify structural differences.
-4. Fix those differences.
-5. Build/run if possible.
-6. Compare the implementation with the reference again.
-7. Fix remaining visible discrepancies.
-
-Do not declare success merely because the project compiles.
-
-"Build succeeds" != "UI matches Stitch".
-
-==================================================
-QUALITY BAR
-==================================================
-
-Before finishing, explicitly verify:
-
-- no old UI accidentally remains underneath the new UI
-- no decorative outline hacks were added
-- no duplicated cards/containers
-- no fake controls
-- no broken bindings
-- no removed existing functionality
-- every page is reachable
-- controls use consistent design tokens
-- layouts behave correctly at the app's intended window sizes
-- no obvious QML warnings
-- project builds where supported
-- screenshots/reference were actually used, not merely DESIGN.md text
-
-Search for old/dead QML components after migration and remove them when they are
-no longer used.
-
-Do not preserve obsolete UI simply to minimize the diff.
-
-A larger clean refactor is preferable to a small incorrect visual patch.
+`Design/` is READ ONLY.
 
 ==================================================
-WHEN SOMETHING IS AMBIGUOUS
+PRIORITY
 ==================================================
 
-Priority:
+When there is ambiguity:
 
-1. Stitch screenshot/reference
-2. DESIGN.md
-3. existing functional behavior
-4. existing visual implementation
+1. Stitch screenshot
+2. Stitch HTML/export
+3. documented requirements
+4. existing backend behavior
+5. implementation convenience
 
-Do not choose the old visual implementation over Stitch simply because it is easier.
-
-If Stitch and existing functionality conflict:
-preserve the functionality but express it using the Stitch visual system.
+Implementation convenience NEVER wins over Stitch visual fidelity.
 
 ==================================================
-FINAL CHECK
+FINAL VALIDATION
 ==================================================
 
-Before stopping, review EVERY Stitch screen one final time.
+Before finishing:
 
-For each page report:
-- implemented
-- bindings working
-- notable remaining visual differences, if any
-- anything requiring real Windows/game/audio hardware validation
+- build successfully
+- run successfully
+- inspect every screen
+- compare every screen to Stitch
+- verify navigation
+- verify controls are functional
+- verify backend bindings
+- verify no GUI overflow
+- verify no dead controls
+- verify no old QML GUI was restored
+- verify `Design/` was untouched
 
-Do not claim pixel-perfect fidelity if differences remain.
+Report only:
+- files added/changed
+- backend integrations added
+- screens implemented
+- build/test result
+- which screens were visually verified
+- any remaining mismatch/blocker
 
-Most importantly:
-
-DO NOT solve visual mismatch by merely adding outlines, borders, wrappers or overlays.
-REBUILD THE ACTUAL QML STRUCTURE when the structure is wrong.
-
-If your planned change consists mainly of adding Rectangle borders, outlines,
-frames, wrappers or overlays to the existing UI, STOP.
-
-That is almost certainly the wrong implementation strategy.
-
-Re-open the Stitch reference, compare the component hierarchy, and rebuild the
-incorrect section instead.
+Do the implementation now.
+Do not only write a plan.

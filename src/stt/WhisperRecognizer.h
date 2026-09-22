@@ -25,14 +25,15 @@ public slots:
     void cancel() noexcept;
 
 signals:
+    void warmUpFinished(bool success, const QString& error);
     void recognitionStarted();
     void transcriptionReady(const QString& text, const QString& detectedLanguage);
     void recognitionError(const QString& error);
     void recognitionFinished();
 
 private:
-    bool ensureModelLoaded();
-    void warmUpInference();
+    bool ensureModelLoaded(QString* error = nullptr);
+    bool warmUpInference(QString* error);
     static QString normalizeRacingTerms(QString text);
 
     QString modelPath_;
