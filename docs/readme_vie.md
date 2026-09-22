@@ -124,7 +124,10 @@ Sau đó set với một cổng không được app nào sử dụng (ví dụ):
 
 ## Tài liệu
 
-
+- [Kiến trúc ứng dụng](architect.md) — các thành phần và luồng dữ liệu trong app.
+- [Hướng dẫn build](build.md) — hướng dẫn build bản development và release.
+- [Hướng dẫn train giọng](training.md) — train giọng VieNeu-TTS tuỳ chỉnh.
+- [README tiếng Anh](../README.md)
 
 ## Đóng góp
 

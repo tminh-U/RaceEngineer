@@ -119,6 +119,11 @@ Then set it to a port that is not being used by another application, for example
 
 ## Documentation
 
+- [Architecture](docs/architect.md) — application components and data flow.
+- [Build Guide](docs/build.md) — development and release build instructions.
+- [Voice Training Guide](docs/training.md) — training a custom VieNeu-TTS voice.
+- [Vietnamese README](docs/readme_vie.md)
+
 ## Contributing
 
 Contributions are welcome.
