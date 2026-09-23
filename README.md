@@ -49,13 +49,9 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 - Multiple voices to choose from, with files for training a custom voice for each user.
 - Compatible with OpenAI-style LLMs.
 
-<!-- TODO: Add a screenshot or a short demo GIF here. -->
-
-<!--
 <p align="center">
-  <img src="path/to/screenshot.png" alt="RaceEngineer screenshot">
+  <img src="images/Screenshot.png" alt="RaceEngineer screenshot">
 </p>
--->
 
 ## Built with
 

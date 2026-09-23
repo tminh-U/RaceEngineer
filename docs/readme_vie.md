@@ -51,13 +51,9 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 - Nhiều giọng để lựa chọn và file dùng để train giọng tùy biến riêng cho người sử dụng.
 - Tương thích với LLM dạng OpenAI.
 
-<!-- TODO: Add a screenshot or a short demo GIF here. -->
-
-<!--
 <p align="center">
-  <img src="path/to/screenshot.png" alt="RaceEngineer screenshot">
+  <img src="../images/Screenshot.png" alt="Ảnh chụp RaceEngineer">
 </p>
--->
 
 
 ## Được build với
