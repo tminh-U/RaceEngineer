@@ -6,6 +6,7 @@
 /.vscode/
 /.tooling/
 /.downloads/
+/.serena/
 *.user
 *.suo
 *.pdb

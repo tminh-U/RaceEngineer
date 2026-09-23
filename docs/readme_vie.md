@@ -38,6 +38,8 @@
   </ol>
 </details>
 
+## NOTE : Phần mềm chỉ hỗ trợ chạy AI trên CPU và AMD GPU (Không hỗ trợ Nvidia GPU trong tương lai)
+
 ## Thông tin về Project
 
 RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, xử lý dữ liệu telemetry từ game, tính toán logic đua xe và đầu vào / đầu ra bằng giọng nói.

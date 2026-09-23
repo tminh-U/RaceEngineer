@@ -35,6 +35,10 @@
   </ol>
 </details>
 
+
+
+## NOTE : The software only support running AI on CPU and AMD GPU (No Nvidia GPU support in the future)
+
 ## Project Information
 
 RaceEngineer is a local race-engineering application that processes telemetry data from the game, calculates race logic, and handles voice input and output.
