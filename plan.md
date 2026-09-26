@@ -662,3 +662,48 @@ Mục tiêu: nút Train riêng trong Analysis & Strategy tạo **hai XGBoost reg
 4. **Chốt:** build Release và rà diff. Chưa có log AC/ACC đủ điều kiện thì chỉ giao pipeline và báo thiếu dữ liệu; không khẳng định hiệu quả model hay bật quyết định pit. Mốc tiếp theo là thu stint thật, đối chiếu wear ACC và kiểm tra held-out MAE trước khi cân nhắc dùng dự báo cho chiến thuật.
 
 **Trạng thái 26/09/2026:** Process schema v3, hai nhánh train lốp, UI và build Release đã triển khai. Chưa tìm thấy log RaceEngineer đủ điều kiện trên máy; chưa có model lốp được train/duyệt. Thu ít nhất 3 phiên và 60 cặp vòng sạch có tín hiệu tương ứng cho mỗi simulator/category rồi chạy Process → Train model lốp; giữ các artifact nghiên cứu ngoài runtime.
+
+## 16. Tính vòng pit hợp lệ và phương án có thời gian dự kiến tốt nhất (26/09/2026)
+
+Quyết định mới cho bước tiếp theo, thay mục tiêu **Ranker chọn trực tiếp** ở §13–14. Giữ nguyên core Ranker hiện có dưới cổng duyệt model; chưa thay runtime trong bước viết plan. Ranker chỉ quay lại khi có nhãn so sánh các vòng pit đáng tin và chứng minh hơn bộ tính trực tiếp. Không dùng LLM/LAYA để quyết định pit.
+
+### 16.1. Phạm vi và điều kiện bắt đầu
+
+- V1 chỉ xét race AC/ACC **tính vòng, khô, còn đúng một stop bắt buộc**, cùng track/layout, xe, luật và dịch vụ pit đã xác nhận. Quyết định là `pit cuối vòng k`; `currentLap` là vòng đang chạy (1-based). Không suy từ tên xe rằng có mandatory stop hoặc cho phép refuel/thay lốp.
+- Tận dụng `StrategyPredictor::candidates()` và `stillLegal()`, `RaceHistory`, recorder, worker một luồng và state machine radio trong `Application`. Tách phần kiểm tra hợp lệ dùng chung khi triển khai để danh sách ứng viên và kiểm tra trước phát radio không lệch nhau. Không thêm engine mô phỏng cả cuộc đua hay chạy Python khi đua.
+- Nếu thiếu profile, không xác nhận được dịch vụ pit, nguồn fuel/pace bất thường, race đổi điều kiện hoặc dữ liệu vượt phạm vi, chỉ hiển thị lý do và cửa sổ luật nếu biết; **không chọn vòng hoặc tự gọi pit**. Các model pace/lốp tự train hiện là artifact nghiên cứu, không tự động trở thành tham số chiến thuật.
+
+### 16.2. Ứng viên hợp lệ trước khi so thời gian
+
+1. Liệt kê các vòng nguyên `k` từ vòng hiện tại đến vòng cuối, giao với cửa sổ pit đã xác nhận của profile. Bỏ vòng đã qua điểm báo an toàn, vòng pit đóng, vòng không đủ nhiên liệu đi tới pit với reserve, hoặc vòng không còn đủ thời gian hoàn tất dịch vụ theo luật. V1 không có action `NO_STOP` hay nhiều stop.
+2. Với từng `k`, kiểm tra cả **hai chặng**: nhiên liệu hiện tại tới pit; nhiên liệu được phép nạp/sẵn có sau pit đủ về đích với reserve và không vượt dung tích bình. Xác nhận loại dịch vụ, thời gian tối thiểu, mandatory stop và điều kiện hợp lệ từ profile/telemetry đáng tin; thiếu một điều kiện bắt buộc thì loại ứng viên, không coi giá trị thiếu là 0.
+3. Profile mẫu hiện chỉ có `pit_loss_s`, cửa sổ và reserve; mở rộng đúng các trường luật/dịch vụ còn thiếu sau audit log và game setup. `pit_enter`/`pit_box_enter` chỉ chứng minh xe đi qua pit/box, không chứng minh thay lốp hoặc nạp nhiên liệu. Pit xong hoặc không xác minh được dịch vụ thì hủy khuyến nghị one-stop như hiện tại.
+
+### 16.3. Ước tính kết quả cho từng ứng viên
+
+- Offline dùng các **vòng sạch trước và sau một stop hoàn chỉnh** để hiệu chỉnh riêng theo simulator + track/layout + xe/nhóm xe + luật. Bắt đầu bằng median/trend pace theo tuổi stint và fuel, mức tiêu thụ nhiên liệu/vòng, pit loss đo từ pit-in/out và box; chỉ dùng XGBoost hồi quy nếu thắng baseline đơn giản trên race giữ lại. Tyre wear/temperature chỉ đưa vào khi tín hiệu AC/ACC đã xác minh; không bịa dữ liệu cho ACC.
+- Tại đầu vòng `n`, tính cùng một snapshot cho mọi `k` hợp lệ: `T(k) = tổng lap dự kiến từ n..k trên stint hiện tại + pit loss + tổng lap dự kiến từ k+1..N trên stint mới`. Pit loss là **phần thời gian tăng thêm so với vòng sạch**, gồm ảnh hưởng pit entry/exit và dịch vụ theo định nghĩa profile; không cộng lại lap pit nếu phần đó đã nằm trong pit loss. Giữ fuel load và tuổi lốp theo hai stint, không dùng telemetry tương lai làm feature.
+- Nếu chỉ có pit loss hằng số mà không đo được khác biệt pace trước/sau pit, các ứng viên chưa phân biệt được về hiệu quả; không gọi một vòng là “tối ưu”. Traffic, safety car, thời tiết và đối thủ sau pit chưa có dự báo đáng tin trong `RaceState` thì không tự cộng một penalty tùy ý; V1 ghi rõ những rủi ro chưa tính và ngừng tự gọi khi điều kiện ngoài profile.
+- Ước lượng sai số từ residual trên **race độc lập** và dùng cùng các kịch bản pace/pit loss khi so các `k`; lưu `expected_remaining_s`, dải sai số, số mẫu và phiên bản hiệu chỉnh. Đây là ước tính có điều kiện, không phải thời gian đích chắc chắn hoặc phần trăm confidence của Ranker.
+
+### 16.4. Chọn vòng, ngưỡng gọi và CPU
+
+- Trong số ứng viên hợp lệ, chọn `argmin T(k)`; nếu chênh lệch với phương án khác nhỏ hơn sai số đã hiệu chỉnh, hiển thị cửa sổ ứng viên tương đương thay vì khẳng định một vòng thắng rõ. Ở vòng `n`, chỉ phát “Vào pit cuối vòng này” khi `k=n` và `min(T(k>n)) - T(n)` vượt ngưỡng cải thiện chốt trên validation, hoặc `n` là vòng hợp lệ cuối cùng (nói rõ đây là giới hạn luật/fuel). Điều kiện này chỉ hoạt động sau cổng phát hành và phải kiểm tra lại luật/fuel ngay trước khi phát; nếu phương án tốt nhất ở vòng sau thì chỉ giữ kế hoạch, không gọi pit sớm.
+- Giữ recommendation cũ nếu kết quả mới chưa vượt ngưỡng đổi kế hoạch đã hiệu chỉnh; đổi ngay khi kế hoạch cũ hết hợp lệ. Dùng revision/session/freshness và hủy thông báo radio cũ như luồng hiện tại. Báo chuẩn bị từ vòng trước; “Vào pit cuối vòng này” chỉ phát ở đầu vòng đủ sớm, không phát lệnh gấp khi quá muộn.
+- Tính lại khi sang vòng hoặc sự kiện làm thay đổi hợp lệ/chi phí (fuel bất thường, pit window, service, cờ); gộp trigger và giới hạn một job đang chạy. Dùng C++ worker CPU một luồng, không predict mỗi frame/giây. Đo thời gian tính gồm feature, liệt kê ứng viên và dispatch, cùng CPU/game frametime khi bật/tắt.
+
+### 16.5. Dữ liệu, đánh giá và cổng phát hành
+
+1. **Audit và hiệu chỉnh:** tái dùng `audit_sim_logs.py` và recorder; xác nhận đủ pit-in/out, box-in/out, fuel trước/sau, dịch vụ thật, vòng sạch, setup realistic. Tách train/validation/test theo **race/session** và thời gian. Nhiều vòng trong cùng một race không phải nhiều race độc lập. Thiếu các stop ở nhiều thời điểm thì tiếp tục thu log, không tạo nhãn tối ưu giả.
+2. **Kiểm tra phần có thể quan sát:** trên race giữ lại, so dự báo lap pace, fuel, thời gian qua pit và tổng thời gian của **phương án đã chạy thật** với số đo; báo MAE/bias, độ phủ sai số và breakdown theo profile. So với giữ nguyên pace, median ba vòng, fuel trung bình và pit loss cố định. Không dùng cost do chính bộ tính sinh ra làm bằng chứng rằng bộ tính chọn pit tốt.
+3. **Kiểm tra quyết định:** replay các trạng thái trước pit để chứng minh legality, tính nhất quán, không dùng thông tin tương lai và radio không lặp. Replay không có kết quả thật của các vòng pit chưa chọn; muốn chứng minh lợi ích chiến thuật cần shadow mode rồi race đối chứng ở cùng profile với nhiều thời điểm pit khác nhau. Đặt ngưỡng cải thiện và kế hoạch phân tích **trước** khi xem tập test; báo kết quả theo race, không theo hàng candidate.
+4. **Promote:** yêu cầu ít nhất 10 race độc lập giữ lại cho profile, sai số các thành phần đạt baseline, 100% phương án hợp luật, không thiếu trường bắt buộc, parity offline/C++, không suy giảm game frametime đáng kể và lợi ích so baseline có bằng chứng ở race đối chứng. Nếu chưa đạt, UI báo đang hiệu chỉnh; recorder/training vẫn hoạt động nhưng không tự gọi pit. Cổng Ranker cũ không được dùng để duyệt artifact của bộ tính mới.
+
+### 16.6. Thứ tự triển khai
+
+- [ ] P1: audit race log thật; chốt field profile/service và định nghĩa pit loss; bổ sung recorder chỉ cho field thiếu thực sự.
+- [ ] P2: viết hiệu chỉnh offline nhỏ cho pace trước/sau stop, fuel, pit loss và residual; lưu artifact có schema, hash, nguồn race, phạm vi và số mẫu. Không phát hành model lốp nghiên cứu hiện tại như thành phần đã duyệt.
+- [ ] P3: tái dùng candidate builder/worker của `StrategyPredictor` để tính `T(k)`; tách availability của planner khỏi `pit_ranker.json` mà vẫn giữ nguyên guard của Ranker. Nối vào status và radio hiện có; không thêm tab mới.
+- [ ] P4: kiểm tra fixture offline (đầu/cuối vòng, cửa sổ, thiếu fuel/service, pit xong, race reset, kết quả muộn), shadow mode, đo CPU/frametime và race đối chứng trước khi mở gọi tự động.
+
+Tiến độ 26/09/2026: Đã bổ sung field recorder/audit, script hiệu chỉnh nghiên cứu và bộ tính `T(k)` trong worker hiện có, nối status/radio và giữ cổng Ranker riêng. Chưa có race log đủ điều kiện để hiệu chỉnh/đánh giá; artifact do script tạo luôn `deployment_ready=false`. P1 cần log thật; P2 cần hiệu chỉnh uncertainty và margin từ race độc lập; P4 và duyệt tự động vẫn chờ bằng chứng thực nghiệm.

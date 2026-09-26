@@ -13,7 +13,8 @@ class ToolRegistry final {
 public:
     [[nodiscard]] QJsonArray definitions() const;
     [[nodiscard]] QJsonObject execute(const QString& name, const RaceState& state,
-        const RaceHistory& history, const QJsonObject& arguments = {}) const;
+        const RaceHistory& history, const QJsonObject& arguments = {},
+        const QJsonObject& pitStrategy = {}) const;
 
 private:
     static QJsonObject unavailable();

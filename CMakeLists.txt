@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(RaceEngineer VERSION 1.0.1 LANGUAGES CXX)
+project(RaceEngineer VERSION 1.0.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -127,7 +127,7 @@ qt_add_executable(RaceEngineer
 
 set_target_properties(RaceEngineer PROPERTIES AUTORCC ON)
 
-set(RACEENGINEER_TRAINING_SCRIPTS local_training.py audit_sim_logs.py vehicle_category.py)
+set(RACEENGINEER_TRAINING_SCRIPTS local_training.py audit_sim_logs.py calibrate_pit_plan.py vehicle_category.py)
 foreach(training_script IN LISTS RACEENGINEER_TRAINING_SCRIPTS)
     configure_file("training/pit_strategy/${training_script}"
         "training/pit_strategy/${training_script}" COPYONLY)
@@ -235,6 +235,29 @@ if(EXISTS "${RACEENGINEER_STRATEGY_DIR}/manifest.json")
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${RACEENGINEER_STRATEGY_PATHS}
+                "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy")
+    endif()
+endif()
+if(EXISTS "${RACEENGINEER_STRATEGY_DIR}/plan_calibration.json")
+    file(READ "${RACEENGINEER_STRATEGY_DIR}/plan_calibration.json" RACEENGINEER_PLAN_CALIBRATION)
+    string(JSON RACEENGINEER_PLAN_APPROVED ERROR_VARIABLE RACEENGINEER_PLAN_JSON_ERROR
+        GET "${RACEENGINEER_PLAN_CALIBRATION}" deployment_ready)
+    if(RACEENGINEER_PLAN_JSON_ERROR)
+        message(FATAL_ERROR "Invalid pit plan calibration: ${RACEENGINEER_PLAN_JSON_ERROR}")
+    endif()
+    if(RACEENGINEER_PLAN_APPROVED)
+        set(RACEENGINEER_PLAN_PATHS
+            "${RACEENGINEER_STRATEGY_DIR}/plan_calibration.json"
+            "${RACEENGINEER_STRATEGY_DIR}/profile.json")
+        foreach(plan_file IN LISTS RACEENGINEER_PLAN_PATHS)
+            if(NOT EXISTS "${plan_file}")
+                message(FATAL_ERROR "Approved pit plan is missing ${plan_file}")
+            endif()
+        endforeach()
+        add_custom_command(TARGET RaceEngineer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${RACEENGINEER_PLAN_PATHS}
                 "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy")
     endif()
 endif()
@@ -346,6 +369,9 @@ if(RACEENGINEER_STRATEGY_APPROVED)
     install(FILES
         ${RACEENGINEER_STRATEGY_PATHS}
         DESTINATION bin/models/pit_strategy)
+endif()
+if(RACEENGINEER_PLAN_APPROVED)
+    install(FILES ${RACEENGINEER_PLAN_PATHS} DESTINATION bin/models/pit_strategy)
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu")
     install(DIRECTORY voices/vieneu/ DESTINATION bin/voices/vieneu)

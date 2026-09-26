@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("RaceEngineer"));
     QGuiApplication::setOrganizationName(QStringLiteral("RaceEngineer"));
-    QGuiApplication::setApplicationVersion(QStringLiteral("1.0.1"));
+    QGuiApplication::setApplicationVersion(QStringLiteral("1.0.3"));
     qSetMessagePattern(QStringLiteral("[%{time hh:mm:ss.zzz}] [%{category}] %{message}"));
     QGuiApplication qtApplication(argc, argv);
     QIcon appIcon(QStringLiteral(":/qt/qml/RaceEngineer/assets/final_icon.ico"));

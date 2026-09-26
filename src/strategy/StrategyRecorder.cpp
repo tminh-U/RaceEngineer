@@ -484,6 +484,7 @@ void StrategyRecorder::record(const QString& sessionId, const RaceState& state, 
     if (state.totalLaps) row.insert(QStringLiteral("total_laps"), *state.totalLaps);
     addNumber(row, "fuel_used_l", lap.fuelUsedLiters);
     addNumber(row, "fuel_at_sample_l", state.fuelLiters);
+    addNumber(row, "fuel_capacity_l", state.fuelCapacityLiters);
     addNumber(row, "gap_ahead_at_sample_s", state.gapAheadSeconds);
     addNumber(row, "gap_behind_at_sample_s", state.gapBehindSeconds);
     if (state.tyreWear) {
@@ -530,11 +531,25 @@ void StrategyRecorder::recordPitEvent(const QString& sessionId, const RaceState&
     if (state.carModel) row.insert(QStringLiteral("car_model"), QString::fromStdString(*state.carModel));
     if (state.carCategory) row.insert(QStringLiteral("car_category"), QString::fromStdString(*state.carCategory));
     if (state.carSubclass) row.insert(QStringLiteral("car_subclass"), QString::fromStdString(*state.carSubclass));
+    if (state.totalLaps) row.insert(QStringLiteral("total_laps"), *state.totalLaps);
     if (state.pitState) {
         row.insert(QStringLiteral("pit_state"), QString::fromLatin1(pitStateName(*state.pitState))
             .toLower().replace(' ', '_'));
     }
     addNumber(row, "fuel_at_sample_l", state.fuelLiters);
+    addNumber(row, "fuel_capacity_l", state.fuelCapacityLiters);
+    if (state.tyreWear) {
+        for (int i = 0; i < 4; ++i) {
+            const double wear = (*state.tyreWear)[i];
+            if (std::isfinite(wear)) row.insert(QStringLiteral("tyre_wear_%1_at_sample").arg(i), wear);
+        }
+    }
+    if (state.tyreTemperaturesCelsius) {
+        for (int i = 0; i < 4; ++i) {
+            const double temperature = (*state.tyreTemperaturesCelsius)[i];
+            if (std::isfinite(temperature)) row.insert(QStringLiteral("tyre_temp_%1_at_sample").arg(i), temperature);
+        }
+    }
     enqueue(row);
 }
 

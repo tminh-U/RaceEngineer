@@ -16,10 +16,24 @@ The production build is kept in `build-production/`, separate from the
 development build. Runtime models and voices must already be installed; the
 build does not download them.
 
-## Pit strategy model
+## Pit strategy
 
-The Analysis & Strategy switch uses a CPU XGBoost Ranker only when an approved
-bundle is present in `models/pit_strategy/`. The bundle needs `pit_ranker.json`,
+The preferred path scores legal pit laps by expected remaining race time. It
+requires `profile.json` and an approved `plan_calibration.json` in
+`models/pit_strategy/`; the planner uses one CPU worker and needs no XGBoost
+DLL. `training/pit_strategy/calibrate_pit_plan.py` creates research artifacts
+with `deployment_ready=false`. Real AC/ACC pit-service logs, held-out races and
+prospective race comparisons are required before approval. The example profile
+starts with all service and conditions flags disabled; set them only after
+verifying the exact race rules and tyre/refuel setup. CMake copies only an
+approved artifact into the app package.
+
+Offline calibration: `python training/pit_strategy/calibrate_pit_plan.py --profile profile.json --output plan_calibration.json recordings/race-1.jsonl`.
+Pass additional JSONL files as separate arguments. Inspect the reported missing
+fields and validation metrics; the script never approves its own output.
+
+The earlier CPU XGBoost Ranker path remains supported when its approved
+bundle is present in `models/pit_strategy/`. That bundle needs `pit_ranker.json`,
 `feature_schema.json`, `parity_vectors.json`, `manifest.json`, `profile.json`,
 `xgboost.dll`, and its `LICENSE`. The manifest must be from real sim data,
 explicitly marked `deployment_ready=true`, and contain SHA-256 values in
@@ -43,12 +57,12 @@ through `-ISCCPath`.
 
 ```powershell
 .\production\scripts\package-portable.ps1 `
-  -Version 1.0.1 `
+  -Version 1.0.3 `
   -QtPrefix C:\Qt\6.8.3\msvc2022_64 `
   -ISCCPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 .\production\scripts\verify-release.ps1 `
-  -PackageDirectory .\production\dist\RaceEngineer-1.0.1
+  -PackageDirectory .\production\dist\RaceEngineer-1.0.3
 ```
 
 The package script:
@@ -59,7 +73,7 @@ The package script:
 4. Bundles the MSVC runtime files and `vc_redist.x64.exe`.
 5. Writes `release-manifest.json` with SHA-256 hashes.
 6. Creates a Windows x64 portable ZIP.
-7. Compiles `RaceEngineer-1.0.1-Setup.exe` with Inno Setup.
+7. Compiles `RaceEngineer-1.0.3-Setup.exe` with Inno Setup.
 
 The Inno Setup installer installs per-user under
 `%LOCALAPPDATA%\Programs\RaceEngineer`, creates a Start Menu shortcut, and

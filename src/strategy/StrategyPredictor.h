@@ -16,6 +16,11 @@ struct StrategyDecision final {
     quint64 revision{0};
     int currentLap{0};
     int pitLap{0};
+    bool fromPlanner{false};
+    bool decisive{false};
+    bool lastLegalLap{false};
+    double expectedRemainingSeconds{0.0};
+    double gainVsWaitSeconds{0.0};
     QString error;
 };
 
@@ -37,11 +42,14 @@ private:
     struct CandidateBatch;
     [[nodiscard]] std::optional<CandidateBatch> candidates(const RaceState& state,
         const RaceHistory& history, int stintLaps, quint64 revision, QString& reason) const;
+    [[nodiscard]] StrategyDecision runPlan(const CandidateBatch& batch) const;
 
     QString directory_;
     QString artifactStatus_;
     bool available_{false};
     QJsonObject profile_;
+    QJsonObject plan_;
+    bool plannerAvailable_{false};
     QThreadPool pool_;
     std::unique_ptr<Runtime> runtime_;
     bool busy_{false};

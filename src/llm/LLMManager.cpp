@@ -100,7 +100,7 @@ void LLMManager::configure(const LlmSettings& settings, const QString& apiKey)
 }
 
 void LLMManager::ask(const QString& text, const RaceState& state, const RaceHistory& history,
-    const QString& responseLanguage)
+    const QString& responseLanguage, const QJsonObject& pitStrategy)
 {
     if (!provider_) {
         emit errorOccurred(QStringLiteral("AI provider is unavailable."));
@@ -109,6 +109,7 @@ void LLMManager::ask(const QString& text, const RaceState& state, const RaceHist
     provider_->cancelRequest();
     stateSnapshot_ = state;
     historySnapshot_ = history;
+    pitStrategySnapshot_ = pitStrategy;
     responseLanguage_ = responseLanguage;
     toolRounds_ = 0;
     authoritativeFuelResult_ = {};
@@ -235,7 +236,8 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
             const auto argumentsDocument = QJsonDocument::fromJson(
                 function.value(QStringLiteral("arguments")).toString().toUtf8());
             if (argumentsDocument.isObject()) arguments = argumentsDocument.object();
-            const QJsonObject result = tools_.execute(name, stateSnapshot_, historySnapshot_, arguments);
+            const QJsonObject result = tools_.execute(name, stateSnapshot_, historySnapshot_,
+                arguments, pitStrategySnapshot_);
             if (result.value(QStringLiteral("available")).toBool(false)) {
                 anyAvailable = true;
             }
@@ -441,7 +443,9 @@ QString LLMManager::systemPrompt() const
         "say so briefly. If a tool returns available: false, do not call other tools to search for "
         "alternative data; immediately answer that the requested data is unavailable. "
         "For every live telemetry or car-condition question, you MUST call the relevant tool before answering; "
-        "never answer from memory or from a vague generalization. For position/leader/ahead/behind questions "
+        "never answer from memory or from a vague generalization. "
+        "For which lap to pit or the AI pit recommendation, call get_pit_strategy; say pit at the end of pit_lap. "
+        "For position/leader/ahead/behind questions "
         "call get_position. For lap pace or lap-time questions call get_lap_times, get_recent_laps, or "
         "get_driver_pace. For tyre temperature, pressure, or condition questions call get_tyre_status; when the "
         "driver asks about tyre temperatures (nhiệt độ lốp) or pressures, ALWAYS state the actual numeric values "

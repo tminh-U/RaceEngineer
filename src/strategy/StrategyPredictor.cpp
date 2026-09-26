@@ -50,11 +50,91 @@ bool passesQualityGate(const QJsonObject& metrics)
         && finitePositive(number("improvement_ci95_lower_s"))
         && number("legal_choice_rate") == 1.0;
 }
+
+double planNumber(const QJsonObject& object, const char* name)
+{
+    const auto value = object.value(QString::fromLatin1(name));
+    return value.isDouble() ? value.toDouble() : std::numeric_limits<double>::quiet_NaN();
+}
+
+bool passesPlanGate(const QJsonObject& plan, const QJsonObject& profile)
+{
+    const auto metrics = plan.value(QStringLiteral("metrics")).toObject();
+    const double paceMae = planNumber(metrics, "pace_mae_s");
+    const double baselineMae = planNumber(metrics, "baseline_pace_mae_s");
+    const double age = planNumber(plan, "stint_age_penalty_s_per_lap");
+    const double fuelPenalty = planNumber(plan, "fuel_penalty_s_per_liter");
+    const double uncertainty = planNumber(plan, "uncertainty_s");
+    const double margin = planNumber(plan, "decision_margin_s");
+    const auto sourceHash = plan.value(QStringLiteral("source_sha256")).toString().toLatin1();
+    const bool sourceHashValid = sourceHash.size() == 64
+        && std::all_of(sourceHash.cbegin(), sourceHash.cend(), [](const char c) {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+        });
+    return plan.value(QStringLiteral("schema_version")).toInt() == 1
+        && plan.value(QStringLiteral("deployment_ready")).toBool()
+        && !profile.value(QStringLiteral("profile_id")).toString().isEmpty()
+        && !profile.value(QStringLiteral("simulator")).toString().isEmpty()
+        && !profile.value(QStringLiteral("track")).toString().isEmpty()
+        && !profile.value(QStringLiteral("car_model")).toString().isEmpty()
+        && profile.value(QStringLiteral("total_laps")).toInt() > 0
+        && profile.value(QStringLiteral("total_laps")).toInt() <= 1000
+        && sourceHashValid
+        && plan.value(QStringLiteral("session_count")).toInt() >= 10
+        && plan.value(QStringLiteral("profile_id")) == profile.value(QStringLiteral("profile_id"))
+        && plan.value(QStringLiteral("simulator")) == profile.value(QStringLiteral("simulator"))
+        && plan.value(QStringLiteral("track")) == profile.value(QStringLiteral("track"))
+        && plan.value(QStringLiteral("car_model")) == profile.value(QStringLiteral("car_model"))
+        && plan.value(QStringLiteral("total_laps")) == profile.value(QStringLiteral("total_laps"))
+        && profile.value(QStringLiteral("race_format")).toString() == QStringLiteral("laps")
+        && profile.value(QStringLiteral("mandatory_stop")).toBool()
+        && profile.value(QStringLiteral("service_validated")).toBool()
+        && profile.value(QStringLiteral("dry_conditions_confirmed")).toBool()
+        && profile.value(QStringLiteral("start_fresh_tyres_validated")).toBool()
+        && profile.value(QStringLiteral("tyre_change_validated")).toBool()
+        && profile.value(QStringLiteral("fixed_pit_loss_validated")).toBool()
+        && profile.value(QStringLiteral("refuel_allowed")).isBool()
+        && (!profile.value(QStringLiteral("refuel_allowed")).toBool()
+            || profile.value(QStringLiteral("refuel_amount_control_validated")).toBool())
+        && finitePositive(planNumber(plan, "fresh_lap_s"))
+        && std::isfinite(age) && age >= 0.0
+        && std::isfinite(fuelPenalty) && fuelPenalty >= 0.0
+        && finitePositive(planNumber(plan, "fuel_use_l_per_lap"))
+        && finitePositive(planNumber(plan, "pit_loss_s"))
+        && std::isfinite(uncertainty) && uncertainty >= 0.0
+        && std::isfinite(margin) && margin >= 0.0
+        && metrics.value(QStringLiteral("held_out_races")).toInt() >= 10
+        && metrics.value(QStringLiteral("prospective_races")).toInt() >= 10
+        && finitePositive(baselineMae) && std::isfinite(paceMae) && paceMae >= 0.0
+        && paceMae <= baselineMae
+        && planNumber(metrics, "legal_choice_rate") == 1.0
+        && finitePositive(planNumber(metrics, "improvement_ci95_lower_s"));
+}
+
+bool planFuelLegal(const int currentLap, const int totalLaps, const int pitLap,
+    const double fuel, const double burn, const double capacity, const bool refuel,
+    const double reserveLaps)
+{
+    if (pitLap < currentLap || pitLap > totalLaps || !finitePositive(fuel)
+        || !finitePositive(burn) || !std::isfinite(reserveLaps) || reserveLaps < 0
+        || (refuel && !finitePositive(capacity))) return false;
+    const double fuelAtPit = fuel - (pitLap - currentLap + 1) * burn;
+    const double fuelAfterPit = refuel ? capacity : fuelAtPit;
+    return fuelAtPit + 1e-6 >= reserveLaps * burn
+        && fuelAfterPit + 1e-6 >= (totalLaps - pitLap + reserveLaps) * burn;
+}
 }
 
 struct StrategyPredictor::CandidateBatch {
     quint64 revision{0};
     int currentLap{0};
+    int totalLaps{0};
+    int stintLaps{0};
+    double fuelLiters{0.0};
+    double fuelCapacityLiters{0.0};
+    double fuelUseLitersPerLap{0.0};
+    double reserveLaps{0.0};
+    bool refuelAllowed{false};
     QVector<int> laps;
     QVector<float> features;
 };
@@ -208,10 +288,20 @@ StrategyPredictor::StrategyPredictor(const QString& directory, QObject* parent)
     const auto manifest = readObject(dir.filePath(QStringLiteral("manifest.json")));
     const auto schema = readObject(dir.filePath(QStringLiteral("feature_schema.json")));
     profile_ = readObject(dir.filePath(QStringLiteral("profile.json")));
+    const auto calibration = readObject(dir.filePath(QStringLiteral("plan_calibration.json")));
+    if (passesPlanGate(calibration, profile_)) {
+        plan_ = calibration;
+        plannerAvailable_ = true;
+        available_ = true;
+        artifactStatus_ = QStringLiteral("Chờ telemetry cuộc đua");
+        return;
+    }
     const QString modelPath = dir.filePath(QStringLiteral("pit_ranker.json"));
     QFile model(modelPath);
     if (!model.open(QIODevice::ReadOnly) || manifest.isEmpty() || schema.isEmpty()) {
-        artifactStatus_ = QStringLiteral("Chưa có model chiến thuật đã duyệt");
+        artifactStatus_ = calibration.isEmpty()
+            ? QStringLiteral("Chưa có hiệu chỉnh chiến thuật pit đã duyệt")
+            : QStringLiteral("Hiệu chỉnh pit chưa đạt cổng duyệt");
         return;
     }
     if (manifest.value(QStringLiteral("deployment_ready")).toBool() != true
@@ -293,6 +383,11 @@ std::optional<StrategyPredictor::CandidateBatch> StrategyPredictor::candidates(
         || profile_.value(QStringLiteral("total_laps")).toInt() != *state.totalLaps) {
         reason = QStringLiteral("Race hiện tại chưa có profile model phù hợp"); return std::nullopt;
     }
+    if (plannerAvailable_ && (*state.totalLaps != *state.currentLap + *state.lapsRemaining - 1
+        || (state.flag && (*state.flag == FlagState::Yellow || *state.flag == FlagState::Red
+            || *state.flag == FlagState::Black || *state.flag == FlagState::Chequered)))) {
+        reason = QStringLiteral("Điều kiện đua hoặc số vòng không phù hợp hiệu chỉnh pit"); return std::nullopt;
+    }
     const auto fuelLaps = history.estimatedFuelLapsRemaining(state);
     const auto pace = history.averageLapTime();
     const auto trend = history.recentLapTrend();
@@ -309,8 +404,19 @@ std::optional<StrategyPredictor::CandidateBatch> StrategyPredictor::candidates(
         || openLap < 1 || closeLap < openLap || closeLap > *state.totalLaps) {
         reason = QStringLiteral("Race profile thiếu pit window hoặc pit loss hợp lệ"); return std::nullopt;
     }
+    const auto measuredFuelUse = history.averageFuelConsumption();
+    const double fuelUse = plannerAvailable_ && measuredFuelUse
+        ? std::max(*measuredFuelUse, planNumber(plan_, "fuel_use_l_per_lap")) : 0.0;
+    if (plannerAvailable_ && (!state.fuelLiters || !finitePositive(*state.fuelLiters)
+        || !finitePositive(fuelUse)
+        || (profile_.value(QStringLiteral("refuel_allowed")).toBool()
+            && (!state.fuelCapacityLiters || !finitePositive(*state.fuelCapacityLiters)
+                || *state.fuelLiters > *state.fuelCapacityLiters + 0.01)))) {
+        reason = QStringLiteral("Thiếu nhiên liệu hoặc dung tích bình để xét cả sau pit"); return std::nullopt;
+    }
+    const double usableFuelLaps = plannerAvailable_ ? *state.fuelLiters / fuelUse : *fuelLaps;
     const int lower = std::max(0, openLap - *state.currentLap);
-    const double fuelOffset = std::floor(*fuelLaps - reserve - 1.0);
+    const double fuelOffset = std::floor(usableFuelLaps - reserve - 1.0);
     const int fuelUpper = fuelOffset < 0 ? -1
         : fuelOffset >= *state.lapsRemaining ? *state.lapsRemaining - 1 : static_cast<int>(fuelOffset);
     const int upper = std::min({closeLap - *state.currentLap, *state.lapsRemaining - 1,
@@ -321,14 +427,31 @@ std::optional<StrategyPredictor::CandidateBatch> StrategyPredictor::candidates(
     CandidateBatch batch;
     batch.revision = revision;
     batch.currentLap = *state.currentLap;
-    batch.features.reserve((upper - lower + 1) * featureCount);
+    if (plannerAvailable_) {
+        batch.totalLaps = *state.totalLaps;
+        batch.stintLaps = stintLaps;
+        batch.fuelLiters = *state.fuelLiters;
+        batch.fuelCapacityLiters = state.fuelCapacityLiters.value_or(0.0);
+        batch.fuelUseLitersPerLap = fuelUse;
+        batch.reserveLaps = reserve;
+        batch.refuelAllowed = profile_.value(QStringLiteral("refuel_allowed")).toBool();
+    }
+    if (!plannerAvailable_) batch.features.reserve((upper - lower + 1) * featureCount);
     const float nan = std::numeric_limits<float>::quiet_NaN();
     const auto gap = [nan](const std::optional<double>& seconds) {
         return seconds && std::isfinite(*seconds) && *seconds >= 0 && *seconds < 100000
             ? float(*seconds) : nan;
     };
     for (int offset = lower; offset <= upper; ++offset) {
-        batch.laps.push_back(*state.currentLap + offset);
+        const int pitLap = *state.currentLap + offset;
+        if (plannerAvailable_ && offset == 0
+            && (!state.currentLapTimeSeconds || *state.currentLapTimeSeconds < 0.0
+                || *state.currentLapTimeSeconds > 5.0)) continue;
+        if (plannerAvailable_ && !planFuelLegal(batch.currentLap, batch.totalLaps, pitLap,
+            batch.fuelLiters, batch.fuelUseLitersPerLap, batch.fuelCapacityLiters,
+            batch.refuelAllowed, reserve)) continue;
+        batch.laps.push_back(pitLap);
+        if (plannerAvailable_) continue;
         const float row[] = {float(*state.lapsRemaining), float(*fuelLaps), float(reserve),
             float(stintLaps), float(*pace), float(*trend),
             gap(state.gapAheadSeconds), gap(state.gapBehindSeconds),
@@ -336,7 +459,67 @@ std::optional<StrategyPredictor::CandidateBatch> StrategyPredictor::candidates(
             float(closeLap - *state.currentLap), float(offset)};
         for (const float value : row) batch.features.push_back(value);
     }
+    if (batch.laps.isEmpty()) {
+        reason = QStringLiteral("Không có vòng pit hợp lệ cho cả hai chặng nhiên liệu");
+        return std::nullopt;
+    }
     return batch;
+}
+
+StrategyDecision StrategyPredictor::runPlan(const CandidateBatch& batch) const
+{
+    StrategyDecision result;
+    result.revision = batch.revision;
+    result.currentLap = batch.currentLap;
+    result.fromPlanner = true;
+    const double fresh = planNumber(plan_, "fresh_lap_s");
+    const double agePenalty = planNumber(plan_, "stint_age_penalty_s_per_lap");
+    const double fuelPenalty = planNumber(plan_, "fuel_penalty_s_per_liter");
+    const double pitLoss = planNumber(plan_, "pit_loss_s");
+    const double margin = std::max(planNumber(plan_, "uncertainty_s"),
+        planNumber(plan_, "decision_margin_s"));
+    double bestCost = std::numeric_limits<double>::infinity();
+    double secondCost = std::numeric_limits<double>::infinity();
+    double bestFutureCost = std::numeric_limits<double>::infinity();
+    for (const int pitLap : batch.laps) {
+        const int before = pitLap - batch.currentLap + 1;
+        const int after = batch.totalLaps - pitLap;
+        const double fuelAtPit = batch.fuelLiters - before * batch.fuelUseLitersPerLap;
+        const double fuelAfterPit = batch.refuelAllowed
+            ? std::max(fuelAtPit, (after + batch.reserveLaps) * batch.fuelUseLitersPerLap)
+            : fuelAtPit;
+        const double beforePairs = double(before) * (before - 1) / 2.0;
+        const double afterPairs = double(after) * (after - 1) / 2.0;
+        const double totalAge = double(before) * batch.stintLaps + beforePairs + afterPairs;
+        const double totalFuel = double(before) * batch.fuelLiters
+            - batch.fuelUseLitersPerLap * beforePairs
+            + double(after) * fuelAfterPit - batch.fuelUseLitersPerLap * afterPairs;
+        const double cost = double(before + after) * fresh + agePenalty * totalAge
+            + fuelPenalty * totalFuel + pitLoss;
+        if (!finitePositive(cost)) {
+            result.error = QStringLiteral("Hiệu chỉnh pit tạo ra thời gian không hợp lệ");
+            return result;
+        }
+        if (pitLap > batch.currentLap) bestFutureCost = std::min(bestFutureCost, cost);
+        if (cost < bestCost) {
+            secondCost = bestCost;
+            bestCost = cost;
+            result.pitLap = pitLap;
+        } else {
+            secondCost = std::min(secondCost, cost);
+        }
+    }
+    if (result.pitLap == 0) {
+        result.error = QStringLiteral("Không có vòng pit hợp lệ");
+        return result;
+    }
+    result.expectedRemainingSeconds = bestCost;
+    result.lastLegalLap = result.pitLap == batch.currentLap && !std::isfinite(bestFutureCost);
+    if (result.pitLap == batch.currentLap && std::isfinite(bestFutureCost))
+        result.gainVsWaitSeconds = bestFutureCost - bestCost;
+    result.decisive = result.lastLegalLap || !std::isfinite(secondCost)
+        || secondCost - bestCost > margin;
+    return result;
 }
 
 QString StrategyPredictor::prepare(const RaceState& state, const RaceHistory& history,
@@ -349,7 +532,7 @@ QString StrategyPredictor::prepare(const RaceState& state, const RaceHistory& hi
     if (!batch) return reason;
     busy_ = true;
     pool_.start([this, batch = std::move(*batch), callback = std::move(onDecision)]() mutable {
-        auto result = runtime_->run(batch);
+        auto result = plannerAvailable_ ? runPlan(batch) : runtime_->run(batch);
         QMetaObject::invokeMethod(this, [this, callback = std::move(callback), result = std::move(result)]() mutable {
             busy_ = false;
             if (!result.error.isEmpty()) {
@@ -371,6 +554,26 @@ bool StrategyPredictor::stillLegal(const RaceState& state, const RaceHistory& hi
         || profile_.value(QStringLiteral("track")).toString() != QString::fromStdString(*state.track)
         || profile_.value(QStringLiteral("car_model")).toString() != QString::fromStdString(*state.carModel)
         || profile_.value(QStringLiteral("total_laps")).toInt() != *state.totalLaps) return false;
+    if (plannerAvailable_) {
+        const QString simulator = state.simulator == Simulator::AssettoCorsaCompetizione
+            ? QStringLiteral("sim_acc") : QStringLiteral("sim_ac");
+        if (profile_.value(QStringLiteral("simulator")).toString() != simulator
+            || *state.totalLaps != *state.currentLap + *state.lapsRemaining - 1
+            || (state.flag && (*state.flag == FlagState::Yellow || *state.flag == FlagState::Red
+                || *state.flag == FlagState::Black || *state.flag == FlagState::Chequered))) return false;
+        const auto measured = history.averageFuelConsumption();
+        const double reserve = profile_.value(QStringLiteral("reserve_laps")).toDouble(-1);
+        const double burn = measured ? std::max(*measured, planNumber(plan_, "fuel_use_l_per_lap")) : 0.0;
+        const bool refuel = profile_.value(QStringLiteral("refuel_allowed")).toBool();
+        return state.fuelLiters && (!refuel || (state.fuelCapacityLiters
+                && *state.fuelLiters <= *state.fuelCapacityLiters + 0.01))
+            && (pitLap != *state.currentLap || (state.currentLapTimeSeconds
+                && *state.currentLapTimeSeconds >= 0.0 && *state.currentLapTimeSeconds <= 5.0))
+            && pitLap >= profile_.value(QStringLiteral("pit_window_open_lap")).toInt()
+            && pitLap <= profile_.value(QStringLiteral("pit_window_close_lap")).toInt()
+            && planFuelLegal(*state.currentLap, *state.totalLaps, pitLap, *state.fuelLiters,
+                burn, state.fuelCapacityLiters.value_or(0.0), refuel, reserve);
+    }
     const auto fuelLaps = history.estimatedFuelLapsRemaining(state);
     const double reserve = profile_.value(QStringLiteral("reserve_laps")).toDouble(-1);
     return fuelLaps && finitePositive(*fuelLaps) && reserve >= 0

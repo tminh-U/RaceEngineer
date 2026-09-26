@@ -182,13 +182,17 @@ QJsonArray ToolRegistry::definitions() const
         definition(QStringLiteral("get_best_lap"), QStringLiteral("Best recorded lap in M:SS.mmm.")),
         definition(QStringLiteral("get_sector_analysis"), QStringLiteral("Returns best sectors and, when available, an authoritative largest current loss sector. Sector times are also M:SS.mmm; do not calculate sector loss.")),
         definition(QStringLiteral("get_pit_status"), QStringLiteral("Pit state and pit limiter status.")),
+        definition(QStringLiteral("get_pit_strategy"), QStringLiteral("Mandatory when asked which lap to pit or for the AI pit recommendation. Returns the approved strategy's selected pit lap, meaning pit at the END of that lap. If unavailable, say no pit lap has been selected; never guess from fuel or current lap.")),
         definition(QStringLiteral("get_flag_status"), QStringLiteral("Current race flag.")),
         definition(QStringLiteral("get_race_summary"), QStringLiteral("Compact session, position, fuel and lap summary."))};
 }
 
 QJsonObject ToolRegistry::execute(const QString& name, const RaceState& state,
-    const RaceHistory& history, const QJsonObject& arguments) const
+    const RaceHistory& history, const QJsonObject& arguments,
+    const QJsonObject& pitStrategy) const
 {
+    if (name == QStringLiteral("get_pit_strategy"))
+        return pitStrategy.isEmpty() ? unavailable() : pitStrategy;
     if (name == QStringLiteral("get_session_status")) {
         if (!state.connected) return unavailable();
         QJsonObject result{{QStringLiteral("available"), true},

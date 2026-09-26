@@ -10,6 +10,7 @@
 #include "strategy/StrategyRecorder.h"
 
 #include <QObject>
+#include <QJsonObject>
 #include <QByteArray>
 #include <QThread>
 #include <QVariantMap>
@@ -257,6 +258,7 @@ private:
     void updateEngineerMessage(const QString& text);
     void finishStartupIfReady();
     void updateStrategy(const RaceState& state);
+    [[nodiscard]] QJsonObject pitStrategyToolData() const;
     void setStrategyState(const QString& status, const QString& detail, int pitLap = 0);
     void announceStrategy(const QString& text, EventPriority priority);
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -283,8 +285,9 @@ private:
     StrategyRecorder strategyRecorder_;
     std::unique_ptr<StrategyPredictor> strategyPredictor_;
     QString strategyStatus_{QStringLiteral("Đã tắt")};
-    QString strategyDetail_{QStringLiteral("Bật để chọn vòng pit khi có model đã duyệt.")};
+    QString strategyDetail_{QStringLiteral("Bật để chọn vòng pit khi có dữ liệu chiến thuật đã duyệt.")};
     int strategyPitLap_{0};
+    bool strategyLastLegalLap_{false};
     int strategyObservedLap_{0};
     int strategyRequestedLap_{0};
     int strategyAnnouncedPrepareLap_{0};

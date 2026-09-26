@@ -25,7 +25,8 @@ public:
 
     void configure(const LlmSettings& settings, const QString& apiKey);
     void ask(const QString& text, const RaceState& state, const RaceHistory& history,
-        const QString& responseLanguage = QStringLiteral("Vietnamese"));
+        const QString& responseLanguage = QStringLiteral("Vietnamese"),
+        const QJsonObject& pitStrategy = {});
     void testConnection();
     void resetConversation();
     [[nodiscard]] QVariantMap statistics() const;
@@ -69,6 +70,7 @@ private:
     ToolRegistry tools_;
     RaceState stateSnapshot_;
     RaceHistory historySnapshot_;
+    QJsonObject pitStrategySnapshot_;
     QString responseLanguage_{QStringLiteral("Vietnamese")};
     QString driverName_{QStringLiteral("Minh Vũ")};
     QString responseStyle_{QStringLiteral("Tiêu chuẩn")};

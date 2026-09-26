@@ -144,7 +144,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
         resolvePackagedOrDevelopmentPath(QStringLiteral("models/pit_strategy")), this);
     if (settingsManager_.strategyEnabled()) {
         strategyStatus_ = QStringLiteral("Đang chờ dữ liệu");
-        strategyDetail_ = QStringLiteral("Đang kiểm tra model, race profile và telemetry.");
+        strategyDetail_ = QStringLiteral("Đang kiểm tra chiến thuật, race profile và telemetry.");
     }
     audioDucker_->setEnabled(settingsManager_.tts().audioDucking);
     audioDucker_->setDuckFactor(settingsManager_.tts().duckFactor);
@@ -1002,7 +1002,8 @@ void Application::askText(const QString& text)
     onVoiceStatusChanged(QStringLiteral("Thinking"));
     emit interactionChanged();
     llmManager_->ask(latestUserText_, latestState_, raceHistory_,
-        QStringLiteral("Vietnamese by default; use English only if the driver clearly writes in English"));
+        QStringLiteral("Vietnamese by default; use English only if the driver clearly writes in English"),
+        pitStrategyToolData());
 }
 
 void Application::resetConversation()
@@ -1046,6 +1047,7 @@ void Application::onStateUpdated(const RaceState& state)
         strategyAnnouncedPrepareLap_ = 0;
         strategyAnnouncedPitLap_ = 0;
         strategyPitLap_ = 0;
+        strategyLastLegalLap_ = false;
         strategySeenStart_ = false;
         strategyPitted_ = false;
         strategyWasInPit_ = false;
@@ -1121,17 +1123,18 @@ void Application::setStrategyEnabled(const bool enabled)
     ++strategyRevision_;
     strategyRequestedLap_ = 0;
     strategyPitLap_ = 0;
+    strategyLastLegalLap_ = false;
     strategyAnnouncedPrepareLap_ = 0;
     strategyAnnouncedPitLap_ = 0;
     messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
     messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
     if (enabled) {
         setStrategyState(QStringLiteral("Đang chờ dữ liệu"),
-            QStringLiteral("Đang kiểm tra model, race profile và telemetry."));
+            QStringLiteral("Đang kiểm tra chiến thuật, race profile và telemetry."));
         updateStrategy(latestState_);
     } else {
         setStrategyState(QStringLiteral("Đã tắt"),
-            QStringLiteral("Bật để chọn vòng pit khi có model đã duyệt."));
+            QStringLiteral("Bật để chọn vòng pit khi có dữ liệu chiến thuật đã duyệt."));
     }
 }
 
@@ -1163,6 +1166,18 @@ void Application::setStrategyState(const QString& status, const QString& detail,
     emit strategyChanged();
 }
 
+QJsonObject Application::pitStrategyToolData() const
+{
+    if (!settingsManager_.strategyEnabled() || !strategyAvailable() || !latestState_.connected
+        || strategyStatus_ != QStringLiteral("Sẵn sàng") || strategyPitLap_ <= 0)
+        return {{QStringLiteral("available"), false},
+            {QStringLiteral("status"), strategyStatus_},
+            {QStringLiteral("reason"), strategyDetail_}};
+    return {{QStringLiteral("available"), true},
+        {QStringLiteral("pit_lap"), strategyPitLap_},
+        {QStringLiteral("pit_timing"), QStringLiteral("end_of_lap")}};
+}
+
 void Application::announceStrategy(const QString& text, const EventPriority priority)
 {
     latestEvent_ = text;
@@ -1180,8 +1195,13 @@ void Application::updateStrategy(const RaceState& state)
 {
     if (!settingsManager_.strategyEnabled()) return;
     if (!strategyAvailable()) {
+        if (strategyPitLap_) {
+            messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+            messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+        }
+        strategyLastLegalLap_ = false;
         setStrategyState(strategyPredictor_->artifactStatus(),
-            QStringLiteral("Đặt model, schema, manifest đã duyệt và profile vào models/pit_strategy, rồi khởi động lại app."));
+            QStringLiteral("Đang chờ dữ liệu chiến thuật pit đủ điều kiện để duyệt."));
         return;
     }
     if (!state.connected || !state.currentLap) {
@@ -1220,6 +1240,7 @@ void Application::updateStrategy(const RaceState& state)
         messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
         messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
         strategyPitLap_ = 0;
+        strategyLastLegalLap_ = false;
         strategyAnnouncedPrepareLap_ = 0;
         strategyAnnouncedPitLap_ = 0;
         strategyRequestedLap_ = 0;
@@ -1236,7 +1257,10 @@ void Application::updateStrategy(const RaceState& state)
                     || result.revision != strategyRevision_ || !latestState_.currentLap
                     || result.currentLap != *latestState_.currentLap || strategyPitted_) return;
                 if (!result.error.isEmpty()) {
-                    setStrategyState(QStringLiteral("Lỗi model"), result.error);
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+                    strategyLastLegalLap_ = false;
+                    setStrategyState(QStringLiteral("Lỗi chiến thuật"), result.error);
                     return;
                 }
                 if (!strategyPredictor_->stillLegal(latestState_, raceHistory_,
@@ -1246,20 +1270,35 @@ void Application::updateStrategy(const RaceState& state)
                         QStringLiteral("Kết quả đã hết hạn do nhiên liệu hoặc trạng thái đua thay đổi."));
                     return;
                 }
+                if (result.fromPlanner && !result.decisive) {
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+                    strategyLastLegalLap_ = false;
+                    strategyAnnouncedPrepareLap_ = 0;
+                    strategyAnnouncedPitLap_ = 0;
+                    setStrategyState(QStringLiteral("Cửa sổ pit"),
+                        QStringLiteral("Các vòng hợp lệ chưa khác biệt đủ rõ để tự gọi pit."));
+                    return;
+                }
                 if (strategyPitLap_ && strategyPitLap_ != result.pitLap) {
                     messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
                     messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
                     strategyAnnouncedPrepareLap_ = 0;
                     strategyAnnouncedPitLap_ = 0;
                 }
+                strategyLastLegalLap_ = result.fromPlanner && result.lastLegalLap;
                 setStrategyState(QStringLiteral("Sẵn sàng"),
-                    QStringLiteral("XGBoost Ranker chọn vào pit cuối vòng %1 theo profile điều kiện khô.").arg(result.pitLap),
+                    result.fromPlanner
+                        ? (result.lastLegalLap
+                            ? QStringLiteral("Vòng %1 là vòng pit cuối còn hợp lệ theo luật và nhiên liệu.").arg(result.pitLap)
+                            : QStringLiteral("Dự kiến vào pit cuối vòng %1 để giảm thời gian còn lại.").arg(result.pitLap))
+                        : QStringLiteral("XGBoost Ranker chọn vào pit cuối vòng %1 theo profile điều kiện khô.").arg(result.pitLap),
                     result.pitLap);
                 updateStrategy(latestState_);
             });
         if (status == QStringLiteral("Đang tính chiến thuật")) {
             strategyRequestedLap_ = lap;
-            if (!strategyPitLap_) setStrategyState(status, QStringLiteral("Đang xếp hạng các vòng pit hợp lệ."));
+            if (!strategyPitLap_) setStrategyState(status, QStringLiteral("Đang tính các vòng pit hợp lệ."));
         } else if (!strategyPitLap_) {
             setStrategyState(status, status);
         }
@@ -1322,7 +1361,8 @@ void Application::onTranscriptionReady(const QString& text, const QString& detec
     onVoiceStatusChanged(QStringLiteral("Thinking"));
     llmManager_->ask(text, latestState_, raceHistory_,
         detectedLanguage.startsWith(QStringLiteral("en"), Qt::CaseInsensitive)
-            ? QStringLiteral("English") : QStringLiteral("Vietnamese"));
+            ? QStringLiteral("English") : QStringLiteral("Vietnamese"),
+        pitStrategyToolData());
 }
 
 bool Application::eventFilter(QObject* const watched, QEvent* const event)

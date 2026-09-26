@@ -21,6 +21,7 @@ WEAR = [f"tyre_wear_{i}_at_sample" for i in range(4)]
 LIMITATIONS = [
     "Vehicle category uses source class or car-model text; unknown/conflicting categories need review before training.",
     "Box events show a visit, not whether fuel, tyres, or other service was completed.",
+    "A measured fuel increase suggests refuelling; tyre service still needs independent verification.",
     "Missing optional samples are not zero; coverage does not validate ACC tyreWear as a wear signal.",
     "Pit observations are not candidate-quality or optimal-stop labels.",
 ]
@@ -151,6 +152,13 @@ def _session(session_id, rows):
         start, end = pit_pair
         return any(start < box_start < box_end < end for box_start, box_end in box_pairs)
 
+    def observed_refuel(pit_pair):
+        if not has_box(pit_pair):
+            return False
+        start, end = (events[index]["row"] for index in pit_pair)
+        before, after = start.get("fuel_at_sample_l"), end.get("fuel_at_sample_l")
+        return _number(before) and _number(after) and after > before + 0.1
+
     pre_race = [pair for pair in pit_pairs
                 if _number(events[pair[0]]["row"].get("current_lap"))
                 and events[pair[0]]["row"]["current_lap"] <= 0]
@@ -165,6 +173,7 @@ def _session(session_id, rows):
         "fuel_any": fuel_rows,
         "fuel_used_l": _coverage(lap_rows, "fuel_used_l"),
         "fuel_at_sample_l": _coverage(lap_rows, "fuel_at_sample_l"),
+        "fuel_capacity_l": _coverage(lap_rows, "fuel_capacity_l"),
         "gap_ahead_at_sample_s": _coverage(lap_rows, "gap_ahead_at_sample_s"),
         "gap_behind_at_sample_s": _coverage(lap_rows, "gap_behind_at_sample_s"),
         "tyre_wear_corners": {field: _coverage(lap_rows, field) for field in WEAR},
@@ -198,6 +207,7 @@ def _session(session_id, rows):
             "box_enters_without_exit": open_box, "box_exits_without_enter": unmatched_box,
             "visits_with_box_cycle": sum(has_box(pair) for pair in pit_pairs),
             "in_race_visits_with_box_cycle": sum(has_box(pair) for pair in in_race),
+            "in_race_visits_with_observed_refuel": sum(observed_refuel(pair) for pair in in_race),
             "timeline_basis": "captured_utc" if timed else "input_order",
             "events_missing_or_invalid_timestamp": sum(t is None for t in times),
             "duplicate_event_groups": sum(d["kind"] == "event" for d in duplicates),
