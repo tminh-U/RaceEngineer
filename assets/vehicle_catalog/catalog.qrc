@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/vehicle_catalog">
+    <file alias="ac_cars.json">ac_cars.json</file>
+    <file alias="acc_cars.json">acc_cars.json</file>
+  </qresource>
+</RCC>

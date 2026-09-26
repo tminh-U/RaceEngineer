@@ -16,9 +16,12 @@
 
 namespace raceengineer {
 
-WhisperRecognizer::WhisperRecognizer(QString modelPath, QObject* const parent)
+WhisperRecognizer::WhisperRecognizer(QString modelPath,
+    LocalAiRuntimeSelection runtimeSelection,
+    QObject* const parent)
     : QObject(parent)
     , modelPath_(std::move(modelPath))
+    , runtimeSelection_(std::move(runtimeSelection))
 {
     samples_.reserve(30 * 16'000);
     const int requestedThreads = qEnvironmentVariableIntValue("RACEENGINEER_STT_THREADS");
@@ -29,7 +32,7 @@ WhisperRecognizer::WhisperRecognizer(QString modelPath, QObject* const parent)
     if (requestedMaxTokens >= 16 && requestedMaxTokens <= 64) {
         maxTokens_ = requestedMaxTokens;
     }
-    useGpu_ = qgetenv("GGML_DISABLE_VULKAN") != "1";
+    useGpu_ = runtimeSelection_.useVulkan;
     const QByteArray flashEnvironment = qgetenv("RACEENGINEER_STT_FLASH_ATTN");
     flashAttention_ = flashEnvironment.isEmpty() || flashEnvironment != "0";
 }
@@ -44,11 +47,18 @@ WhisperRecognizer::~WhisperRecognizer()
 void WhisperRecognizer::warmUp()
 {
     QString error;
-    if (!ensureModelLoaded(&error)
-        || (!warmupComplete_ && !warmUpInference(&error))) {
+    if (!ensureModelLoaded(&error)) {
         qCWarning(logStt).noquote() << "STT startup warm-up failed:" << error;
         emit warmUpFinished(false, error);
         return;
+    }
+    if (!warmupComplete_ && !warmUpInference(&error)) {
+        const QString gpuError = error;
+        if (!retryOnCpu(gpuError, &error)) {
+            qCWarning(logStt).noquote() << "STT startup warm-up failed:" << error;
+            emit warmUpFinished(false, error);
+            return;
+        }
     }
     emit warmUpFinished(true, {});
 }
@@ -124,11 +134,24 @@ void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& lang
     whisper_reset_timings(context_);
     QElapsedTimer inferenceTimer;
     inferenceTimer.start();
-    const int result = whisper_full(context_, parameters, samples_.data(), static_cast<int>(samples_.size()));
-    const double inferenceMs = inferenceTimer.nsecsElapsed() / 1'000'000.0;
+    int result = whisper_full(context_, parameters, samples_.data(), static_cast<int>(samples_.size()));
+    double inferenceMs = inferenceTimer.nsecsElapsed() / 1'000'000.0;
+    if (result != 0 && !cancelRequested_.load() && useGpu_) {
+        const QString gpuError =
+            QStringLiteral("Whisper Vulkan inference failed (code %1).").arg(result);
+        if (retryOnCpu(gpuError, &loadError)) {
+            whisper_reset_timings(context_);
+            inferenceTimer.restart();
+            result = whisper_full(
+                context_, parameters, samples_.data(), static_cast<int>(samples_.size()));
+            inferenceMs = inferenceTimer.nsecsElapsed() / 1'000'000.0;
+        }
+    }
     if (result != 0 || cancelRequested_.load()) {
         if (!cancelRequested_.load()) {
-            emit recognitionError(QStringLiteral("Whisper không thể nhận dạng đoạn nói."));
+            emit recognitionError(loadError.isEmpty()
+                ? QStringLiteral("Whisper không thể nhận dạng đoạn nói.")
+                : loadError);
         }
         emit recognitionFinished();
         return;
@@ -213,14 +236,28 @@ bool WhisperRecognizer::ensureModelLoaded(QString* const error)
     auto parameters = whisper_context_default_params();
     parameters.use_gpu = useGpu_;
     parameters.flash_attn = flashAttention_;
-    parameters.gpu_device = 0;
+    parameters.gpu_device = useGpu_ ? runtimeSelection_.vulkanDeviceIndex : 0;
     const QByteArray path = QFileInfo(modelPath_).absoluteFilePath().toUtf8();
     QElapsedTimer loadTimer;
     loadTimer.start();
     context_ = whisper_init_from_file_with_params(path.constData(), parameters);
     if (context_ == nullptr) {
-        if (error) *error = QStringLiteral("Không thể nạp mô hình Whisper.");
-        return false;
+        if (useGpu_) {
+            runtimeSelection_.fallbackToCpu = true;
+            runtimeSelection_.fallbackReason =
+                QStringLiteral("PhoWhisper Vulkan init thất bại.");
+            runtimeSelection_.resolvedDeviceId = QStringLiteral("cpu");
+            runtimeSelection_.label = QStringLiteral("CPU");
+            runtimeSelection_.useVulkan = false;
+            useGpu_ = false;
+            parameters.use_gpu = false;
+            parameters.gpu_device = 0;
+            context_ = whisper_init_from_file_with_params(path.constData(), parameters);
+        }
+        if (context_ == nullptr) {
+            if (error) *error = QStringLiteral("Không thể nạp mô hình Whisper trên CPU.");
+            return false;
+        }
     }
     qCInfo(logStt) << "PhoWhisper-small Q5_1 model loaded:" << modelPath_
                    << "model_load_ms=" << loadTimer.nsecsElapsed() / 1'000'000.0
@@ -230,7 +267,30 @@ bool WhisperRecognizer::ensureModelLoaded(QString* const error)
     if (systemInfo != nullptr) {
         qCInfo(logStt).noquote() << "whisper.cpp system:" << systemInfo;
     }
+    emit runtimeBackendChanged(
+        useGpu_ ? runtimeSelection_.label : QStringLiteral("CPU"),
+        runtimeSelection_.fallbackReason);
     return true;
+}
+
+bool WhisperRecognizer::retryOnCpu(const QString& reason, QString* const error)
+{
+    if (!useGpu_) {
+        return false;
+    }
+    if (context_ != nullptr) {
+        whisper_free(context_);
+        context_ = nullptr;
+    }
+    useGpu_ = false;
+    runtimeSelection_.useVulkan = false;
+    runtimeSelection_.resolvedDeviceId = QStringLiteral("cpu");
+    runtimeSelection_.label = QStringLiteral("CPU");
+    runtimeSelection_.fallbackToCpu = true;
+    runtimeSelection_.fallbackReason =
+        QStringLiteral("PhoWhisper Vulkan fallback: %1").arg(reason);
+    warmupComplete_ = false;
+    return ensureModelLoaded(error) && warmUpInference(error);
 }
 
 bool WhisperRecognizer::warmUpInference(QString* const error)

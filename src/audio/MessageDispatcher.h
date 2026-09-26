@@ -20,6 +20,7 @@ public:
     void setBackend(ITtsBackend* backend);
     void enqueue(const QString& text, EventPriority priority);
     void clear();
+    void cancelByPrefix(const QString& prefix);
 
 signals:
     void requestSpeak(const QString& text);

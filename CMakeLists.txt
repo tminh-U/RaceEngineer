@@ -59,6 +59,9 @@ qt_add_executable(RaceEngineer
     src/app/Application.h
     src/telemetry/common/RaceState.cpp
     src/telemetry/common/RaceState.h
+    src/telemetry/common/VehicleCatalog.cpp
+    src/telemetry/common/VehicleCatalog.h
+    assets/vehicle_catalog/catalog.qrc
     src/telemetry/common/ISimTelemetryProvider.h
     src/telemetry/common/WindowsSharedMemory.cpp
     src/telemetry/common/WindowsSharedMemory.h
@@ -78,6 +81,10 @@ qt_add_executable(RaceEngineer
     src/telemetry/mock/MockTelemetryProvider.h
     src/race/RaceHistory.cpp
     src/race/RaceHistory.h
+    src/strategy/StrategyPredictor.cpp
+    src/strategy/StrategyPredictor.h
+    src/strategy/StrategyRecorder.cpp
+    src/strategy/StrategyRecorder.h
     src/events/EventEngine.cpp
     src/events/EventEngine.h
     src/utils/Logging.cpp
@@ -92,6 +99,8 @@ qt_add_executable(RaceEngineer
     src/audio/MessageDispatcher.h
     src/stt/WhisperRecognizer.cpp
     src/stt/WhisperRecognizer.h
+    src/ai/LocalAiRuntime.cpp
+    src/ai/LocalAiRuntime.h
     src/config/CredentialStore.cpp
     src/config/CredentialStore.h
     src/config/SettingsManager.cpp
@@ -116,8 +125,22 @@ qt_add_executable(RaceEngineer
     src/input/DInputButtonMonitor.h
 )
 
+set_target_properties(RaceEngineer PROPERTIES AUTORCC ON)
+
+set(RACEENGINEER_TRAINING_SCRIPTS local_training.py audit_sim_logs.py vehicle_category.py)
+foreach(training_script IN LISTS RACEENGINEER_TRAINING_SCRIPTS)
+    configure_file("training/pit_strategy/${training_script}"
+        "training/pit_strategy/${training_script}" COPYONLY)
+    install(FILES "training/pit_strategy/${training_script}" DESTINATION bin/training/pit_strategy)
+endforeach()
+
 if(WIN32)
     set_target_properties(RaceEngineer PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
+set(RACEENGINEER_FONT_RESOURCES)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/MiSansLatinVF.ttf")
+    list(APPEND RACEENGINEER_FONT_RESOURCES assets/fonts/MiSansLatinVF.ttf)
 endif()
 
 qt_add_qml_module(RaceEngineer
@@ -126,6 +149,7 @@ qt_add_qml_module(RaceEngineer
     QML_FILES qml/Main.qml
     RESOURCES
         ${RACEENGINEER_ICON_RESOURCES}
+        ${RACEENGINEER_FONT_RESOURCES}
 )
 
 if(WIN32)
@@ -136,6 +160,7 @@ target_include_directories(RaceEngineer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vieneu-bin/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/ggml/include
 )
 
 target_link_libraries(RaceEngineer PRIVATE
@@ -148,6 +173,9 @@ target_link_libraries(RaceEngineer PRIVATE
     whisper
     vieneu-tts
 )
+if(GGML_VULKAN)
+    target_compile_definitions(RaceEngineer PRIVATE RACEENGINEER_HAS_VULKAN=1)
+endif()
 
 option(RACEENGINEER_ENABLE_LTCG "Enable Link-Time Code Generation (LTCG) for release packages" OFF)
 if(MSVC AND RACEENGINEER_ENABLE_LTCG)
@@ -184,6 +212,31 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3")
             "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3"
             "$<TARGET_FILE_DIR:RaceEngineer>/models/vieneu-v3"
     )
+endif()
+set(RACEENGINEER_STRATEGY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/models/pit_strategy")
+if(EXISTS "${RACEENGINEER_STRATEGY_DIR}/manifest.json")
+    file(READ "${RACEENGINEER_STRATEGY_DIR}/manifest.json" RACEENGINEER_STRATEGY_MANIFEST)
+    string(JSON RACEENGINEER_STRATEGY_APPROVED ERROR_VARIABLE RACEENGINEER_STRATEGY_JSON_ERROR
+        GET "${RACEENGINEER_STRATEGY_MANIFEST}" deployment_ready)
+    if(RACEENGINEER_STRATEGY_JSON_ERROR)
+        message(FATAL_ERROR "Invalid pit strategy manifest: ${RACEENGINEER_STRATEGY_JSON_ERROR}")
+    endif()
+    if(RACEENGINEER_STRATEGY_APPROVED)
+        set(RACEENGINEER_STRATEGY_FILES
+            pit_ranker.json feature_schema.json parity_vectors.json manifest.json profile.json xgboost.dll LICENSE)
+        set(RACEENGINEER_STRATEGY_PATHS)
+        foreach(strategy_file IN LISTS RACEENGINEER_STRATEGY_FILES)
+            if(NOT EXISTS "${RACEENGINEER_STRATEGY_DIR}/${strategy_file}")
+                message(FATAL_ERROR "Approved pit strategy is missing ${strategy_file}")
+            endif()
+            list(APPEND RACEENGINEER_STRATEGY_PATHS "${RACEENGINEER_STRATEGY_DIR}/${strategy_file}")
+        endforeach()
+        add_custom_command(TARGET RaceEngineer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${RACEENGINEER_STRATEGY_PATHS}
+                "$<TARGET_FILE_DIR:RaceEngineer>/models/pit_strategy")
+    endif()
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu")
     add_custom_command(TARGET RaceEngineer POST_BUILD
@@ -236,6 +289,15 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(StrategyRecorderTests tests/StrategyRecorderTests.cpp
+        src/strategy/StrategyRecorder.cpp src/strategy/StrategyRecorder.h
+        src/telemetry/common/RaceState.cpp)
+    target_include_directories(StrategyRecorderTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(StrategyRecorderTests PRIVATE Qt6::Core Qt6::Gui Qt6::Network)
+    if(MSVC)
+        target_compile_options(StrategyRecorderTests PRIVATE /utf-8)
+    endif()
+    add_test(NAME StrategyRecorderTests COMMAND StrategyRecorderTests)
     add_executable(RaceStateTests
         tests/RaceStateTests.cpp
         src/config/SettingsManager.cpp
@@ -279,6 +341,11 @@ install(FILES ${RACEENGINEER_ICON_FILES} DESTINATION bin)
 install(DIRECTORY third_party/vieneu-bin/bin/ DESTINATION bin)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/vieneu-v3")
     install(DIRECTORY models/vieneu-v3/ DESTINATION bin/models/vieneu-v3)
+endif()
+if(RACEENGINEER_STRATEGY_APPROVED)
+    install(FILES
+        ${RACEENGINEER_STRATEGY_PATHS}
+        DESTINATION bin/models/pit_strategy)
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/voices/vieneu")
     install(DIRECTORY voices/vieneu/ DESTINATION bin/voices/vieneu)

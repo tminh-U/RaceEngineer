@@ -1,0 +1,15 @@
+{
+  "profile_id": "acc_gt3_example_dry_one_stop_lap_race",
+  "simulator": "sim_acc",
+  "track": "EXACT_TRACK_FROM_TELEMETRY",
+  "car_model": "EXACT_CAR_MODEL_FROM_TELEMETRY",
+  "total_laps": 0,
+  "race_format": "laps",
+  "mandatory_stop": true,
+  "service_validated": false,
+  "dry_conditions_confirmed": false,
+  "reserve_laps": 0.5,
+  "pit_loss_s": 0,
+  "pit_window_open_lap": 0,
+  "pit_window_close_lap": 0
+}

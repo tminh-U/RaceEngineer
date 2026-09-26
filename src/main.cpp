@@ -36,12 +36,6 @@ int main(int argc, char* argv[])
     QGuiApplication::setApplicationVersion(QStringLiteral("1.0.1"));
     qSetMessagePattern(QStringLiteral("[%{time hh:mm:ss.zzz}] [%{category}] %{message}"));
     QGuiApplication qtApplication(argc, argv);
-    // Keep the STT Vulkan backend on the integrated adapter by default.  The
-    // environment remains an override for machines with a different device
-    // ordering or for the CPU benchmark (GGML_DISABLE_VULKAN=1).
-    if (qgetenv("GGML_VK_VISIBLE_DEVICES").isEmpty()) {
-        qputenv("GGML_VK_VISIBLE_DEVICES", QByteArrayLiteral("0"));
-    }
     QIcon appIcon(QStringLiteral(":/qt/qml/RaceEngineer/assets/final_icon.ico"));
     if (appIcon.isNull()) {
         appIcon = QIcon(QStringLiteral(":/qt/qml/RaceEngineer/assets/final_icon_64.png"));

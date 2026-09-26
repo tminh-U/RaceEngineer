@@ -17,6 +17,7 @@ scratch_*.wav
 test_*.wav
 config.json
 secrets.json
+.env
 dataset/
 *.zip
 models/
@@ -26,3 +27,12 @@ __pycache__/
 *.pyc
 /AGENTS.md
 /REQUIREMENTS.md
+/assets/fonts/MiSansLatinVF.ttf
+
+# Local pit-strategy datasets and notebook artifacts
+/pit_candidates.csv
+/pit_ranker_output/
+/training/pit_strategy/pit_candidates.csv
+/training/pit_strategy/data/
+/training/pit_strategy/pit_ranker_output/
+/training/pit_strategy/.local_train/

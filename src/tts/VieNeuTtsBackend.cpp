@@ -16,6 +16,7 @@
 #include <QMediaDevices>
 #include <QRandomGenerator>
 #include <QThread>
+#include <QtGlobal>
 
 #include <algorithm>
 #include <chrono>
@@ -26,9 +27,12 @@ class VieNeuWorker final : public QObject {
     Q_OBJECT
 
 public:
-    explicit VieNeuWorker(QString modelDir, QString voice)
+    explicit VieNeuWorker(QString modelDir,
+        QString voice,
+        LocalAiRuntimeSelection runtimeSelection)
         : modelDir_(std::move(modelDir))
         , voice_(std::move(voice))
+        , runtimeSelection_(std::move(runtimeSelection))
     {
     }
 
@@ -49,7 +53,7 @@ public slots:
     void initialize()
     {
         if (ctx_) {
-            emit initialized(true, QString());
+            emit initialized(true, {}, runtimeBackend(), runtimeSelection_.fallbackReason);
             return;
         }
 
@@ -68,15 +72,28 @@ public slots:
 
         qCInfo(logTts) << "Initializing native VieNeu-TTS from" << modelDir_;
         ctx_ = vieneu_init_v2(&init_params);
+        if (!ctx_ && runtimeSelection_.useVulkan) {
+            const QString gpuError = QString::fromUtf8(vieneu_last_error());
+            runtimeSelection_.useVulkan = false;
+            runtimeSelection_.resolvedDeviceId = QStringLiteral("cpu");
+            runtimeSelection_.label = QStringLiteral("CPU");
+            runtimeSelection_.fallbackToCpu = true;
+            runtimeSelection_.fallbackReason =
+                QStringLiteral("VieNeu Vulkan init thất bại: %1").arg(gpuError);
+            qputenv("VIENEU_GPU_LAYERS", QByteArrayLiteral("0"));
+            qunsetenv("VIENEU_GPU_DEVICE");
+            qputenv("VIENEU_ORT_EP", QByteArrayLiteral("cpu"));
+            ctx_ = vieneu_init_v2(&init_params);
+        }
         if (!ctx_) {
             const QString err = QString::fromUtf8(vieneu_last_error());
             qCWarning(logTts) << "Failed to initialize native VieNeu-TTS:" << err;
-            emit initialized(false, err);
+            emit initialized(false, err, QString(), runtimeSelection_.fallbackReason);
             return;
         }
 
         qCInfo(logTts) << "Native VieNeu-TTS initialized successfully";
-        emit initialized(true, QString());
+        emit initialized(true, {}, runtimeBackend(), runtimeSelection_.fallbackReason);
     }
 
     void synthesize(quint64 requestId, const QString& rawText)
@@ -165,25 +182,38 @@ public slots:
     }
 
 signals:
-    void initialized(bool success, const QString& error);
+    void initialized(bool success, const QString& error,
+        const QString& backend, const QString& fallbackReason);
     void audioReady(quint64 requestId, const QString& text, const QByteArray& pcmData, int sampleRate, double elapsedMs);
     void synthesisFailed(quint64 requestId, const QString& error);
 
 private:
+    [[nodiscard]] QString runtimeBackend() const
+    {
+        return runtimeSelection_.useVulkan
+            ? QStringLiteral("%1 backbone · CPU codec").arg(runtimeSelection_.label)
+            : QStringLiteral("CPU backbone · CPU codec");
+    }
+
     QString modelDir_;
     QString voice_{QStringLiteral("Minh Đức")};
+    LocalAiRuntimeSelection runtimeSelection_;
     struct vieneu_context* ctx_{nullptr};
 };
 
-VieNeuTtsBackend::VieNeuTtsBackend(QString modelDir, QString voice, QObject* parent)
+VieNeuTtsBackend::VieNeuTtsBackend(QString modelDir,
+    QString voice,
+    LocalAiRuntimeSelection runtimeSelection,
+    QObject* parent)
     : ITtsBackend(parent)
     , modelDir_(std::move(modelDir))
+    , runtimeSelection_(std::move(runtimeSelection))
     , voice_(voice.trimmed().isEmpty() ? QStringLiteral("Minh Đức") : std::move(voice))
 {
     setAudioOutputDevice(QString());
 
     workerThread_ = new QThread(this);
-    worker_ = new VieNeuWorker(modelDir_, voice_);
+    worker_ = new VieNeuWorker(modelDir_, voice_, runtimeSelection_);
     worker_->moveToThread(workerThread_);
 
     connect(workerThread_, &QThread::finished, worker_, &QObject::deleteLater);
@@ -233,12 +263,17 @@ void VieNeuTtsBackend::warmUp()
     QMetaObject::invokeMethod(worker_, "initialize", Qt::QueuedConnection);
 }
 
-void VieNeuTtsBackend::onWorkerInitialized(bool success, const QString& error)
+void VieNeuTtsBackend::onWorkerInitialized(bool success,
+    const QString& error,
+    const QString& backend,
+    const QString& fallbackReason)
 {
     if (success) {
+        emit runtimeBackendChanged(backend, fallbackReason);
         emit statusChanged(QStringLiteral("Đang chạy inference khởi động VieNeu-TTS..."));
         emit requestSynthesis(0, QStringLiteral("Kiểm tra giọng nói."));
     } else {
+        emit runtimeBackendChanged(QStringLiteral("Không sẵn sàng"), fallbackReason);
         initializing_ = false;
         ready_ = false;
         emit statusChanged(QStringLiteral("Lỗi khởi tạo VieNeu-TTS"));

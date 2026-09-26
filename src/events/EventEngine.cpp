@@ -53,14 +53,24 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         return std::isfinite(value) && value > 0.0001;
     };
     std::vector<std::string> newlyDamaged;
+    bool aggregateDamageIncreased = false;
     if (state.damage) {
         if (previousDamage_) {
             static constexpr std::array<const char*, 5> kBodyParts{
                 "phía trước", "phía sau", "bên trái", "bên phải", "tổng thể"
             };
+            static constexpr std::array<const char*, 4> kSeverityNames{
+                "", "nhẹ", "trung bình", "nặng"
+            };
             for (std::size_t i = 0; i < state.damage->size(); ++i) {
-                if (damageBand((*state.damage)[i]) > damageBand((*previousDamage_)[i])) {
-                    newlyDamaged.emplace_back(kBodyParts[i]);
+                const int currentBand = damageBand((*state.damage)[i]);
+                if (currentBand > damageBand((*previousDamage_)[i])) {
+                    if (i == 4) {
+                        aggregateDamageIncreased = true;
+                        continue;
+                    }
+                    newlyDamaged.emplace_back(std::string("hư hại ")
+                        + kSeverityNames[currentBand] + " ở " + kBodyParts[i]);
                 }
             }
         }
@@ -76,7 +86,7 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
             for (std::size_t i = 0; i < state.suspensionDamage->size(); ++i) {
                 if (wheelDamaged((*state.suspensionDamage)[i])
                     && !wheelDamaged((*previousSuspensionDamage_)[i])) {
-                    newlyDamaged.emplace_back(kWheels[i]);
+                    newlyDamaged.emplace_back(std::string("hư hại ở ") + kWheels[i]);
                 }
             }
         }
@@ -84,13 +94,17 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
     } else {
         previousSuspensionDamage_.reset();
     }
-    if (!newlyDamaged.empty()) {
-        std::string message = "Va chạm hoặc hư hại mới: ";
-        for (std::size_t i = 0; i < newlyDamaged.size(); ++i) {
-            if (i != 0) message += ", ";
-            message += newlyDamaged[i];
+    if (!newlyDamaged.empty() || aggregateDamageIncreased) {
+        std::string message = "Phát hiện ";
+        if (newlyDamaged.empty()) {
+            message += "hư hại mới trên xe.";
+        } else {
+            for (std::size_t i = 0; i < newlyDamaged.size(); ++i) {
+                if (i != 0) message += ", ";
+                message += newlyDamaged[i];
+            }
+            message += ".";
         }
-        message += ".";
         emitIfReady(events, EventType::DamageDetected, EventPriority::Spotter,
             std::move(message), now);
     }

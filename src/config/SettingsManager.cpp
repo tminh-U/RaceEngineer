@@ -12,7 +12,7 @@
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 9;
+constexpr int currentSettingsVersion = 11;
 }
 
 SettingsManager::SettingsManager()
@@ -61,6 +61,59 @@ void SettingsManager::setAudioInput(const AudioInputSettings& settings)
     save();
 }
 
+void SettingsManager::setLocalAi(const LocalAiSettings& settings)
+{
+    LocalAiSettings normalized = settings;
+    normalized.computeMode = normalized.computeMode.trimmed().toLower();
+    if (normalized.computeMode != QStringLiteral("auto")
+        && normalized.computeMode != QStringLiteral("cpu")
+        && normalized.computeMode != QStringLiteral("vulkan")) {
+        normalized.computeMode = QStringLiteral("auto");
+    }
+    normalized.vulkanDevice = normalized.vulkanDevice.trimmed();
+    if (normalized.computeMode == QStringLiteral("vulkan")
+        && !normalized.vulkanDevice.startsWith(QStringLiteral("vulkan:"))) {
+        normalized.computeMode = QStringLiteral("auto");
+        normalized.vulkanDevice.clear();
+    } else if (normalized.computeMode != QStringLiteral("vulkan")) {
+        normalized.vulkanDevice.clear();
+    }
+    if (localAi_.computeMode == normalized.computeMode
+        && localAi_.vulkanDevice == normalized.vulkanDevice) {
+        return;
+    }
+    localAi_ = normalized;
+    save();
+}
+
+void SettingsManager::setStrategyEnabled(const bool enabled)
+{
+    if (strategyEnabled_ == enabled) return;
+    strategyEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setStrategyRecordingEnabled(bool enabled)
+{
+    if (strategyRecordingEnabled_ == enabled) return;
+    strategyRecordingEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setStrategySharingEnabled(bool enabled)
+{
+    if (strategySharingEnabled_ == enabled) return;
+    strategySharingEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setStrategyShareEndpoint(const QString& endpoint)
+{
+    if (strategyShareEndpoint_ == endpoint) return;
+    strategyShareEndpoint_ = endpoint;
+    save();
+}
+
 void SettingsManager::setDriverName(const QString& name)
 {
     const QString trimmed = name.trimmed();
@@ -97,7 +150,27 @@ void SettingsManager::load()
         return;
     }
     const QJsonObject root = document.object();
+    strategyEnabled_ = root.value(QStringLiteral("strategy_enabled")).toBool(false);
+    strategyRecordingEnabled_ = root.value(QStringLiteral("strategy_recording_enabled")).toBool(true);
+    strategySharingEnabled_ = root.value(QStringLiteral("strategy_sharing_enabled")).toBool(false);
+    strategyShareEndpoint_ = root.value(QStringLiteral("strategy_share_endpoint")).toString();
     const int settingsVersion = root.value(QStringLiteral("settings_version")).toInt(1);
+    const QJsonObject localAi = root.value(QStringLiteral("local_ai")).toObject();
+    localAi_.computeMode = localAi.value(QStringLiteral("compute_mode"))
+        .toString(localAi_.computeMode).trimmed().toLower();
+    localAi_.vulkanDevice = localAi.value(QStringLiteral("vulkan_device")).toString().trimmed();
+    if (localAi_.computeMode != QStringLiteral("auto")
+        && localAi_.computeMode != QStringLiteral("cpu")
+        && localAi_.computeMode != QStringLiteral("vulkan")) {
+        localAi_.computeMode = QStringLiteral("auto");
+    }
+    if (localAi_.computeMode == QStringLiteral("vulkan")
+        && !localAi_.vulkanDevice.startsWith(QStringLiteral("vulkan:"))) {
+        localAi_.computeMode = QStringLiteral("auto");
+        localAi_.vulkanDevice.clear();
+    } else if (localAi_.computeMode != QStringLiteral("vulkan")) {
+        localAi_.vulkanDevice.clear();
+    }
     driverName_ = root.value(QStringLiteral("driver_name")).toString(driverName_);
     const QString style = root.value(QStringLiteral("response_style")).toString(responseStyle_).trimmed();
     if (style.compare(QStringLiteral("Tối giản"), Qt::CaseInsensitive) == 0) {
@@ -206,6 +279,8 @@ void SettingsManager::save() const
         {QStringLiteral("duck_factor"), tts_.duckFactor}};
     const QJsonObject audioInput{{QStringLiteral("device_id"), audioInput_.deviceId},
         {QStringLiteral("device_name"), audioInput_.deviceName}};
+    const QJsonObject localAi{{QStringLiteral("compute_mode"), localAi_.computeMode},
+        {QStringLiteral("vulkan_device"), localAi_.vulkanDevice}};
     QFile file(filePath_);
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         file.write(QJsonDocument(QJsonObject{{QStringLiteral("settings_version"), currentSettingsVersion},
@@ -214,7 +289,12 @@ void SettingsManager::save() const
             {QStringLiteral("llm"), llm},
             {QStringLiteral("push_to_talk"), pushToTalk},
             {QStringLiteral("tts"), tts},
-            {QStringLiteral("audio_input"), audioInput}}).toJson(QJsonDocument::Indented));
+        {QStringLiteral("audio_input"), audioInput},
+            {QStringLiteral("local_ai"), localAi},
+            {QStringLiteral("strategy_enabled"), strategyEnabled_},
+        {QStringLiteral("strategy_recording_enabled"), strategyRecordingEnabled_},
+        {QStringLiteral("strategy_sharing_enabled"), strategySharingEnabled_},
+        {QStringLiteral("strategy_share_endpoint"), strategyShareEndpoint_}}).toJson(QJsonDocument::Indented));
     }
 }
 

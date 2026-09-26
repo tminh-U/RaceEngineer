@@ -57,6 +57,8 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'production\README.md') `
     -Destination (Join-Path $stagingPath 'README.md')
 Copy-Item -LiteralPath (Join-Path $projectRoot 'production\config\settings.example.json') `
     -Destination (Join-Path $stagingPath 'settings.example.json')
+Copy-Item -LiteralPath (Join-Path $projectRoot 'production\config\pit_strategy.profile.example.json') `
+    -Destination (Join-Path $stagingPath 'pit_strategy.profile.example.json')
 
 $spotterSource = Join-Path $projectRoot 'assets\spotter'
 $spotterManifest = Join-Path $spotterSource 'manifest.json'

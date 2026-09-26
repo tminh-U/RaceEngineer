@@ -179,14 +179,25 @@ int main(int argc, char* argv[])
     emitted = damageEvents.process(damageEventState, baseTime + std::chrono::seconds(1));
     expect(emitted.size() == 1 && emitted.front().type == EventType::DamageDetected);
     expect(emitted.front().priority == EventPriority::Spotter);
-    expect(emitted.front().message.find("phía trước") != std::string::npos);
-    expect(emitted.front().message.find("bánh trước trái") != std::string::npos);
+    expect(emitted.front().message
+        == "Phát hiện hư hại nhẹ ở phía trước, hư hại ở bánh trước trái.");
     expect(damageEvents.process(damageEventState, baseTime + std::chrono::seconds(2)).empty());
     damageEventState.damage = std::array<double, 5>{0.30, 0.0, 0.0, 0.0, 0.0};
     emitted = damageEvents.process(damageEventState, baseTime + std::chrono::seconds(3));
     expect(emitted.size() == 1 && emitted.front().type == EventType::DamageDetected);
+    expect(emitted.front().message == "Phát hiện hư hại trung bình ở phía trước.");
     damageEventState.connected = false;
     expect(damageEvents.process(damageEventState, baseTime + std::chrono::seconds(4)).empty());
+
+    EventEngine aggregateDamageEvents;
+    RaceState aggregateDamageState;
+    aggregateDamageState.connected = true;
+    aggregateDamageState.damage = std::array<double, 5>{0.0, 0.0, 0.0, 0.0, 0.0};
+    expect(aggregateDamageEvents.process(aggregateDamageState, baseTime).empty());
+    aggregateDamageState.damage = std::array<double, 5>{0.0, 0.0, 0.0, 0.0, 0.12};
+    emitted = aggregateDamageEvents.process(aggregateDamageState, baseTime + std::chrono::seconds(1));
+    expect(emitted.size() == 1 && emitted.front().type == EventType::DamageDetected);
+    expect(emitted.front().message == "Phát hiện hư hại mới trên xe.");
 
     ConversationManager conversation(6);
     for (int index = 0; index < 10; ++index) {

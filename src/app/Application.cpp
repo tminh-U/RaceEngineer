@@ -16,6 +16,7 @@
 #include <QDir>
 #include <QDateTime>
 #include <QEvent>
+#include <QFile>
 #include <QKeyEvent>
 #include <QJsonDocument>
 #include <QMetaObject>
@@ -27,6 +28,7 @@
 #include <QFileInfo>
 #include <QUrl>
 #include <QVariantList>
+#include <QUuid>
 
 #include <algorithm>
 
@@ -83,10 +85,14 @@ QString resolvePhoWhisperModelPath()
 
 Application::Application(const bool startWithMock, QObject* const parent)
     : QObject(parent)
+    , aiRuntimeSelection_(LocalAiRuntime::resolveAndApply(
+          settingsManager_.localAi().deviceId()))
     , telemetryManager_(new TelemetryManager)
     , voiceInput_(new VoiceInputController)
-    , speechRecognizer_(new WhisperRecognizer(resolvePhoWhisperModelPath()))
-    , vieNeuTtsBackend_(new VieNeuTtsBackend(resolveVieNeuModelPath(), settingsManager_.tts().voice, this))
+    , speechRecognizer_(new WhisperRecognizer(
+          resolvePhoWhisperModelPath(), aiRuntimeSelection_))
+    , vieNeuTtsBackend_(new VieNeuTtsBackend(
+          resolveVieNeuModelPath(), settingsManager_.tts().voice, aiRuntimeSelection_, this))
     , ttsBackend_(vieNeuTtsBackend_)
     , directInput_(new DInputButtonMonitor)
     , pttSoundPlayer_(new QMediaPlayer(this))
@@ -98,6 +104,48 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , audioDucker_(std::make_unique<AudioDucker>(this))
 {
     qRegisterMetaType<RaceState>();
+    strategyRecorder_.setEnabled(settingsManager_.strategyRecordingEnabled());
+    connect(&strategyRecorder_, &StrategyRecorder::enabledChanged, this,
+            [this](bool enabled) { settingsManager_.setStrategyRecordingEnabled(enabled); });
+    QString shareEndpoint = settingsManager_.strategyShareEndpoint();
+    QString shareToken = CredentialStore::readRaceDataShareToken();
+    QFile shareEnv(QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral(".env")));
+    if (shareEnv.open(QIODevice::ReadOnly) && shareEnv.size() <= 4096) {
+        for (QByteArray line : shareEnv.readAll().split('\n')) {
+            line = line.trimmed();
+            if (line.startsWith("\xEF\xBB\xBF")) line.remove(0, 3);
+            if (line.isEmpty() || line.startsWith('#')) continue;
+            const qsizetype separator = line.indexOf('=');
+            if (separator < 0) continue;
+            const QByteArray key = line.left(separator).trimmed();
+            QByteArray value = line.mid(separator + 1).trimmed();
+            if (value.size() >= 2 && ((value.front() == '"' && value.back() == '"')
+                || (value.front() == '\'' && value.back() == '\''))) value = value.mid(1, value.size() - 2);
+            if (key == "RACEENGINEER_SHARE_ENDPOINT") shareEndpoint = QString::fromUtf8(value);
+            else if (key == "RACEENGINEER_SHARE_TOKEN") shareToken = QString::fromUtf8(value);
+        }
+    }
+    if (qEnvironmentVariableIsSet("RACEENGINEER_SHARE_ENDPOINT"))
+        shareEndpoint = qEnvironmentVariable("RACEENGINEER_SHARE_ENDPOINT");
+    if (qEnvironmentVariableIsSet("RACEENGINEER_SHARE_TOKEN"))
+        shareToken = qEnvironmentVariable("RACEENGINEER_SHARE_TOKEN");
+    shareEndpoint = shareEndpoint.trimmed();
+    shareToken = shareToken.trimmed();
+    const QUrl shareUrl(shareEndpoint, QUrl::StrictMode);
+    const bool validShareEndpoint = shareUrl.isValid() && shareUrl.scheme() == QStringLiteral("https")
+        && !shareUrl.host().isEmpty() && shareUrl.userInfo().isEmpty()
+        && shareUrl.query().isEmpty() && shareUrl.fragment().isEmpty();
+    strategyRecorder_.setSharingConfig(validShareEndpoint && shareToken.size() >= 32 ? shareEndpoint : QString{},
+                                       shareToken);
+    strategyRecorder_.setSharingEnabled(settingsManager_.strategySharingEnabled());
+    connect(&strategyRecorder_, &StrategyRecorder::sharingEnabledChanged, this,
+            [this](bool enabled) { settingsManager_.setStrategySharingEnabled(enabled); });
+    strategyPredictor_ = std::make_unique<StrategyPredictor>(
+        resolvePackagedOrDevelopmentPath(QStringLiteral("models/pit_strategy")), this);
+    if (settingsManager_.strategyEnabled()) {
+        strategyStatus_ = QStringLiteral("Đang chờ dữ liệu");
+        strategyDetail_ = QStringLiteral("Đang kiểm tra model, race profile và telemetry.");
+    }
     audioDucker_->setEnabled(settingsManager_.tts().audioDucking);
     audioDucker_->setDuckFactor(settingsManager_.tts().duckFactor);
     connect(audioDucker_.get(), &AudioDucker::duckedChanged, this, &Application::audioDuckingStateChanged);
@@ -171,6 +219,12 @@ Application::Application(const bool startWithMock, QObject* const parent)
     connect(&sttThread_, &QThread::finished, speechRecognizer_, &QObject::deleteLater);
     connect(speechRecognizer_, &WhisperRecognizer::warmUpFinished,
         this, &Application::onSttWarmUpFinished, Qt::QueuedConnection);
+    connect(speechRecognizer_, &WhisperRecognizer::runtimeBackendChanged, this,
+        [this](const QString& backend, const QString& fallbackReason) {
+            whisperComputeBackend_ = backend;
+            whisperComputeFallback_ = fallbackReason;
+            emit aiComputeStatusChanged();
+        });
     connect(this, &Application::requestTranscription,
         speechRecognizer_, &WhisperRecognizer::transcribe, Qt::QueuedConnection);
     connect(speechRecognizer_, &WhisperRecognizer::recognitionStarted, this, [this] {
@@ -252,6 +306,12 @@ Application::Application(const bool startWithMock, QObject* const parent)
     messageDispatcher_->setBackend(ttsBackend_);
     connect(ttsBackend_, &ITtsBackend::warmUpFinished,
         this, &Application::onTtsWarmUpFinished, Qt::QueuedConnection);
+    connect(vieNeuTtsBackend_, &VieNeuTtsBackend::runtimeBackendChanged, this,
+        [this](const QString& backend, const QString& fallbackReason) {
+            vieNeuComputeBackend_ = backend;
+            vieNeuComputeFallback_ = fallbackReason;
+            emit aiComputeStatusChanged();
+        }, Qt::QueuedConnection);
     vieNeuTtsBackend_->setVoice(settingsManager_.tts().voice);
     vieNeuTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
     vieNeuTtsBackend_->setVolume(settingsManager_.tts().volume);
@@ -339,6 +399,8 @@ Application::Application(const bool startWithMock, QObject* const parent)
 
 Application::~Application()
 {
+    if (latestState_.sessionType == SessionType::Race && strategyRecordedLap_ > 0)
+        strategyRecorder_.finishSession(strategySessionId_);
     QCoreApplication::instance()->removeEventFilter(this);
     if (audioDucker_) {
         audioDucker_->setDucked(false);
@@ -406,6 +468,90 @@ QString Application::directInputBinding() const
 QString Application::ttsBackend() const
 {
     return settingsManager_.tts().backend;
+}
+
+QVariantList Application::aiComputeDevices() const
+{
+    QVariantList devices = LocalAiRuntime::availableDevices();
+    const QString selected = selectedAiComputeDevice();
+    bool selectedAvailable = false;
+    for (QVariant& value : devices) {
+        QVariantMap option = value.toMap();
+        const bool isSelected = option.value(QStringLiteral("id")).toString() == selected;
+        option.insert(QStringLiteral("selected"), isSelected);
+        selectedAvailable = selectedAvailable || isSelected;
+        value = option;
+    }
+    if (!selectedAvailable && selected.startsWith(QStringLiteral("vulkan:"))) {
+        devices.append(QVariantMap{
+            {QStringLiteral("id"), selected},
+            {QStringLiteral("label"), QStringLiteral("Vulkan — thiết bị không khả dụng")},
+            {QStringLiteral("backend"), QStringLiteral("vulkan")},
+            {QStringLiteral("available"), false},
+            {QStringLiteral("selected"), true}});
+    }
+    return devices;
+}
+
+QString Application::selectedAiComputeDevice() const
+{
+    return settingsManager_.localAi().deviceId();
+}
+
+QString Application::aiComputeStatus() const
+{
+    QStringList status{
+        QStringLiteral("PhoWhisper: %1").arg(whisperComputeBackend_),
+        QStringLiteral("VieNeu-TTS: %1").arg(vieNeuComputeBackend_)};
+    if (!aiRuntimeSelection_.fallbackReason.isEmpty()) {
+        status.append(aiRuntimeSelection_.fallbackReason);
+    }
+    if (!whisperComputeFallback_.isEmpty()) {
+        status.append(whisperComputeFallback_);
+    }
+    if (!vieNeuComputeFallback_.isEmpty()) {
+        status.append(vieNeuComputeFallback_);
+    }
+    if (aiComputeRestartRequired()) {
+        status.append(QStringLiteral("Thay đổi sẽ áp dụng sau khi khởi động lại"));
+    }
+    return status.join(QStringLiteral(" · "));
+}
+
+bool Application::aiComputeRestartRequired() const
+{
+    return selectedAiComputeDevice() != aiRuntimeSelection_.requestedDeviceId;
+}
+
+void Application::setAiComputeDevice(const QString& deviceId)
+{
+    if (deviceId == selectedAiComputeDevice()) {
+        return;
+    }
+    bool available = false;
+    for (const QVariant& value : LocalAiRuntime::availableDevices()) {
+        const QVariantMap option = value.toMap();
+        if (option.value(QStringLiteral("id")).toString() == deviceId
+            && option.value(QStringLiteral("available")).toBool()) {
+            available = true;
+            break;
+        }
+    }
+    if (!available) {
+        return;
+    }
+
+    LocalAiSettings settings;
+    if (deviceId == QStringLiteral("cpu")) {
+        settings.computeMode = QStringLiteral("cpu");
+    } else if (deviceId.startsWith(QStringLiteral("vulkan:"))) {
+        settings.computeMode = QStringLiteral("vulkan");
+        settings.vulkanDevice = deviceId;
+    }
+    settingsManager_.setLocalAi(settings);
+    emit aiComputeSettingsChanged();
+    emit aiComputeDevicesChanged();
+    emit aiComputeStatusChanged();
 }
 
 void Application::setTtsBackend(const QString& backend)
@@ -646,6 +792,11 @@ void Application::retryStartup()
 void Application::onSttWarmUpFinished(const bool success, const QString& error)
 {
     sttWarmUpReady_ = success;
+    if (!success && whisperComputeBackend_ == QStringLiteral("Đang khởi tạo")) {
+        whisperComputeBackend_ = QStringLiteral("Không sẵn sàng");
+        whisperComputeFallback_ = error;
+    }
+    emit aiComputeStatusChanged();
     if (!success) {
         startupError_ = QStringLiteral("PhoWhisper STT không khởi tạo được.");
         qCWarning(logApp).noquote() << "Startup STT warm-up failed:" << error;
@@ -657,6 +808,11 @@ void Application::onTtsWarmUpFinished(const bool success, const QString& error)
 {
     if (startupReady_) return;
     ttsWarmUpReady_ = success;
+    if (!success && vieNeuComputeBackend_ == QStringLiteral("Chưa khởi tạo")) {
+        vieNeuComputeBackend_ = QStringLiteral("Không sẵn sàng");
+        vieNeuComputeFallback_ = error;
+    }
+    emit aiComputeStatusChanged();
     if (!success) {
         startupError_ = QStringLiteral("VieNeu-TTS không khởi tạo được.");
         qCWarning(logApp).noquote() << "Startup TTS warm-up failed:" << error;
@@ -862,8 +1018,74 @@ void Application::resetConversation()
 
 void Application::onStateUpdated(const RaceState& state)
 {
+    const bool previousWasRace = latestState_.sessionType == SessionType::Race;
+    const QString previousSessionId = strategySessionId_;
+    strategyRecorder_.setSimulatorConnected(state.connected);
+    strategyRecorder_.setRaceActive(state.connected && state.sessionType == SessionType::Race);
     latestState_ = state;
+    const QString sessionKey = state.connected
+        ? QStringLiteral("%1|%2|%3|%4|%5")
+              .arg(static_cast<int>(state.simulator))
+              .arg(state.track ? utf8(*state.track) : QString{})
+              .arg(state.carModel ? utf8(*state.carModel) : QString{})
+              .arg(state.totalLaps.value_or(0))
+              .arg(static_cast<int>(state.sessionType.value_or(SessionType::Unknown)))
+        : QString{};
+    const bool sessionChanged = sessionKey != strategySessionKey_
+        || (state.currentLap && strategyLastTelemetryLap_ > 0 && *state.currentLap < strategyLastTelemetryLap_);
+    if (sessionChanged) {
+        if (previousWasRace && strategyRecordedLap_ > 0)
+            strategyRecorder_.finishSession(previousSessionId);
+        raceHistory_.reset();
+        strategySessionKey_ = sessionKey;
+        strategySessionId_ = state.connected ? QUuid::createUuid().toString(QUuid::WithoutBraces) : QString{};
+        strategyRecordedLap_ = 0;
+        strategyLapExcluded_ = true;
+        strategyObservedLap_ = 0;
+        strategyRequestedLap_ = 0;
+        strategyAnnouncedPrepareLap_ = 0;
+        strategyAnnouncedPitLap_ = 0;
+        strategyPitLap_ = 0;
+        strategySeenStart_ = false;
+        strategyPitted_ = false;
+        strategyWasInPit_ = false;
+        strategyWasInPitBox_ = false;
+        ++strategyRevision_;
+        if (settingsManager_.strategyEnabled()) setStrategyState(QStringLiteral("Đang chờ dữ liệu"),
+            QStringLiteral("Đang xác định phiên đua và lịch sử vòng."));
+    }
+    strategyLastTelemetryLap_ = state.currentLap.value_or(0);
     raceHistory_.update(state);
+    const bool isInPit = state.pitState && (*state.pitState == PitState::Entering
+        || *state.pitState == PitState::PitLane || *state.pitState == PitState::PitBox);
+    const bool isInPitBox = state.pitState && *state.pitState == PitState::PitBox;
+    const bool enteredPit = isInPit && !strategyWasInPit_;
+    const bool excludedSample = !state.pitState || *state.pitState != PitState::Track
+        || (state.flag && (*state.flag == FlagState::Yellow || *state.flag == FlagState::Red
+            || *state.flag == FlagState::Black));
+    strategyLapExcluded_ = strategyLapExcluded_ || excludedSample;
+    const bool exitedPit = !isInPit && strategyWasInPit_;
+    const bool enteredPitBox = isInPitBox && !strategyWasInPitBox_;
+    const bool exitedPitBox = !isInPitBox && strategyWasInPitBox_;
+    if (state.connected && state.sessionType == SessionType::Race) {
+        if (enteredPit) strategyRecorder_.recordPitEvent(strategySessionId_, state, true);
+        if (exitedPitBox) strategyRecorder_.recordPitBoxEvent(strategySessionId_, state, false);
+        if (enteredPitBox) strategyRecorder_.recordPitBoxEvent(strategySessionId_, state, true);
+        if (exitedPit) strategyRecorder_.recordPitEvent(strategySessionId_, state, false);
+    }
+    strategyWasInPit_ = isInPit;
+    strategyWasInPitBox_ = isInPitBox;
+    if (state.connected && state.sessionType == SessionType::Race && state.currentLap
+        && !raceHistory_.laps().empty()) {
+        const auto& completed = raceHistory_.laps().back();
+        if (completed.lapNumber == *state.currentLap - 1
+            && completed.lapNumber != strategyRecordedLap_) {
+            strategyRecordedLap_ = completed.lapNumber;
+            strategyRecorder_.record(strategySessionId_, state, completed, strategyLapExcluded_);
+            strategyLapExcluded_ = excludedSample;
+        }
+    }
+    updateStrategy(state);
     auto events = eventEngine_.process(state);
     auto spotterEvents = spotterEngine_.process(state);
     events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
@@ -885,7 +1107,178 @@ void Application::onStateUpdated(const RaceState& state)
         emit latestEventChanged();
     }
     telemetry_ = toVariantMap(state);
+    if (const auto average = raceHistory_.averageFuelConsumption())
+        telemetry_.insert(QStringLiteral("fuelPerLapLiters"), *average);
+    if (const auto remaining = raceHistory_.estimatedFuelLapsRemaining(state))
+        telemetry_.insert(QStringLiteral("estimatedFuelLaps"), *remaining);
     emit telemetryChanged();
+}
+
+void Application::setStrategyEnabled(const bool enabled)
+{
+    if (settingsManager_.strategyEnabled() == enabled) return;
+    settingsManager_.setStrategyEnabled(enabled);
+    ++strategyRevision_;
+    strategyRequestedLap_ = 0;
+    strategyPitLap_ = 0;
+    strategyAnnouncedPrepareLap_ = 0;
+    strategyAnnouncedPitLap_ = 0;
+    messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+    messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+    if (enabled) {
+        setStrategyState(QStringLiteral("Đang chờ dữ liệu"),
+            QStringLiteral("Đang kiểm tra model, race profile và telemetry."));
+        updateStrategy(latestState_);
+    } else {
+        setStrategyState(QStringLiteral("Đã tắt"),
+            QStringLiteral("Bật để chọn vòng pit khi có model đã duyệt."));
+    }
+}
+
+bool Application::configureStrategySharing(const QString& endpoint, const QString& token)
+{
+    const QString trimmedEndpoint = endpoint.trimmed();
+    const QUrl url(trimmedEndpoint, QUrl::StrictMode);
+    if (!url.isValid() || url.scheme() != QStringLiteral("https") || url.host().isEmpty()
+        || !url.userInfo().isEmpty() || !url.query().isEmpty() || !url.fragment().isEmpty())
+        return false;
+    QString savedToken = CredentialStore::readRaceDataShareToken();
+    if (!token.trimmed().isEmpty()) {
+        savedToken = token.trimmed();
+        if (savedToken.size() < 32) return false;
+        if (!CredentialStore::writeRaceDataShareToken(savedToken)) return false;
+    }
+    if (savedToken.size() < 32) return false;
+    settingsManager_.setStrategyShareEndpoint(trimmedEndpoint);
+    strategyRecorder_.setSharingConfig(trimmedEndpoint, savedToken);
+    return true;
+}
+
+void Application::setStrategyState(const QString& status, const QString& detail, const int pitLap)
+{
+    if (strategyStatus_ == status && strategyDetail_ == detail && strategyPitLap_ == pitLap) return;
+    strategyStatus_ = status;
+    strategyDetail_ = detail;
+    strategyPitLap_ = pitLap;
+    emit strategyChanged();
+}
+
+void Application::announceStrategy(const QString& text, const EventPriority priority)
+{
+    latestEvent_ = text;
+    QVariantMap entry;
+    entry.insert(QStringLiteral("message"), text);
+    entry.insert(QStringLiteral("priority"), static_cast<int>(priority));
+    entry.insert(QStringLiteral("timestamp"), QDateTime::currentDateTime().toString(Qt::ISODateWithMs));
+    eventLog_.prepend(entry);
+    while (eventLog_.size() > 100) eventLog_.removeLast();
+    emit latestEventChanged();
+    messageDispatcher_->enqueue(text, priority);
+}
+
+void Application::updateStrategy(const RaceState& state)
+{
+    if (!settingsManager_.strategyEnabled()) return;
+    if (!strategyAvailable()) {
+        setStrategyState(strategyPredictor_->artifactStatus(),
+            QStringLiteral("Đặt model, schema, manifest đã duyệt và profile vào models/pit_strategy, rồi khởi động lại app."));
+        return;
+    }
+    if (!state.connected || !state.currentLap) {
+        setStrategyState(QStringLiteral("Đang chờ dữ liệu"),
+            QStringLiteral("Đang chờ simulator AC / ACC kết nối."));
+        return;
+    }
+    const int lap = *state.currentLap;
+    const bool inPit = state.pitState && (*state.pitState == PitState::Entering
+        || *state.pitState == PitState::PitLane || *state.pitState == PitState::PitBox);
+    if (lap == 1 && !inPit) strategySeenStart_ = true;
+    if (inPit) {
+        strategyPitted_ = true;
+    }
+    if (strategyPitted_) {
+        if (strategyPitLap_) {
+            messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+            messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+        }
+        setStrategyState(QStringLiteral("Đã vào pit"),
+            QStringLiteral("Đã phát hiện xe vào pit; chưa có telemetry xác nhận dịch vụ, nên dừng khuyến nghị một stop."));
+        return;
+    }
+    if (!strategySeenStart_) {
+        setStrategyState(QStringLiteral("Chưa đủ dữ liệu"),
+            QStringLiteral("Cần quan sát cuộc đua từ vòng 1 để xác nhận tuổi stint và chưa pit."));
+        return;
+    }
+    if (lap != strategyObservedLap_) {
+        strategyObservedLap_ = lap;
+        strategyRequestedLap_ = 0;
+        ++strategyRevision_;
+    }
+    const int stintLaps = lap - 1;
+    if (strategyPitLap_ && !strategyPredictor_->stillLegal(state, raceHistory_, stintLaps, strategyPitLap_)) {
+        messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+        messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+        strategyPitLap_ = 0;
+        strategyAnnouncedPrepareLap_ = 0;
+        strategyAnnouncedPitLap_ = 0;
+        strategyRequestedLap_ = 0;
+        ++strategyRevision_;
+        setStrategyState(QStringLiteral("Đang tính lại"),
+            QStringLiteral("Phương án cũ không còn hợp lệ với nhiên liệu và luật pit."));
+    }
+    if (strategyRequestedLap_ != lap && !strategyPredictor_->busy()) {
+        const quint64 revision = strategyRevision_;
+        const QString session = strategySessionKey_;
+        const QString status = strategyPredictor_->prepare(state, raceHistory_, stintLaps, revision,
+            [this, session](StrategyDecision result) {
+                if (!settingsManager_.strategyEnabled() || session != strategySessionKey_
+                    || result.revision != strategyRevision_ || !latestState_.currentLap
+                    || result.currentLap != *latestState_.currentLap || strategyPitted_) return;
+                if (!result.error.isEmpty()) {
+                    setStrategyState(QStringLiteral("Lỗi model"), result.error);
+                    return;
+                }
+                if (!strategyPredictor_->stillLegal(latestState_, raceHistory_,
+                        *latestState_.currentLap - 1, result.pitLap)) {
+                    strategyRequestedLap_ = 0;
+                    setStrategyState(QStringLiteral("Đang tính lại"),
+                        QStringLiteral("Kết quả đã hết hạn do nhiên liệu hoặc trạng thái đua thay đổi."));
+                    return;
+                }
+                if (strategyPitLap_ && strategyPitLap_ != result.pitLap) {
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
+                    messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
+                    strategyAnnouncedPrepareLap_ = 0;
+                    strategyAnnouncedPitLap_ = 0;
+                }
+                setStrategyState(QStringLiteral("Sẵn sàng"),
+                    QStringLiteral("XGBoost Ranker chọn vào pit cuối vòng %1 theo profile điều kiện khô.").arg(result.pitLap),
+                    result.pitLap);
+                updateStrategy(latestState_);
+            });
+        if (status == QStringLiteral("Đang tính chiến thuật")) {
+            strategyRequestedLap_ = lap;
+            if (!strategyPitLap_) setStrategyState(status, QStringLiteral("Đang xếp hạng các vòng pit hợp lệ."));
+        } else if (!strategyPitLap_) {
+            setStrategyState(status, status);
+        }
+    }
+    if (!strategyPitLap_) return;
+    if (lap == strategyPitLap_ - 1 && strategyAnnouncedPrepareLap_ != strategyPitLap_) {
+        strategyAnnouncedPrepareLap_ = strategyPitLap_;
+        announceStrategy(QStringLiteral("Chuẩn bị vào pit ở vòng tiếp theo."), EventPriority::Engineer);
+    }
+    if (lap == strategyPitLap_ && strategyAnnouncedPitLap_ != lap) {
+        const auto lapTime = state.currentLapTimeSeconds;
+        if (lapTime && *lapTime >= 0.0 && *lapTime <= 5.0) {
+            strategyAnnouncedPitLap_ = lap;
+            announceStrategy(QStringLiteral("Vào pit cuối vòng này."), EventPriority::Important);
+        } else {
+            setStrategyState(QStringLiteral("Thông báo muộn"),
+                QStringLiteral("Đã qua điểm báo an toàn; không phát lệnh pit gấp."), strategyPitLap_);
+        }
+    }
 }
 
 void Application::onConnectionStatusChanged(const QString& simulator, const bool connected)
@@ -960,6 +1353,9 @@ QVariantMap Application::toVariantMap(const RaceState& state)
     map.insert(QStringLiteral("connected"), state.connected);
 
     if (state.track) map.insert(QStringLiteral("track"), utf8(*state.track));
+    if (state.carModel) map.insert(QStringLiteral("carModel"), utf8(*state.carModel));
+    if (state.carCategory) map.insert(QStringLiteral("carCategory"), utf8(*state.carCategory));
+    if (state.carSubclass) map.insert(QStringLiteral("carSubclass"), utf8(*state.carSubclass));
     if (state.driverName) map.insert(QStringLiteral("driverName"), utf8(*state.driverName));
     if (state.sessionType) map.insert(QStringLiteral("sessionType"),
         QString::fromLatin1(sessionTypeName(*state.sessionType)));

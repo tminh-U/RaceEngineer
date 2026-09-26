@@ -1,6 +1,7 @@
 #include "telemetry/acc/ACCTelemetryProvider.h"
 
 #include "structed_file_ACC.h"
+#include "telemetry/common/VehicleCatalog.h"
 
 #include <algorithm>
 #include <cmath>
@@ -148,6 +149,13 @@ bool ACCTelemetryProvider::start()
         const auto track = wideToUtf8(staticData.track);
         if (!track.empty()) {
             state_.track = track;
+        }
+        const auto carModel = wideToUtf8(staticData.carModel);
+        if (!carModel.empty()) {
+            state_.carModel = carModel;
+            const auto vehicle = classifyVehicle(state_.simulator, carModel);
+            state_.carCategory = vehicle.category;
+            if (!vehicle.subclass.empty()) state_.carSubclass = vehicle.subclass;
         }
         const auto driver = playerDisplayName(staticData);
         if (!driver.empty()) state_.driverName = driver;

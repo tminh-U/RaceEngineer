@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/LocalAiRuntime.h"
 #include "tts/ITtsBackend.h"
 
 #include <QAudioDevice>
@@ -20,7 +21,10 @@ class VieNeuTtsBackend final : public ITtsBackend {
     Q_OBJECT
 
 public:
-    explicit VieNeuTtsBackend(QString modelDir, QString voice = QStringLiteral("Minh Đức"), QObject* parent = nullptr);
+    explicit VieNeuTtsBackend(QString modelDir,
+        QString voice,
+        LocalAiRuntimeSelection runtimeSelection,
+        QObject* parent = nullptr);
     ~VieNeuTtsBackend() override;
 
     [[nodiscard]] bool isAvailable() const override;
@@ -42,12 +46,14 @@ public slots:
 
 signals:
     void statusChanged(const QString& status);
+    void runtimeBackendChanged(const QString& backend, const QString& fallbackReason);
     void requestSynthesis(quint64 requestId, const QString& text);
 
 private slots:
     void onAudioReady(quint64 requestId, const QString& text, const QByteArray& pcmData, int sampleRate, double elapsedMs);
     void onSynthesisFailed(quint64 requestId, const QString& error);
-    void onWorkerInitialized(bool success, const QString& error);
+    void onWorkerInitialized(bool success, const QString& error,
+        const QString& backend, const QString& fallbackReason);
 
 private:
     void loadCachedSpotter();
@@ -60,6 +66,7 @@ private:
     QHash<QString, int> lastCachedSpotterVariant_;
 
     QString modelDir_;
+    LocalAiRuntimeSelection runtimeSelection_;
     QString voice_{QStringLiteral("Minh Đức")};
     float volume_{0.85F};
     float speed_{1.0F};

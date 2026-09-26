@@ -28,6 +28,12 @@ runtime.
 
 ## Runtime assets
 
+MiSans Latin is not stored in Git. Download the original variable font from
+[Xiaomi](https://hyperos.mi.com/font/en/details/latin/) and place it at
+`assets/fonts/MiSansLatinVF.ttf` before configuring CMake if you want it in your
+local build. Without that file, the UI falls back to Segoe UI. Keep Xiaomi's
+attribution in the app and follow its font license when distributing a build.
+
 Runtime models and voices are intentionally ignored by Git. Developer-only
 preparation is available through:
 

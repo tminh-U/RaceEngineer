@@ -39,6 +39,16 @@ struct AudioInputSettings final {
     QString deviceName{QStringLiteral("Default (System)")};
 };
 
+struct LocalAiSettings final {
+    QString computeMode{QStringLiteral("auto")};
+    QString vulkanDevice;
+
+    [[nodiscard]] QString deviceId() const
+    {
+        return computeMode == QStringLiteral("vulkan") ? vulkanDevice : computeMode;
+    }
+};
+
 class SettingsManager final {
 public:
     SettingsManager();
@@ -51,6 +61,16 @@ public:
     void setTts(const TtsSettings& settings);
     [[nodiscard]] const AudioInputSettings& audioInput() const noexcept { return audioInput_; }
     void setAudioInput(const AudioInputSettings& settings);
+    [[nodiscard]] const LocalAiSettings& localAi() const noexcept { return localAi_; }
+    void setLocalAi(const LocalAiSettings& settings);
+    [[nodiscard]] bool strategyEnabled() const noexcept { return strategyEnabled_; }
+    void setStrategyEnabled(bool enabled);
+    bool strategyRecordingEnabled() const { return strategyRecordingEnabled_; }
+    void setStrategyRecordingEnabled(bool enabled);
+    bool strategySharingEnabled() const { return strategySharingEnabled_; }
+    void setStrategySharingEnabled(bool enabled);
+    QString strategyShareEndpoint() const { return strategyShareEndpoint_; }
+    void setStrategyShareEndpoint(const QString& endpoint);
     [[nodiscard]] QString driverName() const noexcept { return driverName_; }
     void setDriverName(const QString& name);
     [[nodiscard]] QString responseStyle() const noexcept { return responseStyle_; }
@@ -67,6 +87,11 @@ private:
     PushToTalkSettings pushToTalk_;
     TtsSettings tts_;
     AudioInputSettings audioInput_;
+    LocalAiSettings localAi_;
+    bool strategyEnabled_{false};
+    bool strategyRecordingEnabled_{true};
+    bool strategySharingEnabled_{false};
+    QString strategyShareEndpoint_;
     QString driverName_{QStringLiteral("Minh Vũ")};
     QString responseStyle_{QStringLiteral("Tiêu chuẩn")};
     bool migratedFromLegacyMistral_{false};

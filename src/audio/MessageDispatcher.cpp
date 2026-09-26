@@ -121,6 +121,21 @@ void MessageDispatcher::clear()
     if (wasSpeaking) emit speakingChanged(false, {});
 }
 
+void MessageDispatcher::cancelByPrefix(const QString& prefix)
+{
+    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [&prefix](const Message& message) {
+        return message.text.startsWith(prefix);
+    }), queue_.end());
+    if (speaking_ && currentText_.startsWith(prefix)) {
+        currentSpokenSequence_ = 0;
+        speaking_ = false;
+        currentText_.clear();
+        emit requestStop();
+        emit speakingChanged(false, {});
+        QTimer::singleShot(250, this, [this] { playNext(); });
+    }
+}
+
 void MessageDispatcher::playNext()
 {
     if (speaking_ || queue_.empty()) return;

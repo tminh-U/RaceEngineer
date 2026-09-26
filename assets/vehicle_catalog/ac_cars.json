@@ -1,0 +1,1257 @@
+{
+  "schema_version": 1,
+  "simulator": "sim_ac",
+  "source": [
+    "C:\\Program Files (x86)\\Steam\\steamapps\\common\\assettocorsa\\content\\cars"
+  ],
+  "cars": [
+    {
+      "car_model": "abarth500",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "abarth500_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "alfa_romeo_giulietta_qv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "alfa_romeo_giulietta_qv_le",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_1m",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_1m_s3",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e30",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e30_drift",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e30_dtm",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "bmw_m3_e30_gra",
+      "category": "touring",
+      "subclass": "group_a",
+      "evidence": "ui/ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "bmw_m3_e30_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e92",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e92_drift",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_e92_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_m3_gt2",
+      "category": "gt",
+      "subclass": "gt2",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt2"
+    },
+    {
+      "car_model": "bmw_z4",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_z4_drift",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "bmw_z4_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "bmw_z4_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ferrari_312t",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari 312T"
+    },
+    {
+      "car_model": "ferrari_458",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ferrari_458_gt2",
+      "category": "gt",
+      "subclass": "gt2",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt2"
+    },
+    {
+      "car_model": "ferrari_458_s3",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ferrari_599xxevo",
+      "category": "track_only",
+      "subclass": "xx_programme",
+      "evidence": "ui/ui_car.json class=race; exact ID and UI name match: Ferrari 599XX EVO",
+      "source_url": "https://www.ferrari.com/en-EN/corse-clienti/articles/ferrari-racing-days-f1-clienti-and-xx-cars-light-up-sochi"
+    },
+    {
+      "car_model": "ferrari_f40",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ferrari_f40_s3",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ferrari_laferrari",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "iHT_aston_martin_valkyrie",
+      "category": "prototype",
+      "subclass": "lmh",
+      "evidence": "ui/ui_car.json class=LMH; prototype marker=lmh"
+    },
+    {
+      "car_model": "ks_abarth500_assetto_corse",
+      "category": "cup",
+      "subclass": "abarth_trophy",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Abarth 500 Assetto Corse",
+      "source_url": "https://www.media.stellantis.com/it-it/abarth/press/consegnate-le-prime-abarth-500-assetto-corse"
+    },
+    {
+      "car_model": "ks_abarth_595ss",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_abarth_595ss_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_abarth_595ss_s2",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_alfa_33_stradale",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_alfa_giulia_qv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_alfa_mito_qv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_alfa_romeo_155_v6",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_alfa_romeo_4c",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_alfa_romeo_gta",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_audi_a1s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_audi_r18_etron_quattro",
+      "category": "prototype",
+      "subclass": "lmp1",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=lmp1"
+    },
+    {
+      "car_model": "ks_audi_r8_lms",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_audi_r8_lms_2016",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_audi_r8_plus",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_audi_sport_quattro",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_audi_sport_quattro_rally",
+      "category": "rally",
+      "subclass": "group_b",
+      "evidence": "ui/ui_car.json class=race; exact ID and UI name match: Audi Sport quattro S1 E2",
+      "source_url": "https://www.audi.com/en/sport/motorsport/motorsport-history/05-quattro-rallying/"
+    },
+    {
+      "car_model": "ks_audi_sport_quattro_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_audi_tt_cup",
+      "category": "cup",
+      "subclass": "audi_tt_cup",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Audi TT Cup",
+      "source_url": "https://www.audi.com/en/press-releases/audi-to-launch-racing-series-for-the-new-tt-1223"
+    },
+    {
+      "car_model": "ks_audi_tt_vln",
+      "category": "gt",
+      "subclass": "unknown",
+      "evidence": "ui/dlc_ui_car.json class=race; race class with broad GT metadata tag"
+    },
+    {
+      "car_model": "ks_bmw_m235i_racing",
+      "category": "gt",
+      "subclass": "gt4",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt4"
+    },
+    {
+      "car_model": "ks_bmw_m4",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_bmw_m4_akrapovic",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_corvette_c7_stingray",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_corvette_c7r",
+      "category": "gt",
+      "subclass": "gt2",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt2"
+    },
+    {
+      "car_model": "ks_ferrari_250_gto",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_ferrari_288_gto",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_ferrari_312_67",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari 312/67"
+    },
+    {
+      "car_model": "ks_ferrari_330_p4",
+      "category": "prototype",
+      "subclass": "sports_prototype",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Ferrari 330 P4",
+      "source_url": "https://www.ferrari.com/en-US/magazine/articles/1965-Le-Mans-winner-returns-to-Fiorano"
+    },
+    {
+      "car_model": "ks_ferrari_488_challenge_evo",
+      "category": "cup",
+      "subclass": "ferrari_challenge",
+      "evidence": "exact ID inference only; local car directory is empty",
+      "source_url": "https://www.ferrari.com/en-CA/corse-clienti/articles/the-488-challenge-evo-unveiled-in-daytona"
+    },
+    {
+      "car_model": "ks_ferrari_488_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_ferrari_488_gt3_2020",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "exact ID inference only; local car directory is empty",
+      "source_url": "https://www.ferrari.com/en-EN/competizioni-gt/articles/the-ferrari-488-gt3-evo-2020-the-continuing-evolution-of-a-legend"
+    },
+    {
+      "car_model": "ks_ferrari_488_gtb",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_ferrari_812_superfast",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_ferrari_f138",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari F138"
+    },
+    {
+      "car_model": "ks_ferrari_f2004",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari F2004"
+    },
+    {
+      "car_model": "ks_ferrari_fxx_k",
+      "category": "track_only",
+      "subclass": "xx_programme",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Ferrari FXX K",
+      "source_url": "https://www.ferrari.com/en-EN/corse-clienti/articles/ferrari-racing-days-f1-clienti-and-xx-cars-light-up-sochi"
+    },
+    {
+      "car_model": "ks_ferrari_sf15t",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari SF15-T"
+    },
+    {
+      "car_model": "ks_ferrari_sf70h",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Ferrari SF70H"
+    },
+    {
+      "car_model": "ks_ford_escort_mk1",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/dlc_ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_ford_gt40",
+      "category": "prototype",
+      "subclass": "sports_prototype",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Ford GT40",
+      "source_url": "https://media.ford.com/content/fordmedia/feu/gb/en/news/2021/08/12/2022-ford-gt-heritage-edition.html"
+    },
+    {
+      "car_model": "ks_ford_mustang_2015",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_glickenhaus_scg003",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_lamborghini_aventador_sv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lamborghini_countach",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lamborghini_countach_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "exact ID inference only; local car directory is empty",
+      "source_url": "https://www.lamborghini.com/en-en/history/milestones"
+    },
+    {
+      "car_model": "ks_lamborghini_gallardo_sl",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lamborghini_gallardo_sl_s3",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "exact ID inference only; local car directory is empty",
+      "source_url": "https://www.lamborghini.com/en-en/node/1052"
+    },
+    {
+      "car_model": "ks_lamborghini_huracan_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_lamborghini_huracan_performante",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lamborghini_huracan_st",
+      "category": "gt",
+      "subclass": "unknown",
+      "evidence": "ui/dlc_ui_car.json class=race; race class with broad GT metadata tag"
+    },
+    {
+      "car_model": "ks_lamborghini_miura_sv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lamborghini_sesto_elemento",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_lotus_25",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Lotus Type 25"
+    },
+    {
+      "car_model": "ks_lotus_3_eleven",
+      "category": "track_only",
+      "subclass": "race_version",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Lotus 3-Eleven",
+      "source_url": "https://www.lotuscars.com/en-NO/lotus-story/3-eleven"
+    },
+    {
+      "car_model": "ks_lotus_72d",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Lotus 72D"
+    },
+    {
+      "car_model": "ks_maserati_250f_12cyl",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Maserati 250F 12 cylinder"
+    },
+    {
+      "car_model": "ks_maserati_250f_6cyl",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID F1 override: Maserati 250F 6 cylinder"
+    },
+    {
+      "car_model": "ks_maserati_alfieri",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_maserati_gt_mc_gt4",
+      "category": "gt",
+      "subclass": "gt4",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt4"
+    },
+    {
+      "car_model": "ks_maserati_levante",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_maserati_mc12_gt1",
+      "category": "gt",
+      "subclass": "gt1",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt1"
+    },
+    {
+      "car_model": "ks_maserati_quattroporte",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mazda_787b",
+      "category": "prototype",
+      "subclass": "prototype_c",
+      "evidence": "ui/ui_car.json class=race; prototype marker=prototype_c"
+    },
+    {
+      "car_model": "ks_mazda_miata",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mazda_mx5_cup",
+      "category": "cup",
+      "subclass": "mx5_cup",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Mazda MX5 Cup",
+      "source_url": "https://www.mazdamotorsports.com/race-mazdas-2/pro-racing/mx-5-cup/"
+    },
+    {
+      "car_model": "ks_mazda_mx5_nd",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mazda_rx7_spirit_r",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mazda_rx7_tuned",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mclaren_570s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mclaren_650_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_mclaren_f1_gtr",
+      "category": "gt",
+      "subclass": "vintage_gt",
+      "evidence": "ui/ui_car.json class=race; race class with broad GT metadata tag"
+    },
+    {
+      "car_model": "ks_mclaren_p1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mclaren_p1_gtr",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_mercedes_190_evo2",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_mercedes_amg_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_mercedes_c9",
+      "category": "prototype",
+      "subclass": "prototype_c",
+      "evidence": "ui/ui_car.json class=race; prototype marker=prototype_c"
+    },
+    {
+      "car_model": "ks_nissan_370z",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_nissan_gtr",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_nissan_gtr_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_nissan_skyline_r34",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_pagani_huayra_bc",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_718_boxster_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_718_boxster_s_pdk",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_718_cayman_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_718_spyder_rs",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/dlc_ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_porsche_908_lh",
+      "category": "prototype",
+      "subclass": "sports_prototype",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID prototype override: Porsche 908 LH"
+    },
+    {
+      "car_model": "ks_porsche_911_carrera_rsr",
+      "category": "touring",
+      "subclass": "unknown",
+      "evidence": "ui/dlc_ui_car.json class=race; touring metadata tag"
+    },
+    {
+      "car_model": "ks_porsche_911_gt1",
+      "category": "gt",
+      "subclass": "gt1",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt1"
+    },
+    {
+      "car_model": "ks_porsche_911_gt3_cup_2017",
+      "category": "gt",
+      "subclass": "cup",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=cup"
+    },
+    {
+      "car_model": "ks_porsche_911_gt3_r_2016",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "ks_porsche_911_gt3_rs",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_911_r",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_911_rsr_2017",
+      "category": "gt",
+      "subclass": "gt2",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt2"
+    },
+    {
+      "car_model": "ks_porsche_917_30",
+      "category": "prototype",
+      "subclass": "can_am",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Porsche 917/30 Spyder",
+      "source_url": "https://newsroom.porsche.com/en_US/2023/company/capturing-the-spirit-of-Porsche-33474.html"
+    },
+    {
+      "car_model": "ks_porsche_917_k",
+      "category": "prototype",
+      "subclass": "sports_prototype",
+      "evidence": "ui/dlc_ui_car.json class=race; manufacturer-verified exact-ID prototype override: Porsche 917 K"
+    },
+    {
+      "car_model": "ks_porsche_918_spyder",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_919_hybrid_2015",
+      "category": "prototype",
+      "subclass": "lmp1",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=lmp1"
+    },
+    {
+      "car_model": "ks_porsche_919_hybrid_2016",
+      "category": "prototype",
+      "subclass": "lmp1",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=lmp1"
+    },
+    {
+      "car_model": "ks_porsche_935_78_moby_dick",
+      "category": "gt",
+      "subclass": "group_5",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Porsche 935/78 'Moby Dick'",
+      "source_url": "https://newsroom.porsche.com/en/press-kits/50-years-porsche-turbo/Porsche-and-turbo-technology-in-motorsport--from-pioneer-to-world-champion.html"
+    },
+    {
+      "car_model": "ks_porsche_962c_longtail",
+      "category": "prototype",
+      "subclass": "prototype_c",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=prototype_c"
+    },
+    {
+      "car_model": "ks_porsche_962c_shorttail",
+      "category": "prototype",
+      "subclass": "prototype_c",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=prototype_c"
+    },
+    {
+      "car_model": "ks_porsche_991_carrera_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_991_turbo_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_cayenne",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_cayman_gt4_clubsport",
+      "category": "gt",
+      "subclass": "gt4",
+      "evidence": "ui/dlc_ui_car.json class=race; GT marker=gt4"
+    },
+    {
+      "car_model": "ks_porsche_cayman_gt4_std",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_macan",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_porsche_panamera",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_praga_r1",
+      "category": "prototype",
+      "subclass": "lmp3",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=lmp3"
+    },
+    {
+      "car_model": "ks_ruf_rt12r",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_ruf_rt12r_awd",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_ae86",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_ae86_drift",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_ae86_tuned",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_celica_st185",
+      "category": "rally",
+      "subclass": "group_a",
+      "evidence": "ui/dlc_ui_car.json class=race; exact ID and UI name match: Toyota Celica ST185 4WD Turbo",
+      "source_url": "https://toyotagazooracing.com/jp/wrc/special/2018/the-wrc-chronicle-01/"
+    },
+    {
+      "car_model": "ks_toyota_gt86",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_supra_mkiv",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/dlc_ui_car.json class=street"
+    },
+    {
+      "car_model": "ks_toyota_supra_mkiv_drift",
+      "category": "drift",
+      "subclass": "drift",
+      "evidence": "ui/dlc_ui_car.json class=racing; exact ID and UI name match: Toyota Supra MKIV Drift"
+    },
+    {
+      "car_model": "ks_toyota_supra_mkiv_tuned",
+      "category": "time_attack",
+      "subclass": "time_attack",
+      "evidence": "ui/dlc_ui_car.json class=racing; exact ID and UI name match: Toyota Supra MKIV Time Attack"
+    },
+    {
+      "car_model": "ks_toyota_ts040",
+      "category": "prototype",
+      "subclass": "lmp1",
+      "evidence": "ui/dlc_ui_car.json class=race; prototype marker=lmp1"
+    },
+    {
+      "car_model": "ktm_xbow_r",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_2_eleven",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_2_eleven_gt4",
+      "category": "gt",
+      "subclass": "gt4",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt4"
+    },
+    {
+      "car_model": "lotus_49",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: Lotus Type 49"
+    },
+    {
+      "car_model": "lotus_98t",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: Lotus 98T"
+    },
+    {
+      "car_model": "lotus_elise_sc",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_elise_sc_s1",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_elise_sc_s2",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_gtc",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_gte",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_gte_carbon",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_gx",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_evora_s_s2",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_240",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_240_s3",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_s",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_s_roadster",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_scura",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exige_v6_cup",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "lotus_exos_125",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "lotus_exos_125_s1",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "mclaren_mp412c",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "mclaren_mp412c_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "mercedes_sls",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "mercedes_sls_gt3",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "p4-5_2011",
+      "category": "gt",
+      "subclass": "gt2",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt2"
+    },
+    {
+      "car_model": "pagani_huayra",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "pagani_zonda_r",
+      "category": "track_only",
+      "subclass": "track_car",
+      "evidence": "ui/ui_car.json class=race; exact ID and UI name match: Pagani Zonda R",
+      "source_url": "https://www.pagani.com/press/the-pagani-huayra-r/"
+    },
+    {
+      "car_model": "rss_alpine_a525",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: Alpine A525"
+    },
+    {
+      "car_model": "rss_formula_2000",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_2010",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_2013",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_hybrid_2021",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_hybrid_2024",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_hybrid_v12-r",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_hybrid_x_2026",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_rss_2_v6_2024",
+      "category": "formula",
+      "subclass": "f2",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_rss_3_v6_2026",
+      "category": "formula",
+      "subclass": "f3",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_formula_rss_4_2024",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "rss_gtm_furiano_96_v6",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "rss_gtm_protech_p92_f6",
+      "category": "gt",
+      "subclass": "gt3",
+      "evidence": "ui/ui_car.json class=race; GT marker=gt3"
+    },
+    {
+      "car_model": "rss_mph_bayer_hybrid_v8",
+      "category": "prototype",
+      "subclass": "lmdh",
+      "evidence": "ui/ui_car.json class=race; prototype marker=lmdh"
+    },
+    {
+      "car_model": "rss_mph_lanzo_v8_evo",
+      "category": "prototype",
+      "subclass": "lmdh",
+      "evidence": "ui/ui_car.json class=race; prototype marker=lmdh"
+    },
+    {
+      "car_model": "rss_mph_protech_p96_v8",
+      "category": "prototype",
+      "subclass": "lmdh",
+      "evidence": "ui/ui_car.json class=race; prototype marker=lmdh"
+    },
+    {
+      "car_model": "ruf_yellowbird",
+      "category": "road",
+      "subclass": "street",
+      "evidence": "ui/ui_car.json class=street"
+    },
+    {
+      "car_model": "shelby_cobra_427sc",
+      "category": "road",
+      "subclass": "competition_road",
+      "evidence": "ui/ui_car.json class=race; exact ID and UI name match: Shelby Cobra 427 S/C",
+      "source_url": "https://shelby.com/Multimedia/Team-Shelby-Media/Cobras-at-PB"
+    },
+    {
+      "car_model": "tatuusfa1",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "ven_toyota_tr010_lmh",
+      "category": "prototype",
+      "subclass": "lmh",
+      "evidence": "ui/ui_car.json class=race; prototype marker=lmh"
+    },
+    {
+      "car_model": "vrc_1988_mclaren_mp4-4_r02",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: McLaren-Honda MP4/4 R02"
+    },
+    {
+      "car_model": "vrc_1988_mclaren_mp4-4_r04",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: McLaren-Honda MP4/4 R04"
+    },
+    {
+      "car_model": "vrc_1988_mclaren_mp4-4_r09",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: McLaren-Honda MP4/4 R09"
+    },
+    {
+      "car_model": "vrc_1988_mclaren_mp4-4_r10",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; manufacturer-verified exact-ID F1 override: McLaren-Honda MP4/4 R10"
+    },
+    {
+      "car_model": "vrc_2005_renault_r25",
+      "category": "f1",
+      "subclass": "f1",
+      "evidence": "ui/ui_car.json class=race; explicit F1 class/tag"
+    },
+    {
+      "car_model": "vrc_formula_alpha_2026",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    },
+    {
+      "car_model": "vrc_formula_alpha_2026_csp",
+      "category": "formula",
+      "subclass": "unknown",
+      "evidence": "ui/ui_car.json class=race; formula/single-seater metadata"
+    }
+  ]
+}

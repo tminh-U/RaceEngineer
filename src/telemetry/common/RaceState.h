@@ -41,6 +41,9 @@ struct RaceState final {
     std::chrono::steady_clock::time_point capturedAt{};
 
     std::optional<std::string> track;
+    std::optional<std::string> carModel;
+    std::optional<std::string> carCategory;
+    std::optional<std::string> carSubclass;
     // Driver name from the simulator static page.  It lets tools identify the
     // player when the player is the leader or when nearby opponent names exist.
     std::optional<std::string> driverName;

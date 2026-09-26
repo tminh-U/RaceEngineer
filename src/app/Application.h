@@ -5,6 +5,9 @@
 #include "events/EventEngine.h"
 #include "spotter/SpotterEngine.h"
 #include "config/SettingsManager.h"
+#include "ai/LocalAiRuntime.h"
+#include "strategy/StrategyPredictor.h"
+#include "strategy/StrategyRecorder.h"
 
 #include <QObject>
 #include <QByteArray>
@@ -81,6 +84,16 @@ class Application final : public QObject {
     Q_PROPERTY(bool startupReady READ startupReady NOTIFY startupChanged)
     Q_PROPERTY(double startupProgress READ startupProgress NOTIFY startupChanged)
     Q_PROPERTY(QString startupError READ startupError NOTIFY startupChanged)
+    Q_PROPERTY(QVariantList aiComputeDevices READ aiComputeDevices NOTIFY aiComputeDevicesChanged)
+    Q_PROPERTY(QString selectedAiComputeDevice READ selectedAiComputeDevice NOTIFY aiComputeSettingsChanged)
+    Q_PROPERTY(QString aiComputeStatus READ aiComputeStatus NOTIFY aiComputeStatusChanged)
+    Q_PROPERTY(bool aiComputeRestartRequired READ aiComputeRestartRequired NOTIFY aiComputeSettingsChanged)
+    Q_PROPERTY(bool strategyEnabled READ strategyEnabled NOTIFY strategyChanged)
+    Q_PROPERTY(bool strategyAvailable READ strategyAvailable NOTIFY strategyChanged)
+    Q_PROPERTY(QString strategyStatus READ strategyStatus NOTIFY strategyChanged)
+    Q_PROPERTY(int strategyPitLap READ strategyPitLap NOTIFY strategyChanged)
+    Q_PROPERTY(QString strategyDetail READ strategyDetail NOTIFY strategyChanged)
+    Q_PROPERTY(QObject* strategyData READ strategyData CONSTANT)
 
 public:
     explicit Application(bool startWithMock, QObject* parent = nullptr);
@@ -126,6 +139,19 @@ public:
     [[nodiscard]] bool ttsAvailable() const noexcept { return ttsAvailable_; }
     [[nodiscard]] QString ttsBackend() const;
     [[nodiscard]] QString ttsStatus() const { return ttsStatus_; }
+    [[nodiscard]] QVariantList aiComputeDevices() const;
+    [[nodiscard]] QString selectedAiComputeDevice() const;
+    [[nodiscard]] QString aiComputeStatus() const;
+    [[nodiscard]] bool aiComputeRestartRequired() const;
+    [[nodiscard]] bool strategyEnabled() const noexcept { return settingsManager_.strategyEnabled(); }
+    [[nodiscard]] bool strategyAvailable() const noexcept
+    { return strategyPredictor_ && strategyPredictor_->available(); }
+    [[nodiscard]] QString strategyStatus() const { return strategyStatus_; }
+    [[nodiscard]] int strategyPitLap() const noexcept { return strategyPitLap_; }
+    [[nodiscard]] QString strategyDetail() const { return strategyDetail_; }
+    Q_INVOKABLE void setStrategyEnabled(bool enabled);
+    Q_INVOKABLE bool configureStrategySharing(const QString& endpoint, const QString& token);
+    QObject* strategyData() { return &strategyRecorder_; }
     [[nodiscard]] QVariantList availableTtsVoices() const;
     [[nodiscard]] QString selectedTtsVoice() const { return settingsManager_.tts().voice; }
     [[nodiscard]] QStringList audioOutputDevices() const;
@@ -163,6 +189,7 @@ public:
     Q_INVOKABLE void askText(const QString& text);
     Q_INVOKABLE void resetConversation();
     Q_INVOKABLE void setTtsBackend(const QString& backend);
+    Q_INVOKABLE void setAiComputeDevice(const QString& deviceId);
     Q_INVOKABLE void setTtsVoice(const QString& voice);
     Q_INVOKABLE void setAudioOutputDevice(const QString& description);
     Q_INVOKABLE void setAudioInputDevice(const QString& deviceId);
@@ -195,6 +222,10 @@ signals:
     void apiStateChanged();
     void apiStatisticsChanged();
     void ttsStatusChanged();
+    void aiComputeDevicesChanged();
+    void aiComputeSettingsChanged();
+    void aiComputeStatusChanged();
+    void strategyChanged();
     void availableTtsVoicesChanged();
     void ttsVoiceChanged();
     void audioOutputChanged();
@@ -225,9 +256,13 @@ private:
     void appendConversationMessage(const QString& role, const QString& text);
     void updateEngineerMessage(const QString& text);
     void finishStartupIfReady();
+    void updateStrategy(const RaceState& state);
+    void setStrategyState(const QString& status, const QString& detail, int pitLap = 0);
+    void announceStrategy(const QString& text, EventPriority priority);
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     SettingsManager settingsManager_;
+    LocalAiRuntimeSelection aiRuntimeSelection_;
     QThread telemetryThread_;
     QThread audioThread_;
     QThread sttThread_;
@@ -245,6 +280,25 @@ private:
     QVariantMap telemetry_;
     bool mockEnabled_{false};
     RaceHistory raceHistory_;
+    StrategyRecorder strategyRecorder_;
+    std::unique_ptr<StrategyPredictor> strategyPredictor_;
+    QString strategyStatus_{QStringLiteral("Đã tắt")};
+    QString strategyDetail_{QStringLiteral("Bật để chọn vòng pit khi có model đã duyệt.")};
+    int strategyPitLap_{0};
+    int strategyObservedLap_{0};
+    int strategyRequestedLap_{0};
+    int strategyAnnouncedPrepareLap_{0};
+    int strategyAnnouncedPitLap_{0};
+    bool strategySeenStart_{false};
+    bool strategyPitted_{false};
+    bool strategyWasInPit_{false};
+    bool strategyWasInPitBox_{false};
+    quint64 strategyRevision_{0};
+    QString strategySessionKey_;
+    QString strategySessionId_;
+    int strategyRecordedLap_{0};
+    bool strategyLapExcluded_{true};
+    int strategyLastTelemetryLap_{0};
     EventEngine eventEngine_;
     SpotterEngine spotterEngine_;
     QString latestEvent_;
@@ -269,6 +323,10 @@ private:
     std::unique_ptr<MessageDispatcher> messageDispatcher_;
     bool ttsAvailable_{false};
     QString ttsStatus_{QStringLiteral("Not installed")};
+    QString whisperComputeBackend_{QStringLiteral("Đang khởi tạo")};
+    QString vieNeuComputeBackend_{QStringLiteral("Chưa khởi tạo")};
+    QString whisperComputeFallback_;
+    QString vieNeuComputeFallback_;
     QVariantList toolLog_;
     QString directInputStatus_{QStringLiteral("DirectInput not initialized")};
     void updateAudioDuckingState();
