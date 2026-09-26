@@ -24,6 +24,8 @@
 #include <QAudioOutput>
 #include <QAudioDevice>
 #include <QMediaDevices>
+#include <QSettings>
+#include <QSystemTrayIcon>
 #include <QTimer>
 #include <QFileInfo>
 #include <QUrl>
@@ -774,6 +776,66 @@ void Application::setAudioDuckingEnabled(const bool enabled)
     if (audioDucker_) audioDucker_->setEnabled(enabled);
     updateAudioDuckingState();
     emit audioDuckingEnabledChanged();
+}
+
+bool Application::startWithWindows() const
+{
+#ifdef _WIN32
+    QSettings registry(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
+                       QSettings::NativeFormat);
+    return registry.value(QStringLiteral("RaceEngineer")).toString()
+        == QStringLiteral("\"%1\"").arg(QDir::toNativeSeparators(QCoreApplication::applicationFilePath()));
+#else
+    return false;
+#endif
+}
+
+void Application::setStartWithWindows(const bool enabled)
+{
+#ifdef _WIN32
+    QSettings registry(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
+                       QSettings::NativeFormat);
+    if (enabled) {
+        registry.setValue(QStringLiteral("RaceEngineer"),
+            QStringLiteral("\"%1\"").arg(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())));
+    } else {
+        registry.remove(QStringLiteral("RaceEngineer"));
+    }
+    registry.sync();
+    if (registry.status() != QSettings::NoError) {
+        qCWarning(logApp) << "Could not update Windows startup registry entry";
+        return;
+    }
+    emit generalSettingsChanged();
+#else
+    Q_UNUSED(enabled);
+#endif
+}
+
+bool Application::trayAvailable() const
+{
+    return QSystemTrayIcon::isSystemTrayAvailable();
+}
+
+void Application::setMinimizeToTray(const bool enabled)
+{
+    if (settingsManager_.minimizeToTray() == enabled || (enabled && !trayAvailable())) return;
+    settingsManager_.setMinimizeToTray(enabled);
+    emit generalSettingsChanged();
+}
+
+void Application::setMinimizeOnClose(const bool enabled)
+{
+    if (settingsManager_.minimizeOnClose() == enabled || (enabled && !trayAvailable())) return;
+    settingsManager_.setMinimizeOnClose(enabled);
+    emit generalSettingsChanged();
+}
+
+void Application::setGpuRendererEnabled(const bool enabled)
+{
+    if (settingsManager_.gpuRendererEnabled() == enabled) return;
+    settingsManager_.setGpuRendererEnabled(enabled);
+    emit generalSettingsChanged();
 }
 
 void Application::retryStartup()

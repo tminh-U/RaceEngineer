@@ -82,6 +82,12 @@ class Application final : public QObject {
     Q_PROPERTY(QString directInputStatus READ directInputStatus NOTIFY directInputStatusChanged)
     Q_PROPERTY(bool audioDuckingEnabled READ audioDuckingEnabled WRITE setAudioDuckingEnabled NOTIFY audioDuckingEnabledChanged)
     Q_PROPERTY(bool isAudioDucked READ isAudioDucked NOTIFY audioDuckingStateChanged)
+    Q_PROPERTY(bool startWithWindows READ startWithWindows NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool trayAvailable READ trayAvailable CONSTANT)
+    Q_PROPERTY(bool minimizeToTray READ minimizeToTray NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool minimizeOnClose READ minimizeOnClose NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool gpuRendererEnabled READ gpuRendererEnabled NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool gpuRendererRestartRequired READ gpuRendererRestartRequired NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool startupReady READ startupReady NOTIFY startupChanged)
     Q_PROPERTY(double startupProgress READ startupProgress NOTIFY startupChanged)
     Q_PROPERTY(QString startupError READ startupError NOTIFY startupChanged)
@@ -168,6 +174,17 @@ public:
     [[nodiscard]] QString directInputStatus() const { return directInputStatus_; }
     [[nodiscard]] bool audioDuckingEnabled() const noexcept { return settingsManager_.tts().audioDucking; }
     [[nodiscard]] bool isAudioDucked() const noexcept;
+    [[nodiscard]] bool startWithWindows() const;
+    [[nodiscard]] bool trayAvailable() const;
+    [[nodiscard]] bool minimizeToTray() const noexcept { return settingsManager_.minimizeToTray(); }
+    [[nodiscard]] bool minimizeOnClose() const noexcept { return settingsManager_.minimizeOnClose(); }
+    [[nodiscard]] bool gpuRendererEnabled() const noexcept { return settingsManager_.gpuRendererEnabled(); }
+    [[nodiscard]] bool gpuRendererRestartRequired() const noexcept
+    { return gpuRendererAtStartup_ != settingsManager_.gpuRendererEnabled(); }
+    Q_INVOKABLE void setStartWithWindows(bool enabled);
+    Q_INVOKABLE void setMinimizeToTray(bool enabled);
+    Q_INVOKABLE void setMinimizeOnClose(bool enabled);
+    Q_INVOKABLE void setGpuRendererEnabled(bool enabled);
     [[nodiscard]] bool startupReady() const noexcept { return startupReady_; }
     [[nodiscard]] double startupProgress() const noexcept
     {
@@ -237,6 +254,7 @@ signals:
     void directInputStatusChanged();
     void audioDuckingEnabledChanged();
     void audioDuckingStateChanged();
+    void generalSettingsChanged();
     void startupChanged();
     void requestStartDirectInput(quintptr nativeWindowHandle);
     void requestConfigureDirectInput(bool enabled, const QString& deviceGuid, int buttonIndex);
@@ -264,6 +282,7 @@ private:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     SettingsManager settingsManager_;
+    bool gpuRendererAtStartup_{settingsManager_.gpuRendererEnabled()};
     LocalAiRuntimeSelection aiRuntimeSelection_;
     QThread telemetryThread_;
     QThread audioThread_;

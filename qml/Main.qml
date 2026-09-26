@@ -15,6 +15,13 @@ ApplicationWindow {
     title: "RaceEngineer"
     color: "#131315"
     flags: Qt.Window | Qt.FramelessWindowHint
+    onVisibilityChanged: if (visibility === Window.Minimized && backend.minimizeToTray && backend.trayAvailable) root.hide()
+    onClosing: function(close) {
+        if (backend.minimizeOnClose && backend.trayAvailable) {
+            close.accepted = false
+            root.hide()
+        }
+    }
 
     readonly property real ui: Math.max(0.75, Math.min(1.15, width / 1390))
     readonly property string uiFontFamily: miSansLatinFont.status === FontLoader.Ready
@@ -151,7 +158,7 @@ ApplicationWindow {
         Rectangle { anchors.fill: parent; radius: height/2; color: toggle.checked ? root.green : "#3a3b3f"; Behavior on color { ColorAnimation { duration: 100 } }
             Rectangle { width: 18*root.ui; height: width; radius: width/2; color: "white"; y: (parent.height-height)/2; x: toggle.checked ? parent.width-width-3*root.ui : 3*root.ui; Behavior on x { NumberAnimation { duration: 100 } } }
         }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { toggle.checked = !toggle.checked; toggle.userToggled(toggle.checked) } }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toggle.userToggled(!toggle.checked) }
     }
     component Card: Rectangle {
         id: card
@@ -762,14 +769,14 @@ Component { id: engineerPage
                     Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25,.28,.33,.35) }
                 }
                 Repeater {
-                    model: [{t:"Cập nhật nhiên liệu",s:"Thời điểm nhả ga và lượng xăng đến đích",x:true},{t:"Cảnh báo Lốp & Độ bám",s:"Nhiệt độ, độ mòn và độ bám",x:true},{t:"Phân tích Delta vòng đua",s:"So sánh chênh lệch thời gian",x:true}]
-                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:modelData.v||""; showSwitch:modelData.x===true }
+                    model: [{t:"Cập nhật nhiên liệu",s:"Thời điểm nhả ga và lượng xăng đến đích"},{t:"Cảnh báo Lốp & Độ bám",s:"Nhiệt độ, độ mòn và độ bám"},{t:"Phân tích Delta vòng đua",s:"So sánh chênh lệch thời gian"}]
+                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:"Tự động" }
                 }
             }
             MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
-                Repeater { model: [{t:"Kích hoạt Spotter",s:"Cảnh báo âm thanh cho các xe kế bên"},{t:"Âm lượng Spotter",s:"Âm lượng phát cục bộ"},{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Cảnh báo hư hại",s:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"}]
-                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; showSwitch:true }
+                Repeater { model: [{t:"Kích hoạt Spotter",s:"Cảnh báo âm thanh cho các xe kế bên"},{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Cảnh báo hư hại",s:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"}]
+                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:"Tự động" }
                 }
             }
             MutedText { text: "HÀNH VI TƯƠNG TÁC" }
@@ -828,6 +835,7 @@ Component { id: engineerPage
     Component { id: aiPage
         PageScroll {
             id: aiScroll
+            property bool streamingSelection: backend.apiStreaming
             readonly property bool isModified: {
                 if (typeof endpoint === "undefined" || !endpoint ||
                     typeof modelName === "undefined" || !modelName ||
@@ -890,8 +898,8 @@ Component { id: engineerPage
                 ColumnLayout { Layout.fillWidth:true; Layout.preferredWidth:1; Layout.alignment:Qt.AlignTop; spacing:14*root.ui
                     MutedText { text:"KIẾN TRÚC SUY LUẬN & ĐƯỜNG TRUYỀN" }
                     Card { Layout.fillWidth:true; Layout.preferredHeight:215*root.ui; title:""
-                        SettingRow { width:parent.width; title:"Hỗ trợ Gọi hàm (Tool Calling)"; subtitle:"Công cụ telemetry và chiến thuật"; showSwitch:true }
-                        SettingRow { id:streamingSwitch; width:parent.width; title:"Truyền dữ liệu dạng luồng (Streaming)"; subtitle:"Luồng phản hồi SSE"; showSwitch:true; checked:backend.apiStreaming }
+                        SettingRow { width:parent.width; title:"Hỗ trợ Gọi hàm (Tool Calling)"; subtitle:"Công cụ telemetry và chiến thuật"; value:"Luôn bật" }
+                        SettingRow { id:streamingSwitch; width:parent.width; title:"Truyền dữ liệu dạng luồng (Streaming)"; subtitle:"Luồng phản hồi SSE"; showSwitch:true; checked:aiScroll.streamingSelection; onToggled: checked => aiScroll.streamingSelection = checked }
                         SettingRow { id:reasoningSwitch; width:parent.width; title:"Chế độ Suy luận Chuyên sâu"; subtitle:"Khóa tối ưu độ trễ thấp (Reasoning/Thinking)"; showSwitch:true; checked:backend.apiReasoning; onToggled:(checked) => backend.setApiReasoning(checked) }
                     }
                     MutedText { text:"THAM SỐ SUY LUẬN CHIẾN THUẬT" }
@@ -902,7 +910,6 @@ Component { id: engineerPage
                         AppSlider{id:tokenLimit; width:parent.width; from:16; to:128; stepSize:1; value:backend.apiMaximumTokens}
                         SettingRow{width:parent.width; title:"Bộ nhớ Ngữ cảnh hội thoại"; value:"4 lượt"}
                         SettingRow{width:parent.width; title:"Thời gian Chờ Phản hồi"; value:backend.apiTimeoutMilliseconds+" ms"}
-                        SettingRow{width:parent.width; title:"Quy tắc Dự phòng Cục bộ"; subtitle:"Cảnh báo khi máy chủ AI trễ"; showSwitch:true}
                     }
                 }
             }
@@ -916,7 +923,10 @@ Component { id: engineerPage
             MutedText { width: Math.min(1040 * root.ui, parent.width - 56 * root.ui); text: "Ứng dụng sử dụng phông chữ MiSans Latin của Xiaomi."; wrapMode: Text.Wrap }
             MutedText{text:"TÙY CHỌN CHUNG"}
             Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                Repeater{model:[{t:"Khởi động cùng Windows",s:"Tự động chạy dịch vụ kỹ sư nền",c:false},{t:"Thu nhỏ vào Khay hệ thống",s:"Tiếp tục chạy ngầm trong phiên đua",c:true},{t:"Thu nhỏ khi đóng cửa sổ",s:"Giữ các dịch vụ đang hoạt động",c:true},{t:"Tăng tốc Phần cứng (GPU)",s:"Qt Quick renderer đang hoạt động",c:true}];delegate:SettingRow{required property var modelData;width:parent.width;title:modelData.t;subtitle:modelData.s;showSwitch:true;checked:modelData.c}}
+                SettingRow { width:parent.width; title:"Khởi động cùng Windows"; subtitle:"Tự động mở RaceEngineer khi đăng nhập"; showSwitch:true; checked:backend.startWithWindows; onToggled: checked => backend.setStartWithWindows(checked) }
+                SettingRow { width:parent.width; title:"Thu nhỏ vào Khay hệ thống"; subtitle:backend.trayAvailable ? "Tiếp tục chạy ngầm trong phiên đua" : "Khay hệ thống hiện không khả dụng"; showSwitch:true; enabled:backend.trayAvailable; checked:backend.minimizeToTray; onToggled: checked => backend.setMinimizeToTray(checked) }
+                SettingRow { width:parent.width; title:"Thu nhỏ khi đóng cửa sổ"; subtitle:backend.trayAvailable ? "Giữ các dịch vụ đang hoạt động" : "Khay hệ thống hiện không khả dụng"; showSwitch:true; enabled:backend.trayAvailable; checked:backend.minimizeOnClose; onToggled: checked => backend.setMinimizeOnClose(checked) }
+                SettingRow { width:parent.width; title:"Tăng tốc Phần cứng (GPU)"; subtitle:backend.gpuRendererRestartRequired ? "Khởi động lại ứng dụng để áp dụng" : "Dùng GPU để vẽ giao diện Qt Quick"; showSwitch:true; checked:backend.gpuRendererEnabled; onToggled: checked => backend.setGpuRendererEnabled(checked) }
             }
             MutedText{text:"AI CỤC BỘ & THIẾT BỊ CHẠY"}
             Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""

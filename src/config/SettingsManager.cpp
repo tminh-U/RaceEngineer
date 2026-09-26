@@ -107,6 +107,27 @@ void SettingsManager::setStrategySharingEnabled(bool enabled)
     save();
 }
 
+void SettingsManager::setMinimizeToTray(bool enabled)
+{
+    if (minimizeToTray_ == enabled) return;
+    minimizeToTray_ = enabled;
+    save();
+}
+
+void SettingsManager::setMinimizeOnClose(bool enabled)
+{
+    if (minimizeOnClose_ == enabled) return;
+    minimizeOnClose_ = enabled;
+    save();
+}
+
+void SettingsManager::setGpuRendererEnabled(bool enabled)
+{
+    if (gpuRendererEnabled_ == enabled) return;
+    gpuRendererEnabled_ = enabled;
+    save();
+}
+
 void SettingsManager::setStrategyShareEndpoint(const QString& endpoint)
 {
     if (strategyShareEndpoint_ == endpoint) return;
@@ -153,6 +174,9 @@ void SettingsManager::load()
     strategyEnabled_ = root.value(QStringLiteral("strategy_enabled")).toBool(false);
     strategyRecordingEnabled_ = root.value(QStringLiteral("strategy_recording_enabled")).toBool(true);
     strategySharingEnabled_ = root.value(QStringLiteral("strategy_sharing_enabled")).toBool(false);
+    minimizeToTray_ = root.value(QStringLiteral("minimize_to_tray")).toBool(minimizeToTray_);
+    minimizeOnClose_ = root.value(QStringLiteral("minimize_on_close")).toBool(minimizeOnClose_);
+    gpuRendererEnabled_ = root.value(QStringLiteral("gpu_renderer_enabled")).toBool(gpuRendererEnabled_);
     strategyShareEndpoint_ = root.value(QStringLiteral("strategy_share_endpoint")).toString();
     const int settingsVersion = root.value(QStringLiteral("settings_version")).toInt(1);
     const QJsonObject localAi = root.value(QStringLiteral("local_ai")).toObject();
@@ -294,6 +318,9 @@ void SettingsManager::save() const
             {QStringLiteral("strategy_enabled"), strategyEnabled_},
         {QStringLiteral("strategy_recording_enabled"), strategyRecordingEnabled_},
         {QStringLiteral("strategy_sharing_enabled"), strategySharingEnabled_},
+        {QStringLiteral("minimize_to_tray"), minimizeToTray_},
+        {QStringLiteral("minimize_on_close"), minimizeOnClose_},
+        {QStringLiteral("gpu_renderer_enabled"), gpuRendererEnabled_},
         {QStringLiteral("strategy_share_endpoint"), strategyShareEndpoint_}}).toJson(QJsonDocument::Indented));
     }
 }

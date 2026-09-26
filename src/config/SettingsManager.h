@@ -69,6 +69,12 @@ public:
     void setStrategyRecordingEnabled(bool enabled);
     bool strategySharingEnabled() const { return strategySharingEnabled_; }
     void setStrategySharingEnabled(bool enabled);
+    [[nodiscard]] bool minimizeToTray() const noexcept { return minimizeToTray_; }
+    void setMinimizeToTray(bool enabled);
+    [[nodiscard]] bool minimizeOnClose() const noexcept { return minimizeOnClose_; }
+    void setMinimizeOnClose(bool enabled);
+    [[nodiscard]] bool gpuRendererEnabled() const noexcept { return gpuRendererEnabled_; }
+    void setGpuRendererEnabled(bool enabled);
     QString strategyShareEndpoint() const { return strategyShareEndpoint_; }
     void setStrategyShareEndpoint(const QString& endpoint);
     [[nodiscard]] QString driverName() const noexcept { return driverName_; }
@@ -91,6 +97,9 @@ private:
     bool strategyEnabled_{false};
     bool strategyRecordingEnabled_{true};
     bool strategySharingEnabled_{false};
+    bool minimizeToTray_{false};
+    bool minimizeOnClose_{false};
+    bool gpuRendererEnabled_{true};
     QString strategyShareEndpoint_;
     QString driverName_{QStringLiteral("Minh Vũ")};
     QString responseStyle_{QStringLiteral("Tiêu chuẩn")};

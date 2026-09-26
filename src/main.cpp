@@ -3,12 +3,15 @@
 #include "utils/Logging.h"
 
 #include <QCommandLineParser>
-#include <QGuiApplication>
+#include <QApplication>
 #include <QIcon>
+#include <QMenu>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
+#include <QSystemTrayIcon>
 #include <QTextStream>
 #include <iostream>
 
@@ -35,7 +38,7 @@ int main(int argc, char* argv[])
     QGuiApplication::setOrganizationName(QStringLiteral("RaceEngineer"));
     QGuiApplication::setApplicationVersion(QStringLiteral("1.0.3"));
     qSetMessagePattern(QStringLiteral("[%{time hh:mm:ss.zzz}] [%{category}] %{message}"));
-    QGuiApplication qtApplication(argc, argv);
+    QApplication qtApplication(argc, argv);
     QIcon appIcon(QStringLiteral(":/qt/qml/RaceEngineer/assets/final_icon.ico"));
     if (appIcon.isNull()) {
         appIcon = QIcon(QStringLiteral(":/qt/qml/RaceEngineer/assets/final_icon_64.png"));
@@ -102,6 +105,10 @@ int main(int argc, char* argv[])
         return qtApplication.exec();
     }
 
+    if (!application.gpuRendererEnabled()) {
+        QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+    }
+
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError>& warnings) {
         for (const auto& w : warnings) {
@@ -120,5 +127,31 @@ int main(int argc, char* argv[])
         std::cerr << "[QML Error] rootObjects is empty! Failed to load RaceEngineer/Main\n";
         return 1;
     }
+
+    auto* const window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+    QMenu trayMenu;
+    QSystemTrayIcon trayIcon(appIcon);
+    const auto showWindow = [window] {
+        if (!window) return;
+        window->showNormal();
+        window->raise();
+        window->requestActivate();
+    };
+    QObject::connect(trayMenu.addAction(QStringLiteral("Mở RaceEngineer")), &QAction::triggered,
+                     &qtApplication, showWindow);
+    QObject::connect(trayMenu.addAction(QStringLiteral("Thoát")), &QAction::triggered,
+                     &qtApplication, &QCoreApplication::quit);
+    trayIcon.setContextMenu(&trayMenu);
+    QObject::connect(&trayIcon, &QSystemTrayIcon::activated, &qtApplication,
+                     [showWindow](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) showWindow();
+    });
+    const auto updateTrayIcon = [&] {
+        trayIcon.setVisible(application.trayAvailable()
+            && (application.minimizeToTray() || application.minimizeOnClose()));
+    };
+    QObject::connect(&application, &raceengineer::Application::generalSettingsChanged,
+                     &qtApplication, updateTrayIcon);
+    updateTrayIcon();
     return qtApplication.exec();
 }
