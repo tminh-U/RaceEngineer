@@ -136,7 +136,7 @@ def publish_spotter_geometry(memory, cars):
     struct.pack_into(SPOTTER_HEADER_FMT, memory, 0, b"RSGE", 1, sequence, len(cars))
     offset = SPOTTER_HEADER_SIZE
     for car_id, flags, position, contacts in cars:
-        struct.pack_into(SPOTTER_CAR_FMT, memory, offset, car_id, flags, *position, *contacts)
+        struct.pack_into(SPOTTER_CAR_FMT, memory, offset, car_id, flags, *(position + tuple(contacts)))
         offset += SPOTTER_CAR_SIZE
     spotter_sequence = (sequence + 1) & 0xFFFFFFFF
     if spotter_sequence % 2 != 0:
