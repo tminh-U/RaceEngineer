@@ -1,4 +1,5 @@
 #include "config/SettingsManager.h"
+#include "events/EventEngine.h"
 
 #include "utils/Logging.h"
 
@@ -12,7 +13,7 @@
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 12;
+constexpr int currentSettingsVersion = 13;
 }
 
 SettingsManager::SettingsManager()
@@ -98,6 +99,64 @@ void SettingsManager::setSpotterEnabled(const bool enabled)
     if (spotterEnabled_ == enabled) return;
     spotterEnabled_ = enabled;
     save();
+}
+
+void SettingsManager::setFuelAlertsEnabled(const bool enabled)
+{
+    if (fuelAlertsEnabled_ == enabled) return;
+    fuelAlertsEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setTyreAlertsEnabled(const bool enabled)
+{
+    if (tyreAlertsEnabled_ == enabled) return;
+    tyreAlertsEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setLapDeltaEnabled(const bool enabled)
+{
+    if (lapDeltaEnabled_ == enabled) return;
+    lapDeltaEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setFlagAlertsEnabled(const bool enabled)
+{
+    if (flagAlertsEnabled_ == enabled) return;
+    flagAlertsEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setDamageAlertsEnabled(const bool enabled)
+{
+    if (damageAlertsEnabled_ == enabled) return;
+    damageAlertsEnabled_ = enabled;
+    save();
+}
+
+bool SettingsManager::eventEnabled(const EventType type) const noexcept
+{
+    switch (type) {
+    case EventType::FuelLow:
+    case EventType::FuelCritical: return fuelAlertsEnabled_;
+    case EventType::TyreOverheating: return tyreAlertsEnabled_;
+    case EventType::NewBestLap:
+    case EventType::LapDelta: return lapDeltaEnabled_;
+    case EventType::YellowFlag:
+    case EventType::BlueFlag:
+    case EventType::GreenFlag:
+    case EventType::RedFlag:
+    case EventType::BlackFlag:
+    case EventType::WhiteFlag:
+    case EventType::ChequeredFlag: return flagAlertsEnabled_;
+    case EventType::DamageDetected: return damageAlertsEnabled_;
+    case EventType::CarLeft:
+    case EventType::CarRight:
+    case EventType::ThreeWide: return spotterEnabled_;
+    default: return true;
+    }
 }
 
 void SettingsManager::setLapSummaryEnabled(const bool enabled)
@@ -187,6 +246,11 @@ void SettingsManager::load()
     const QJsonObject root = document.object();
     strategyEnabled_ = root.value(QStringLiteral("strategy_enabled")).toBool(false);
     spotterEnabled_ = root.value(QStringLiteral("spotter_enabled")).toBool(true);
+    fuelAlertsEnabled_ = root.value(QStringLiteral("fuel_alerts_enabled")).toBool(true);
+    tyreAlertsEnabled_ = root.value(QStringLiteral("tyre_alerts_enabled")).toBool(true);
+    lapDeltaEnabled_ = root.value(QStringLiteral("lap_delta_enabled")).toBool(true);
+    flagAlertsEnabled_ = root.value(QStringLiteral("flag_alerts_enabled")).toBool(true);
+    damageAlertsEnabled_ = root.value(QStringLiteral("damage_alerts_enabled")).toBool(true);
     lapSummaryEnabled_ = root.value(QStringLiteral("lap_summary_enabled")).toBool(false);
     strategyRecordingEnabled_ = root.value(QStringLiteral("strategy_recording_enabled")).toBool(true);
     strategySharingEnabled_ = root.value(QStringLiteral("strategy_sharing_enabled")).toBool(false);
@@ -333,6 +397,11 @@ void SettingsManager::save() const
             {QStringLiteral("local_ai"), localAi},
             {QStringLiteral("strategy_enabled"), strategyEnabled_},
             {QStringLiteral("spotter_enabled"), spotterEnabled_},
+            {QStringLiteral("fuel_alerts_enabled"), fuelAlertsEnabled_},
+            {QStringLiteral("tyre_alerts_enabled"), tyreAlertsEnabled_},
+            {QStringLiteral("lap_delta_enabled"), lapDeltaEnabled_},
+            {QStringLiteral("flag_alerts_enabled"), flagAlertsEnabled_},
+            {QStringLiteral("damage_alerts_enabled"), damageAlertsEnabled_},
             {QStringLiteral("lap_summary_enabled"), lapSummaryEnabled_},
         {QStringLiteral("strategy_recording_enabled"), strategyRecordingEnabled_},
         {QStringLiteral("strategy_sharing_enabled"), strategySharingEnabled_},

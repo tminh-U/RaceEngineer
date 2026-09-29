@@ -215,6 +215,39 @@ int main(int argc, char* argv[])
     expect(!tools.execute(QStringLiteral("unknown_tool"), lapState, history)
                 .value(QStringLiteral("available")).toBool());
     expect(tools.definitions().size() >= 19);
+    {
+        ToolRegistry featureTools;
+        const QStringList ids{QStringLiteral("fuel_alerts"), QStringLiteral("tyre_alerts"),
+            QStringLiteral("lap_delta"), QStringLiteral("flag_alerts"), QStringLiteral("damage_alerts")};
+        QJsonArray allowed;
+        for (const auto& entry : featureTools.definitions()) {
+            const auto function = entry.toObject().value(QStringLiteral("function")).toObject();
+            if (function.value(QStringLiteral("name")) == QStringLiteral("set_feature_enabled"))
+                allowed = function.value(QStringLiteral("parameters")).toObject()
+                    .value(QStringLiteral("properties")).toObject().value(QStringLiteral("feature")).toObject()
+                    .value(QStringLiteral("enum")).toArray();
+        }
+        int changes = 0;
+        featureTools.setFeatureControlHandlers({}, [&](const QString& id, bool enabled, quint64 revision) {
+            ++changes;
+            expect(ids.contains(id));
+            expect(revision == 42);
+            return QJsonObject{{QStringLiteral("success"), true}, {QStringLiteral("enabled"), enabled}};
+        });
+        for (const auto& id : ids) {
+            expect(allowed.contains(id));
+            for (const bool enabled : {false, true}) {
+                const auto result = featureTools.execute(QStringLiteral("set_feature_enabled"), RaceState{}, history,
+                    {{QStringLiteral("feature"), id}, {QStringLiteral("enabled"), enabled}}, {}, 42);
+                expect(result.value(QStringLiteral("success")).toBool());
+                expect(result.value(QStringLiteral("enabled")).toBool() == enabled);
+            }
+        }
+        const auto invalid = featureTools.execute(QStringLiteral("set_feature_enabled"), RaceState{}, history,
+            {{QStringLiteral("feature"), ids.front()}, {QStringLiteral("enabled"), QStringLiteral("false")}}, {}, 42);
+        expect(!invalid.value(QStringLiteral("success")).toBool());
+        expect(changes == 10);
+    }
 
     OpponentState opponent;
     opponent.carId = 44;
@@ -628,6 +661,61 @@ int main(int argc, char* argv[])
     llmTestManager.setDriverName(QStringLiteral("Minh Vũ"));
 
     SettingsManager settingsManagerTest;
+    // Each UI announcement switch survives reload and filters only its own events.
+    {
+        const auto base = std::chrono::steady_clock::now();
+        const auto checkSwitch = [&](auto getter, auto setter, const std::vector<EventType>& types) {
+            const bool saved = (settingsManagerTest.*getter)();
+            for (const bool enabled : {false, true}) {
+                (settingsManagerTest.*setter)(enabled);
+                SettingsManager reloaded;
+                expect((reloaded.*getter)() == enabled);
+                for (const auto type : types) expect(reloaded.eventEnabled(type) == enabled);
+                expect(reloaded.eventEnabled(EventType::EngineCritical));
+            }
+            (settingsManagerTest.*setter)(saved);
+        };
+        checkSwitch(&SettingsManager::fuelAlertsEnabled, &SettingsManager::setFuelAlertsEnabled,
+            {EventType::FuelLow, EventType::FuelCritical});
+        checkSwitch(&SettingsManager::tyreAlertsEnabled, &SettingsManager::setTyreAlertsEnabled,
+            {EventType::TyreOverheating});
+        checkSwitch(&SettingsManager::lapDeltaEnabled, &SettingsManager::setLapDeltaEnabled,
+            {EventType::NewBestLap, EventType::LapDelta});
+        checkSwitch(&SettingsManager::flagAlertsEnabled, &SettingsManager::setFlagAlertsEnabled,
+            {EventType::YellowFlag, EventType::BlueFlag, EventType::GreenFlag, EventType::RedFlag,
+                EventType::BlackFlag, EventType::WhiteFlag, EventType::ChequeredFlag});
+        checkSwitch(&SettingsManager::damageAlertsEnabled, &SettingsManager::setDamageAlertsEnabled,
+            {EventType::DamageDetected});
+        checkSwitch(&SettingsManager::spotterEnabled, &SettingsManager::setSpotterEnabled,
+            {EventType::CarLeft, EventType::CarRight, EventType::ThreeWide});
+
+        EventEngine tyreEvents;
+        RaceState tyreState;
+        tyreState.connected = true;
+        expect(tyreEvents.process(tyreState, base).empty());
+        tyreState.tyreTemperaturesCelsius = WheelValues{90.0, 110.0, 95.0, 94.0};
+        const auto hotTyres = tyreEvents.process(tyreState, base + std::chrono::seconds(1));
+        expect(hotTyres.size() == 1 && hotTyres.front().type == EventType::TyreOverheating);
+        expect(tyreEvents.process(tyreState, base + std::chrono::seconds(2)).empty());
+        tyreEvents.reset();
+        tyreState.tyreTemperaturesCelsius.reset();
+        expect(tyreEvents.process(tyreState, base + std::chrono::seconds(35)).empty());
+
+        EventEngine deltaEvents;
+        RaceState deltaState;
+        deltaState.connected = true;
+        deltaState.currentLap = 3;
+        deltaState.bestLapTimeSeconds = 90.0;
+        expect(deltaEvents.process(deltaState, base).empty());
+        deltaState.currentLap = 4;
+        deltaState.previousLapTimeSeconds = 92.5;
+        const auto lapDelta = deltaEvents.process(deltaState, base + std::chrono::seconds(90));
+        expect(lapDelta.size() == 1 && lapDelta.front().type == EventType::LapDelta);
+        expect(!lapDelta.empty() && lapDelta.front().message.find("2.5") != std::string::npos);
+        expect(deltaEvents.process(deltaState, base + std::chrono::seconds(91)).empty());
+        deltaState.currentLap = 6;
+        expect(deltaEvents.process(deltaState, base + std::chrono::seconds(180)).empty());
+    }
     expect(settingsManagerTest.driverName() == QStringLiteral("Minh Vũ"));
     settingsManagerTest.setDriverName(QStringLiteral("Tuấn Minh"));
     expect(settingsManagerTest.driverName() == QStringLiteral("Tuấn Minh"));

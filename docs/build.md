@@ -126,7 +126,7 @@ Package the production build:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\production\scripts\package-portable.ps1 `
-  -Version 1.0.1 `
+  -Version 1.0.4 `
   -BuildDirectory .\build-production `
   -QtPrefix C:\Qt\6.8.3\msvc2022_64 `
   -VCRedistPath C:\BuildTools\VC\Redist\MSVC\v143\vc_redist.x64.exe `
@@ -140,7 +140,7 @@ The package step:
 3. Copies spotter audio, models, voices, and the optional AC Python companion.
 4. Writes `release-manifest.json` with SHA-256 hashes.
 5. Creates a Windows x64 ZIP.
-6. Compiles `RaceEngineer-1.0.1-Setup.exe` with Inno Setup.
+6. Compiles `RaceEngineer-1.0.4-Setup.exe` with Inno Setup.
 
 The installer uses a standard Windows setup wizard, installs per-user under
 `%LOCALAPPDATA%\Programs\RaceEngineer`, creates a Start Menu shortcut, and
@@ -162,7 +162,7 @@ Run verification against the staging directory:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\production\scripts\verify-release.ps1 `
-  -PackageDirectory .\production\dist\RaceEngineer-1.0.1
+  -PackageDirectory .\production\dist\RaceEngineer-1.0.4
 ```
 
 Verification checks:

@@ -101,6 +101,11 @@ class Application final : public QObject {
     Q_PROPERTY(int strategyPitLap READ strategyPitLap NOTIFY strategyChanged)
     Q_PROPERTY(QString strategyDetail READ strategyDetail NOTIFY strategyChanged)
     Q_PROPERTY(bool spotterEnabled READ spotterEnabled NOTIFY spotterSettingsChanged)
+    Q_PROPERTY(bool fuelAlertsEnabled READ fuelAlertsEnabled NOTIFY engineerSettingsChanged)
+    Q_PROPERTY(bool tyreAlertsEnabled READ tyreAlertsEnabled NOTIFY engineerSettingsChanged)
+    Q_PROPERTY(bool lapDeltaEnabled READ lapDeltaEnabled NOTIFY engineerSettingsChanged)
+    Q_PROPERTY(bool flagAlertsEnabled READ flagAlertsEnabled NOTIFY engineerSettingsChanged)
+    Q_PROPERTY(bool damageAlertsEnabled READ damageAlertsEnabled NOTIFY engineerSettingsChanged)
     Q_PROPERTY(bool lapSummaryEnabled READ lapSummaryEnabled NOTIFY lapSummaryChanged)
     Q_PROPERTY(QString lapSummaryStatus READ lapSummaryStatus NOTIFY lapSummaryChanged)
     Q_PROPERTY(QString latestLapSummary READ latestLapSummary NOTIFY lapSummaryChanged)
@@ -161,11 +166,21 @@ public:
     [[nodiscard]] int strategyPitLap() const noexcept { return strategyPitLap_; }
     [[nodiscard]] QString strategyDetail() const { return strategyDetail_; }
     [[nodiscard]] bool spotterEnabled() const noexcept { return settingsManager_.spotterEnabled(); }
+    [[nodiscard]] bool fuelAlertsEnabled() const noexcept { return settingsManager_.fuelAlertsEnabled(); }
+    [[nodiscard]] bool tyreAlertsEnabled() const noexcept { return settingsManager_.tyreAlertsEnabled(); }
+    [[nodiscard]] bool lapDeltaEnabled() const noexcept { return settingsManager_.lapDeltaEnabled(); }
+    [[nodiscard]] bool flagAlertsEnabled() const noexcept { return settingsManager_.flagAlertsEnabled(); }
+    [[nodiscard]] bool damageAlertsEnabled() const noexcept { return settingsManager_.damageAlertsEnabled(); }
     [[nodiscard]] bool lapSummaryEnabled() const noexcept { return settingsManager_.lapSummaryEnabled(); }
     [[nodiscard]] QString lapSummaryStatus() const { return lapSummaryStatus_; }
     [[nodiscard]] QString latestLapSummary() const { return latestLapSummary_; }
     Q_INVOKABLE void setStrategyEnabled(bool enabled);
     Q_INVOKABLE void setSpotterEnabled(bool enabled);
+    Q_INVOKABLE void setFuelAlertsEnabled(bool enabled);
+    Q_INVOKABLE void setTyreAlertsEnabled(bool enabled);
+    Q_INVOKABLE void setLapDeltaEnabled(bool enabled);
+    Q_INVOKABLE void setFlagAlertsEnabled(bool enabled);
+    Q_INVOKABLE void setDamageAlertsEnabled(bool enabled);
     Q_INVOKABLE void setLapSummaryEnabled(bool enabled);
     Q_INVOKABLE bool configureStrategySharing(const QString& endpoint, const QString& token);
     QObject* strategyData() { return &strategyRecorder_; }
@@ -255,6 +270,7 @@ signals:
     void aiComputeStatusChanged();
     void strategyChanged();
     void spotterSettingsChanged();
+    void engineerSettingsChanged();
     void lapSummaryChanged();
     void availableTtsVoicesChanged();
     void ttsVoiceChanged();

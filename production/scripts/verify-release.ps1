@@ -69,14 +69,24 @@ if ($obsoleteInstallerFiles) {
 
 $executablePath = Join-Path $binPath 'RaceEngineer.exe'
 $env:PATH = "$binPath;$env:PATH"
-$versionProcess = Start-Process -FilePath $executablePath `
-    -ArgumentList '--version' `
-    -WorkingDirectory $binPath `
-    -Wait `
-    -PassThru `
-    -WindowStyle Hidden
+$versionOutputPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+try {
+    $versionProcess = Start-Process -FilePath $executablePath `
+        -ArgumentList '--version' `
+        -WorkingDirectory $binPath `
+        -Wait `
+        -PassThru `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $versionOutputPath
+    $actualVersion = (Get-Content -Raw -LiteralPath $versionOutputPath).Trim()
+} finally {
+    Remove-Item -LiteralPath $versionOutputPath -ErrorAction SilentlyContinue
+}
 if ($versionProcess.ExitCode -ne 0) {
     throw "Packaged executable did not start successfully."
+}
+if ($actualVersion -ne "$($manifest.product) $($manifest.version)") {
+    throw "Packaged executable version mismatch: $actualVersion (expected $($manifest.version))."
 }
 
 Write-Host "Release verified: $($manifest.product) $($manifest.version) ($($manifest.platform))"

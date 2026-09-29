@@ -4,6 +4,8 @@
 
 namespace raceengineer {
 
+enum class EventType;
+
 struct LlmSettings final {
     QString provider{QStringLiteral("OpenAI Compatible")};
     QString baseUrl;
@@ -67,6 +69,17 @@ public:
     void setStrategyEnabled(bool enabled);
     [[nodiscard]] bool spotterEnabled() const noexcept { return spotterEnabled_; }
     void setSpotterEnabled(bool enabled);
+    [[nodiscard]] bool fuelAlertsEnabled() const noexcept { return fuelAlertsEnabled_; }
+    void setFuelAlertsEnabled(bool enabled);
+    [[nodiscard]] bool tyreAlertsEnabled() const noexcept { return tyreAlertsEnabled_; }
+    void setTyreAlertsEnabled(bool enabled);
+    [[nodiscard]] bool lapDeltaEnabled() const noexcept { return lapDeltaEnabled_; }
+    void setLapDeltaEnabled(bool enabled);
+    [[nodiscard]] bool flagAlertsEnabled() const noexcept { return flagAlertsEnabled_; }
+    void setFlagAlertsEnabled(bool enabled);
+    [[nodiscard]] bool damageAlertsEnabled() const noexcept { return damageAlertsEnabled_; }
+    void setDamageAlertsEnabled(bool enabled);
+    [[nodiscard]] bool eventEnabled(EventType type) const noexcept;
     [[nodiscard]] bool lapSummaryEnabled() const noexcept { return lapSummaryEnabled_; }
     void setLapSummaryEnabled(bool enabled);
     bool strategyRecordingEnabled() const { return strategyRecordingEnabled_; }
@@ -100,6 +113,11 @@ private:
     LocalAiSettings localAi_;
     bool strategyEnabled_{false};
     bool spotterEnabled_{true};
+    bool fuelAlertsEnabled_{true};
+    bool tyreAlertsEnabled_{true};
+    bool lapDeltaEnabled_{true};
+    bool flagAlertsEnabled_{true};
+    bool damageAlertsEnabled_{true};
     bool lapSummaryEnabled_{false};
     bool strategyRecordingEnabled_{true};
     bool strategySharingEnabled_{false};

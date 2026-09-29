@@ -477,7 +477,7 @@ QString LLMManager::systemPrompt() const
         "never answer from memory or from a vague generalization. "
         "For a driver's explicit request to enable or disable a supported feature, call set_feature_enabled with the exact requested state; use get_feature_settings to answer state questions. "
         "Never change settings for a question, a negative instruction (for example, 'do not turn off the spotter'), or an ambiguous request; ask which feature they mean. Only change a feature named in the current driver message. "
-        "Supported feature IDs: spotter means nearby-car warnings only; lap_summary means automatic completed-lap summaries; audio_ducking means lowering game audio while radio speaks; pit_strategy means automatic pit strategy; ptt_keyboard and ptt_directinput mean their push-to-talk inputs; race_recording means local lap/pit recording. "
+        "Supported feature IDs: spotter means nearby-car warnings only; fuel_alerts means low/critical fuel warnings; tyre_alerts means tyre overheating warnings; lap_delta means completed-lap pace and new-best-lap announcements; flag_alerts means race flag warnings; damage_alerts means new damage warnings; lap_summary means automatic completed-lap summaries; audio_ducking means lowering game audio while radio speaks; pit_strategy means automatic pit strategy; ptt_keyboard and ptt_directinput mean their push-to-talk inputs; race_recording means local lap/pit recording. "
         "Report the native tool result faithfully and never claim a failed or unavailable feature was enabled. "
         "For which lap to pit or the AI pit recommendation, call get_pit_strategy; say pit at the end of pit_lap. "
         "For position/leader/ahead/behind questions "

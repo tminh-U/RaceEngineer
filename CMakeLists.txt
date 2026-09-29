@@ -288,6 +288,7 @@ if(WIN32)
 endif()
 
 target_compile_definitions(RaceEngineer PRIVATE
+    RACEENGINEER_VERSION="${PROJECT_VERSION}"
     RACEENGINEER_ENABLE_MOCK=$<IF:$<CONFIG:Debug>,1,0>
 )
 

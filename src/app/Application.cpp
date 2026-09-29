@@ -77,15 +77,28 @@ QString lapTimeText(const double seconds)
         .arg(milliseconds % 1000, 3, 10, QLatin1Char('0'));
 }
 
-bool isProximityEvent(const EventType type)
+MessageSource eventMessageSource(const EventType type)
 {
     switch (type) {
     case EventType::CarLeft:
     case EventType::CarRight:
     case EventType::ThreeWide:
-        return true;
+        return MessageSource::ProximitySpotter;
+    case EventType::FuelLow:
+    case EventType::FuelCritical: return MessageSource::FuelAlerts;
+    case EventType::TyreOverheating: return MessageSource::TyreAlerts;
+    case EventType::NewBestLap:
+    case EventType::LapDelta: return MessageSource::LapDelta;
+    case EventType::YellowFlag:
+    case EventType::BlueFlag:
+    case EventType::GreenFlag:
+    case EventType::RedFlag:
+    case EventType::BlackFlag:
+    case EventType::WhiteFlag:
+    case EventType::ChequeredFlag: return MessageSource::FlagAlerts;
+    case EventType::DamageDetected: return MessageSource::DamageAlerts;
     default:
-        return false;
+        return MessageSource::General;
     }
 }
 
@@ -1135,6 +1148,7 @@ void Application::onStateUpdated(const RaceState& state)
     const bool sessionChanged = sessionKey != strategySessionKey_
         || (state.currentLap && strategyLastTelemetryLap_ > 0 && *state.currentLap < strategyLastTelemetryLap_);
     if (sessionChanged) {
+        eventEngine_.reset();
         if (previousWasRace && strategyRecordedLap_ > 0)
             strategyRecorder_.finishSession(previousSessionId);
         raceHistory_.reset();
@@ -1206,6 +1220,7 @@ void Application::onStateUpdated(const RaceState& state)
     if (settingsManager_.spotterEnabled())
         events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
     for (const auto& event : events) {
+        if (!settingsManager_.eventEnabled(event.type)) continue;
         latestEvent_ = utf8(event.message);
         QVariantMap entry;
         entry.insert(QStringLiteral("message"), latestEvent_);
@@ -1217,8 +1232,7 @@ void Application::onStateUpdated(const RaceState& state)
             eventLog_.removeLast();
         }
         qCInfo(logEvent).noquote() << latestEvent_;
-        const auto source = isProximityEvent(event.type)
-            ? MessageSource::ProximitySpotter : MessageSource::General;
+        const auto source = eventMessageSource(event.type);
         messageDispatcher_->enqueue(latestEvent_, event.priority, source);
     }
     if (!events.empty()) {
@@ -1264,6 +1278,51 @@ void Application::setSpotterEnabled(const bool enabled)
     spotterEngine_.reset();
     if (!enabled) messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
     emit spotterSettingsChanged();
+}
+
+void Application::setFuelAlertsEnabled(const bool enabled)
+{
+    if (settingsManager_.fuelAlertsEnabled() == enabled) return;
+    settingsManager_.setFuelAlertsEnabled(enabled);
+    ++featureSettingsRevision_;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::FuelAlerts);
+    emit engineerSettingsChanged();
+}
+
+void Application::setTyreAlertsEnabled(const bool enabled)
+{
+    if (settingsManager_.tyreAlertsEnabled() == enabled) return;
+    settingsManager_.setTyreAlertsEnabled(enabled);
+    ++featureSettingsRevision_;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::TyreAlerts);
+    emit engineerSettingsChanged();
+}
+
+void Application::setLapDeltaEnabled(const bool enabled)
+{
+    if (settingsManager_.lapDeltaEnabled() == enabled) return;
+    settingsManager_.setLapDeltaEnabled(enabled);
+    ++featureSettingsRevision_;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::LapDelta);
+    emit engineerSettingsChanged();
+}
+
+void Application::setFlagAlertsEnabled(const bool enabled)
+{
+    if (settingsManager_.flagAlertsEnabled() == enabled) return;
+    settingsManager_.setFlagAlertsEnabled(enabled);
+    ++featureSettingsRevision_;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::FlagAlerts);
+    emit engineerSettingsChanged();
+}
+
+void Application::setDamageAlertsEnabled(const bool enabled)
+{
+    if (settingsManager_.damageAlertsEnabled() == enabled) return;
+    settingsManager_.setDamageAlertsEnabled(enabled);
+    ++featureSettingsRevision_;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::DamageAlerts);
+    emit engineerSettingsChanged();
 }
 
 void Application::setLapSummaryEnabled(const bool enabled)
@@ -1414,6 +1473,11 @@ QJsonObject Application::featureSettings() const
         features.append(item);
     };
     append(QStringLiteral("spotter"), spotterEnabled(), true);
+    append(QStringLiteral("fuel_alerts"), fuelAlertsEnabled(), true);
+    append(QStringLiteral("tyre_alerts"), tyreAlertsEnabled(), true);
+    append(QStringLiteral("lap_delta"), lapDeltaEnabled(), true);
+    append(QStringLiteral("flag_alerts"), flagAlertsEnabled(), true);
+    append(QStringLiteral("damage_alerts"), damageAlertsEnabled(), true);
     append(QStringLiteral("lap_summary"), lapSummaryEnabled(), true);
     append(QStringLiteral("audio_ducking"), audioDuckingEnabled(), true);
     append(QStringLiteral("pit_strategy"), strategyEnabled(), strategyAvailable(),
@@ -1448,6 +1512,11 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     };
     QString label;
     if (feature == QStringLiteral("spotter")) label = QStringLiteral("Spotter");
+    else if (feature == QStringLiteral("fuel_alerts")) label = QStringLiteral("cảnh báo nhiên liệu");
+    else if (feature == QStringLiteral("tyre_alerts")) label = QStringLiteral("cảnh báo lốp");
+    else if (feature == QStringLiteral("lap_delta")) label = QStringLiteral("phân tích Delta vòng đua");
+    else if (feature == QStringLiteral("flag_alerts")) label = QStringLiteral("cảnh báo cờ hiệu");
+    else if (feature == QStringLiteral("damage_alerts")) label = QStringLiteral("cảnh báo hư hại");
     else if (feature == QStringLiteral("lap_summary")) label = QStringLiteral("tổng kết vòng");
     else if (feature == QStringLiteral("audio_ducking")) label = QStringLiteral("tự hạ âm game");
     else if (feature == QStringLiteral("pit_strategy")) label = QStringLiteral("chiến thuật Pit");
@@ -1474,6 +1543,11 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     }
 
     if (feature == QStringLiteral("spotter")) setSpotterEnabled(enabled);
+    else if (feature == QStringLiteral("fuel_alerts")) setFuelAlertsEnabled(enabled);
+    else if (feature == QStringLiteral("tyre_alerts")) setTyreAlertsEnabled(enabled);
+    else if (feature == QStringLiteral("lap_delta")) setLapDeltaEnabled(enabled);
+    else if (feature == QStringLiteral("flag_alerts")) setFlagAlertsEnabled(enabled);
+    else if (feature == QStringLiteral("damage_alerts")) setDamageAlertsEnabled(enabled);
     else if (feature == QStringLiteral("lap_summary")) setLapSummaryEnabled(enabled);
     else if (feature == QStringLiteral("audio_ducking")) setAudioDuckingEnabled(enabled);
     else if (feature == QStringLiteral("pit_strategy")) setStrategyEnabled(enabled);

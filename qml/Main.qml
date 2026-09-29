@@ -329,7 +329,7 @@ ApplicationWindow {
             }
         }
         Column { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 20*root.ui; spacing: 8*root.ui
-            MutedText { anchors.horizontalCenter: parent.horizontalCenter; text: "v1.0.1  •  Sẵn sàng"; font.pixelSize: 11*root.ui }
+            MutedText { anchors.horizontalCenter: parent.horizontalCenter; text: "v" + Qt.application.version + "  •  Sẵn sàng"; font.pixelSize: 11*root.ui }
         }
     }
 
@@ -768,17 +768,15 @@ Component { id: engineerPage
                     }
                     Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25,.28,.33,.35) }
                 }
-                Repeater {
-                    model: [{t:"Cập nhật nhiên liệu",s:"Thời điểm nhả ga và lượng xăng đến đích"},{t:"Cảnh báo Lốp & Độ bám",s:"Nhiệt độ, độ mòn và độ bám"},{t:"Phân tích Delta vòng đua",s:"So sánh chênh lệch thời gian"}]
-                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:"Tự động" }
-                }
+                SettingRow { width: parent.width; title:"Cập nhật nhiên liệu"; subtitle:"Cảnh báo nhiên liệu thấp và mức nguy cấp"; showSwitch:true; checked:backend.fuelAlertsEnabled; onToggled:checked => backend.setFuelAlertsEnabled(checked) }
+                SettingRow { width: parent.width; title:"Cảnh báo Lốp & Độ bám"; subtitle:"Cảnh báo lốp quá nóng khi có telemetry nhiệt độ"; showSwitch:true; checked:backend.tyreAlertsEnabled; onToggled:checked => backend.setTyreAlertsEnabled(checked) }
+                SettingRow { width: parent.width; title:"Phân tích Delta vòng đua"; subtitle:"Vòng vừa hoàn thành so với vòng nhanh nhất"; showSwitch:true; checked:backend.lapDeltaEnabled; onToggled:checked => backend.setLapDeltaEnabled(checked) }
             }
             MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
-                Repeater { model: [{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Cảnh báo hư hại",s:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"}]
-                    delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:"Tự động" }
-                }
-                SettingRow { width: parent.width; title:"Kích hoạt Spotter"; subtitle:"Cảnh báo âm thanh cho xe bên cạnh"; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
+                SettingRow { width: parent.width; title:"Xe Trái / Xe Phải"; subtitle:"Bật Spotter cảnh báo âm thanh cho xe bên cạnh"; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
+                SettingRow { width: parent.width; title:"Cờ hiệu & Nguy hiểm chặng"; subtitle:"Cảnh báo cờ hiệu trên đường đua"; showSwitch:true; checked:backend.flagAlertsEnabled; onToggled:checked => backend.setFlagAlertsEnabled(checked) }
+                SettingRow { width: parent.width; title:"Cảnh báo hư hại"; subtitle:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"; showSwitch:true; checked:backend.damageAlertsEnabled; onToggled:checked => backend.setDamageAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Tổng kết sau mỗi vòng"; subtitle:backend.lapSummaryStatus; showSwitch:true; checked:backend.lapSummaryEnabled; onToggled:checked => backend.setLapSummaryEnabled(checked) }
                 BodyText { width: parent.width; visible:backend.latestLapSummary.length > 0; text:backend.latestLapSummary; wrapMode:Text.Wrap; font.pixelSize:12*root.ui; color:root.textMuted }
             }

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -21,6 +23,7 @@ EventEngine::EventEngine()
     cooldowns_[EventType::WhiteFlag] = std::chrono::seconds(10);
     cooldowns_[EventType::ChequeredFlag] = std::chrono::seconds(15);
     cooldowns_[EventType::SessionStarted] = std::chrono::seconds(5);
+    cooldowns_[EventType::TyreOverheating] = std::chrono::seconds(30);
 }
 
 std::vector<RaceEvent> EventEngine::process(const RaceState& state,
@@ -38,6 +41,8 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         connected_ = state.connected;
     }
     if (!state.connected) {
+        tyresOverheating_ = false;
+        observedLap_.reset();
         previousDamage_.reset();
         previousSuspensionDamage_.reset();
         return events;
@@ -108,6 +113,16 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         emitIfReady(events, EventType::DamageDetected, EventPriority::Spotter,
             std::move(message), now);
     }
+
+    // Same overheating threshold as get_tyre_status; missing telemetry never raises an alert.
+    const bool tyresOverheating = state.tyreTemperaturesCelsius &&
+        std::any_of(state.tyreTemperaturesCelsius->begin(), state.tyreTemperaturesCelsius->end(),
+            [](const double temperature) { return std::isfinite(temperature) && temperature >= 110.0; });
+    if (tyresOverheating && !tyresOverheating_) {
+        emitIfReady(events, EventType::TyreOverheating, EventPriority::Important,
+            "Lốp quá nóng, nhiệt độ từ 110 độ C.", now);
+    }
+    tyresOverheating_ = tyresOverheating;
 
     FuelLevel nextFuel = FuelLevel::Unknown;
     if (state.fuelLiters && state.fuelCapacityLiters && *state.fuelCapacityLiters > 0.0) {
@@ -196,6 +211,23 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         }
     }
 
+    if (state.currentLap) {
+        if (observedLap_ && *state.currentLap == *observedLap_ + 1 &&
+            state.previousLapTimeSeconds && std::isfinite(*state.previousLapTimeSeconds) &&
+            *state.previousLapTimeSeconds > 0.0 && bestLap_ && std::isfinite(*bestLap_)) {
+            const double delta = *state.previousLapTimeSeconds - *bestLap_;
+            if (delta >= 0.001) {
+                std::ostringstream message;
+                message << "Vòng vừa rồi chậm hơn vòng nhanh nhất " << std::fixed
+                        << std::setprecision(1) << delta << " giây.";
+                emitIfReady(events, EventType::LapDelta, EventPriority::Engineer, message.str(), now);
+            }
+        }
+        observedLap_ = state.currentLap;
+    } else {
+        observedLap_.reset();
+    }
+
     if (state.bestLapTimeSeconds && *state.bestLapTimeSeconds > 0.0) {
         if (bestLap_ && *state.bestLapTimeSeconds < *bestLap_ - 0.001) {
             emitIfReady(events, EventType::NewBestLap, EventPriority::Engineer,
@@ -214,6 +246,8 @@ void EventEngine::reset()
     pitLimiter_.reset();
     connected_.reset();
     bestLap_.reset();
+    tyresOverheating_ = false;
+    observedLap_.reset();
     previousDamage_.reset();
     previousSuspensionDamage_.reset();
     lastEmitted_.clear();

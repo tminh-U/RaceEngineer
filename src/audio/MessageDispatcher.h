@@ -12,7 +12,8 @@ namespace raceengineer {
 
 class ITtsBackend;
 
-enum class MessageSource { General, ProximitySpotter, LapSummary };
+enum class MessageSource { General, ProximitySpotter, LapSummary, FuelAlerts, TyreAlerts,
+    LapDelta, FlagAlerts, DamageAlerts };
 
 class MessageDispatcher final : public QObject {
     Q_OBJECT

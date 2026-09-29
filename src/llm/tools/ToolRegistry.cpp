@@ -175,6 +175,9 @@ QJsonArray ToolRegistry::definitions() const
                     {QStringLiteral("type"), QStringLiteral("string")},
                     {QStringLiteral("enum"), QJsonArray{
                         QStringLiteral("spotter"), QStringLiteral("lap_summary"),
+                        QStringLiteral("fuel_alerts"), QStringLiteral("tyre_alerts"),
+                        QStringLiteral("lap_delta"), QStringLiteral("flag_alerts"),
+                        QStringLiteral("damage_alerts"),
                         QStringLiteral("audio_ducking"), QStringLiteral("pit_strategy"),
                         QStringLiteral("ptt_keyboard"), QStringLiteral("ptt_directinput"),
                         QStringLiteral("race_recording")}}}},

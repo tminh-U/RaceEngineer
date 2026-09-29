@@ -29,7 +29,9 @@ enum class EventType {
     CarLeft,
     CarRight,
     ThreeWide,
-    DamageDetected
+    DamageDetected,
+    TyreOverheating,
+    LapDelta
 };
 
 enum class EventPriority { Conversation, Engineer, Important, Spotter, Critical };
@@ -63,6 +65,8 @@ private:
     std::optional<bool> pitLimiter_;
     std::optional<bool> connected_;
     std::optional<double> bestLap_;
+    bool tyresOverheating_{false};
+    std::optional<int> observedLap_;
     std::optional<std::array<double, 5>> previousDamage_;
     std::optional<WheelValues> previousSuspensionDamage_;
     std::unordered_map<EventType, std::chrono::milliseconds> cooldowns_;
