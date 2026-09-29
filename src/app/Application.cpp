@@ -18,6 +18,7 @@
 #include <QEvent>
 #include <QFile>
 #include <QKeyEvent>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QMetaObject>
 #include <QMediaPlayer>
@@ -33,6 +34,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <cmath>
 
 namespace raceengineer {
 namespace {
@@ -63,6 +65,28 @@ QString stableAudioInputId(const QByteArray& id)
 QByteArray audioInputIdBytes(const QString& id)
 {
     return QByteArray::fromHex(id.trimmed().toLatin1());
+}
+
+QString lapTimeText(const double seconds)
+{
+    if (!std::isfinite(seconds) || seconds <= 0.0) return {};
+    const auto milliseconds = static_cast<qint64>(std::llround(seconds * 1000.0));
+    return QStringLiteral("%1:%2.%3")
+        .arg(milliseconds / 60000)
+        .arg((milliseconds / 1000) % 60, 2, 10, QLatin1Char('0'))
+        .arg(milliseconds % 1000, 3, 10, QLatin1Char('0'));
+}
+
+bool isProximityEvent(const EventType type)
+{
+    switch (type) {
+    case EventType::CarLeft:
+    case EventType::CarRight:
+    case EventType::ThreeWide:
+        return true;
+    default:
+        return false;
+    }
 }
 
 QString resolvePackagedOrDevelopmentPath(const QString& relativePath)
@@ -108,7 +132,10 @@ Application::Application(const bool startWithMock, QObject* const parent)
     qRegisterMetaType<RaceState>();
     strategyRecorder_.setEnabled(settingsManager_.strategyRecordingEnabled());
     connect(&strategyRecorder_, &StrategyRecorder::enabledChanged, this,
-            [this](bool enabled) { settingsManager_.setStrategyRecordingEnabled(enabled); });
+            [this](bool enabled) {
+                settingsManager_.setStrategyRecordingEnabled(enabled);
+                ++featureSettingsRevision_;
+            });
     QString shareEndpoint = settingsManager_.strategyShareEndpoint();
     QString shareToken = CredentialStore::readRaceDataShareToken();
     QFile shareEnv(QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral(".env")));
@@ -153,6 +180,11 @@ Application::Application(const bool startWithMock, QObject* const parent)
     connect(audioDucker_.get(), &AudioDucker::duckedChanged, this, &Application::audioDuckingStateChanged);
     llmManager_->setDriverName(settingsManager_.driverName());
     llmManager_->setResponseStyle(settingsManager_.responseStyle());
+    llmManager_->setFeatureControlHandlers(
+        [this] { return featureSettings(); },
+        [this](const QString& feature, const bool enabled, const quint64 revision) {
+            return setFeatureEnabled(feature, enabled, revision);
+        });
     refreshAudioInputDevices();
     microphoneName_ = selectedAudioInput();
     pttSoundOutput_->setVolume(0.7F);
@@ -374,6 +406,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
             settings.deviceGuid = deviceGuid;
             settings.buttonIndex = buttonIndex;
             settingsManager_.setPushToTalk(settings);
+            ++featureSettingsRevision_;
             emit requestConfigureDirectInput(true, deviceGuid, buttonIndex);
             emit pttSettingsChanged();
         }, Qt::QueuedConnection);
@@ -775,6 +808,7 @@ void Application::setAudioDuckingEnabled(const bool enabled)
     settingsManager_.setTts(settings);
     if (audioDucker_) audioDucker_->setEnabled(enabled);
     updateAudioDuckingState();
+    ++featureSettingsRevision_;
     emit audioDuckingEnabledChanged();
 }
 
@@ -916,11 +950,14 @@ void Application::setPushToTalkOptions(const bool keyboardEnabled,
     const bool directInputEnabled)
 {
     auto settings = settingsManager_.pushToTalk();
+    if (settings.keyboardEnabled == keyboardEnabled
+        && settings.directInputEnabled == directInputEnabled) return;
     settings.keyboardEnabled = keyboardEnabled;
     settings.directInputEnabled = directInputEnabled;
     settingsManager_.setPushToTalk(settings);
     emit requestConfigureDirectInput(settings.directInputEnabled,
         settings.deviceGuid, settings.buttonIndex);
+    ++featureSettingsRevision_;
     emit pttSettingsChanged();
 }
 
@@ -1065,7 +1102,7 @@ void Application::askText(const QString& text)
     emit interactionChanged();
     llmManager_->ask(latestUserText_, latestState_, raceHistory_,
         QStringLiteral("Vietnamese by default; use English only if the driver clearly writes in English"),
-        pitStrategyToolData());
+        pitStrategyToolData(), featureSettingsRevision_);
 }
 
 void Application::resetConversation()
@@ -1086,6 +1123,7 @@ void Application::onStateUpdated(const RaceState& state)
     strategyRecorder_.setSimulatorConnected(state.connected);
     strategyRecorder_.setRaceActive(state.connected && state.sessionType == SessionType::Race);
     latestState_ = state;
+    updateLapSummaryStatus();
     const QString sessionKey = state.connected
         ? QStringLiteral("%1|%2|%3|%4|%5")
               .arg(static_cast<int>(state.simulator))
@@ -1100,6 +1138,18 @@ void Application::onStateUpdated(const RaceState& state)
         if (previousWasRace && strategyRecordedLap_ > 0)
             strategyRecorder_.finishSession(previousSessionId);
         raceHistory_.reset();
+        lapSummaryObservedLap_ = state.connected ? state.currentLap.value_or(0) : 0;
+        lapSummaryLastLap_ = 0;
+        lapSummaryLastLapSeconds_ = 0.0;
+        lapSummaryBoundaryFuel_.reset();
+        lapSummaryLastLapComparable_ = false;
+        lapSummaryLapHadIssue_ = false;
+        lapSummaryLapContextComplete_ = false;
+        if (!latestLapSummary_.isEmpty()) {
+            latestLapSummary_.clear();
+            emit lapSummaryChanged();
+        }
+        messageDispatcher_->cancelBySource(MessageSource::LapSummary);
         strategySessionKey_ = sessionKey;
         strategySessionId_ = state.connected ? QUuid::createUuid().toString(QUuid::WithoutBraces) : QString{};
         strategyRecordedLap_ = 0;
@@ -1120,6 +1170,7 @@ void Application::onStateUpdated(const RaceState& state)
     }
     strategyLastTelemetryLap_ = state.currentLap.value_or(0);
     raceHistory_.update(state);
+    updateLapSummary(state);
     const bool isInPit = state.pitState && (*state.pitState == PitState::Entering
         || *state.pitState == PitState::PitLane || *state.pitState == PitState::PitBox);
     const bool isInPitBox = state.pitState && *state.pitState == PitState::PitBox;
@@ -1152,7 +1203,8 @@ void Application::onStateUpdated(const RaceState& state)
     updateStrategy(state);
     auto events = eventEngine_.process(state);
     auto spotterEvents = spotterEngine_.process(state);
-    events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
+    if (settingsManager_.spotterEnabled())
+        events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
     for (const auto& event : events) {
         latestEvent_ = utf8(event.message);
         QVariantMap entry;
@@ -1165,7 +1217,9 @@ void Application::onStateUpdated(const RaceState& state)
             eventLog_.removeLast();
         }
         qCInfo(logEvent).noquote() << latestEvent_;
-        messageDispatcher_->enqueue(latestEvent_, event.priority);
+        const auto source = isProximityEvent(event.type)
+            ? MessageSource::ProximitySpotter : MessageSource::General;
+        messageDispatcher_->enqueue(latestEvent_, event.priority, source);
     }
     if (!events.empty()) {
         emit latestEventChanged();
@@ -1180,8 +1234,10 @@ void Application::onStateUpdated(const RaceState& state)
 
 void Application::setStrategyEnabled(const bool enabled)
 {
+    if (enabled && !strategyAvailable()) return;
     if (settingsManager_.strategyEnabled() == enabled) return;
     settingsManager_.setStrategyEnabled(enabled);
+    ++featureSettingsRevision_;
     ++strategyRevision_;
     strategyRequestedLap_ = 0;
     strategyPitLap_ = 0;
@@ -1198,6 +1254,250 @@ void Application::setStrategyEnabled(const bool enabled)
         setStrategyState(QStringLiteral("Đã tắt"),
             QStringLiteral("Bật để chọn vòng pit khi có dữ liệu chiến thuật đã duyệt."));
     }
+}
+
+void Application::setSpotterEnabled(const bool enabled)
+{
+    if (settingsManager_.spotterEnabled() == enabled) return;
+    settingsManager_.setSpotterEnabled(enabled);
+    ++featureSettingsRevision_;
+    spotterEngine_.reset();
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
+    emit spotterSettingsChanged();
+}
+
+void Application::setLapSummaryEnabled(const bool enabled)
+{
+    if (settingsManager_.lapSummaryEnabled() == enabled) return;
+    settingsManager_.setLapSummaryEnabled(enabled);
+    ++featureSettingsRevision_;
+    lapSummaryLastLap_ = 0;
+    lapSummaryLastLapComparable_ = false;
+    lapSummaryLapContextComplete_ = false;
+    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::LapSummary);
+    updateLapSummaryStatus();
+    emit lapSummaryChanged();
+}
+
+void Application::updateLapSummaryStatus()
+{
+    QString status;
+    if (!settingsManager_.lapSummaryEnabled()) {
+        status = QStringLiteral("Đã tắt");
+    } else if (!latestState_.connected) {
+        status = QStringLiteral("Chờ AC / ACC");
+    } else if (latestState_.simulator != Simulator::AssettoCorsa
+        && latestState_.simulator != Simulator::AssettoCorsaCompetizione) {
+        status = QStringLiteral("Chờ AC / ACC");
+    } else if (!latestState_.sessionType
+        || (*latestState_.sessionType != SessionType::Race
+            && *latestState_.sessionType != SessionType::Practice
+            && *latestState_.sessionType != SessionType::Qualifying
+            && *latestState_.sessionType != SessionType::Hotlap
+            && *latestState_.sessionType != SessionType::TimeAttack)) {
+        status = QStringLiteral("Phiên này chưa có tổng kết vòng");
+    } else if (!latestState_.currentLap) {
+        status = QStringLiteral("Chờ dữ liệu vòng");
+    } else {
+        status = QStringLiteral("Đang hoạt động");
+    }
+    if (lapSummaryStatus_ == status) return;
+    lapSummaryStatus_ = status;
+    emit lapSummaryChanged();
+}
+
+void Application::updateLapSummary(const RaceState& state)
+{
+    if (!state.connected || !state.currentLap || *state.currentLap <= 0) {
+        lapSummaryObservedLap_ = 0;
+        lapSummaryLapHadIssue_ = false;
+        lapSummaryLapContextComplete_ = false;
+        lapSummaryBoundaryFuel_.reset();
+        updateLapSummaryStatus();
+        return;
+    }
+
+    const bool sampleHasIssue = (state.pitState && *state.pitState != PitState::Track)
+        || (state.flag && (*state.flag == FlagState::Yellow || *state.flag == FlagState::Red
+            || *state.flag == FlagState::Black));
+    const int lap = *state.currentLap;
+    if (lapSummaryObservedLap_ <= 0) {
+        lapSummaryObservedLap_ = lap;
+        lapSummaryLapHadIssue_ = sampleHasIssue;
+        return;
+    }
+
+    if (lap > lapSummaryObservedLap_) {
+        const bool consecutive = lap == lapSummaryObservedLap_ + 1;
+        const int completedLapNumber = lap - 1;
+        const bool completedLapClean = consecutive && lapSummaryLapContextComplete_
+            && !lapSummaryLapHadIssue_;
+        if (!raceHistory_.laps().empty()) {
+            const auto& completed = raceHistory_.laps().back();
+            if (completed.lapNumber == completedLapNumber && completed.lapNumber > lapSummaryLastLap_) {
+                const QString completedTime = lapTimeText(completed.lapTimeSeconds);
+                const bool supportedSimulator = state.simulator == Simulator::AssettoCorsa
+                    || state.simulator == Simulator::AssettoCorsaCompetizione;
+                const bool supportedSession = state.sessionType
+                    && (*state.sessionType == SessionType::Race
+                        || *state.sessionType == SessionType::Practice
+                        || *state.sessionType == SessionType::Qualifying
+                        || *state.sessionType == SessionType::Hotlap
+                        || *state.sessionType == SessionType::TimeAttack);
+                if (settingsManager_.lapSummaryEnabled() && supportedSimulator
+                    && supportedSession && !completedTime.isEmpty()) {
+                    QString summary = QStringLiteral("Vòng %1: %2")
+                        .arg(completed.lapNumber).arg(completedTime);
+                    if (completedLapClean && lapSummaryLastLapComparable_
+                        && lapSummaryLastLap_ + 1 == completed.lapNumber) {
+                        const double delta = completed.lapTimeSeconds - lapSummaryLastLapSeconds_;
+                        summary += delta < 0.0
+                            ? QStringLiteral(", nhanh hơn vòng trước %1 s").arg(-delta, 0, 'f', 3)
+                            : QStringLiteral(", chậm hơn vòng trước %1 s").arg(delta, 0, 'f', 3);
+                    } else if (!completedLapClean) {
+                        summary += QStringLiteral(". Không so pace vì dữ liệu vòng chưa đầy đủ hoặc có pit/cờ.");
+                    }
+                    if (completedLapClean && lapSummaryBoundaryFuel_ && state.fuelLiters
+                        && std::isfinite(*lapSummaryBoundaryFuel_) && std::isfinite(*state.fuelLiters)
+                        && *lapSummaryBoundaryFuel_ >= *state.fuelLiters) {
+                        summary += QStringLiteral(" Dùng %1 l xăng.")
+                            .arg(*lapSummaryBoundaryFuel_ - *state.fuelLiters, 0, 'f', 1);
+                    }
+                    if (state.position) summary += QStringLiteral(" P%1.").arg(*state.position);
+                    if (state.gapAheadSeconds && std::isfinite(*state.gapAheadSeconds)) {
+                        summary += QStringLiteral(" Cách xe trước %1 s.")
+                            .arg(*state.gapAheadSeconds, 0, 'f', 2);
+                    }
+                    latestLapSummary_ = summary;
+                    QVariantMap entry;
+                    entry.insert(QStringLiteral("message"), summary);
+                    entry.insert(QStringLiteral("priority"), static_cast<int>(EventPriority::Conversation));
+                    entry.insert(QStringLiteral("timestamp"),
+                        QDateTime::currentDateTime().toString(Qt::ISODateWithMs));
+                    eventLog_.prepend(entry);
+                    while (eventLog_.size() > 100) eventLog_.removeLast();
+                    qCInfo(logEvent).noquote() << summary;
+                    emit lapSummaryChanged();
+                    emit latestEventChanged();
+                    if (voiceStatus_ == QStringLiteral("Idle") && !pushToTalkPressed_) {
+                        messageDispatcher_->enqueue(summary, EventPriority::Conversation,
+                            MessageSource::LapSummary);
+                    }
+                }
+                lapSummaryLastLap_ = completed.lapNumber;
+                lapSummaryLastLapSeconds_ = completed.lapTimeSeconds;
+                lapSummaryLastLapComparable_ = settingsManager_.lapSummaryEnabled()
+                    && completedLapClean && !completedTime.isEmpty();
+            }
+        }
+        lapSummaryObservedLap_ = lap;
+        lapSummaryLapHadIssue_ = false;
+        lapSummaryLapContextComplete_ = consecutive;
+        lapSummaryBoundaryFuel_.reset();
+        if (state.fuelLiters && std::isfinite(*state.fuelLiters))
+            lapSummaryBoundaryFuel_ = state.fuelLiters;
+    }
+    lapSummaryLapHadIssue_ = lapSummaryLapHadIssue_ || sampleHasIssue;
+    updateLapSummaryStatus();
+}
+
+QJsonObject Application::featureSettings() const
+{
+    const auto& ptt = settingsManager_.pushToTalk();
+    const bool directInputReady = !ptt.deviceGuid.trimmed().isEmpty() && ptt.buttonIndex >= 0;
+    QJsonArray features;
+    const auto append = [&features](const QString& id, const bool enabled,
+                              const bool canEnable, const QString& reason = QString{}) {
+        QJsonObject item{{QStringLiteral("feature"), id},
+            {QStringLiteral("enabled"), enabled}, {QStringLiteral("can_enable"), canEnable}};
+        if (!reason.isEmpty()) item.insert(QStringLiteral("reason"), reason);
+        features.append(item);
+    };
+    append(QStringLiteral("spotter"), spotterEnabled(), true);
+    append(QStringLiteral("lap_summary"), lapSummaryEnabled(), true);
+    append(QStringLiteral("audio_ducking"), audioDuckingEnabled(), true);
+    append(QStringLiteral("pit_strategy"), strategyEnabled(), strategyAvailable(),
+        strategyAvailable() ? QString{} : QStringLiteral("Chưa có model chiến thuật khả dụng."));
+    append(QStringLiteral("ptt_keyboard"), keyboardPttEnabled(), true);
+    append(QStringLiteral("ptt_directinput"), directInputPttEnabled(), directInputReady,
+        directInputReady ? QString{} : QStringLiteral("Chưa gán nút DirectInput."));
+    append(QStringLiteral("race_recording"), strategyRecorder_.enabled(), true);
+    return {{QStringLiteral("available"), true},
+        {QStringLiteral("revision"), static_cast<double>(featureSettingsRevision_)},
+        {QStringLiteral("features"), features}};
+}
+
+QJsonObject Application::setFeatureEnabled(const QString& feature, const bool enabled,
+    const quint64 expectedRevision)
+{
+    const auto settings = featureSettings();
+    const auto features = settings.value(QStringLiteral("features")).toArray();
+    QJsonObject current;
+    for (const auto& value : features) {
+        const auto candidate = value.toObject();
+        if (candidate.value(QStringLiteral("feature")).toString() == feature) {
+            current = candidate;
+            break;
+        }
+    }
+    const auto failure = [this, &feature](const QString& reason) {
+        return QJsonObject{{QStringLiteral("available"), true},
+            {QStringLiteral("success"), false}, {QStringLiteral("feature"), feature},
+            {QStringLiteral("reason"), reason}, {QStringLiteral("message"), reason},
+            {QStringLiteral("revision"), static_cast<double>(featureSettingsRevision_)}};
+    };
+    QString label;
+    if (feature == QStringLiteral("spotter")) label = QStringLiteral("Spotter");
+    else if (feature == QStringLiteral("lap_summary")) label = QStringLiteral("tổng kết vòng");
+    else if (feature == QStringLiteral("audio_ducking")) label = QStringLiteral("tự hạ âm game");
+    else if (feature == QStringLiteral("pit_strategy")) label = QStringLiteral("chiến thuật Pit");
+    else if (feature == QStringLiteral("ptt_keyboard")) label = QStringLiteral("PTT bàn phím");
+    else if (feature == QStringLiteral("ptt_directinput")) label = QStringLiteral("PTT DirectInput");
+    else if (feature == QStringLiteral("race_recording")) label = QStringLiteral("ghi dữ liệu đua");
+    if (current.isEmpty()) return failure(QStringLiteral("Tính năng này không được hỗ trợ."));
+    if (current.value(QStringLiteral("enabled")).toBool() == enabled) {
+        if (enabled && !current.value(QStringLiteral("can_enable")).toBool())
+            return failure(current.value(QStringLiteral("reason")).toString(
+                QStringLiteral("Tính năng chưa sẵn sàng để bật.")));
+        return {{QStringLiteral("available"), true}, {QStringLiteral("success"), true},
+            {QStringLiteral("changed"), false}, {QStringLiteral("feature"), feature},
+            {QStringLiteral("enabled"), enabled},
+            {QStringLiteral("revision"), static_cast<double>(featureSettingsRevision_)},
+            {QStringLiteral("message"), QStringLiteral("%1 đã ở trạng thái yêu cầu.").arg(label)}};
+    }
+    if (expectedRevision != featureSettingsRevision_) {
+        return failure(QStringLiteral("Cài đặt vừa được thay đổi trên giao diện; không áp dụng lệnh cũ."));
+    }
+    if (enabled && !current.value(QStringLiteral("can_enable")).toBool()) {
+        return failure(current.value(QStringLiteral("reason")).toString(
+            QStringLiteral("Tính năng chưa sẵn sàng để bật.")));
+    }
+
+    if (feature == QStringLiteral("spotter")) setSpotterEnabled(enabled);
+    else if (feature == QStringLiteral("lap_summary")) setLapSummaryEnabled(enabled);
+    else if (feature == QStringLiteral("audio_ducking")) setAudioDuckingEnabled(enabled);
+    else if (feature == QStringLiteral("pit_strategy")) setStrategyEnabled(enabled);
+    else if (feature == QStringLiteral("ptt_keyboard"))
+        setPushToTalkOptions(enabled, directInputPttEnabled());
+    else if (feature == QStringLiteral("ptt_directinput"))
+        setPushToTalkOptions(keyboardPttEnabled(), enabled);
+    else if (feature == QStringLiteral("race_recording")) strategyRecorder_.setEnabled(enabled);
+
+    bool applied = false;
+    for (const auto& value : featureSettings().value(QStringLiteral("features")).toArray()) {
+        const auto item = value.toObject();
+        if (item.value(QStringLiteral("feature")).toString() == feature) {
+            applied = item.value(QStringLiteral("enabled")).toBool() == enabled;
+            break;
+        }
+    }
+    if (!applied) return failure(QStringLiteral("Không áp dụng được thay đổi tính năng."));
+    return {{QStringLiteral("available"), true}, {QStringLiteral("success"), true},
+        {QStringLiteral("changed"), true}, {QStringLiteral("feature"), feature},
+        {QStringLiteral("enabled"), enabled},
+        {QStringLiteral("revision"), static_cast<double>(featureSettingsRevision_)},
+        {QStringLiteral("message"), QStringLiteral("Đã %1 %2.")
+            .arg(enabled ? QStringLiteral("bật") : QStringLiteral("tắt"), label)}};
 }
 
 bool Application::configureStrategySharing(const QString& endpoint, const QString& token)
@@ -1424,7 +1724,7 @@ void Application::onTranscriptionReady(const QString& text, const QString& detec
     llmManager_->ask(text, latestState_, raceHistory_,
         detectedLanguage.startsWith(QStringLiteral("en"), Qt::CaseInsensitive)
             ? QStringLiteral("English") : QStringLiteral("Vietnamese"),
-        pitStrategyToolData());
+        pitStrategyToolData(), featureSettingsRevision_);
 }
 
 bool Application::eventFilter(QObject* const watched, QEvent* const event)

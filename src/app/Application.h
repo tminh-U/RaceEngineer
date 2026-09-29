@@ -100,6 +100,10 @@ class Application final : public QObject {
     Q_PROPERTY(QString strategyStatus READ strategyStatus NOTIFY strategyChanged)
     Q_PROPERTY(int strategyPitLap READ strategyPitLap NOTIFY strategyChanged)
     Q_PROPERTY(QString strategyDetail READ strategyDetail NOTIFY strategyChanged)
+    Q_PROPERTY(bool spotterEnabled READ spotterEnabled NOTIFY spotterSettingsChanged)
+    Q_PROPERTY(bool lapSummaryEnabled READ lapSummaryEnabled NOTIFY lapSummaryChanged)
+    Q_PROPERTY(QString lapSummaryStatus READ lapSummaryStatus NOTIFY lapSummaryChanged)
+    Q_PROPERTY(QString latestLapSummary READ latestLapSummary NOTIFY lapSummaryChanged)
     Q_PROPERTY(QObject* strategyData READ strategyData CONSTANT)
 
 public:
@@ -156,7 +160,13 @@ public:
     [[nodiscard]] QString strategyStatus() const { return strategyStatus_; }
     [[nodiscard]] int strategyPitLap() const noexcept { return strategyPitLap_; }
     [[nodiscard]] QString strategyDetail() const { return strategyDetail_; }
+    [[nodiscard]] bool spotterEnabled() const noexcept { return settingsManager_.spotterEnabled(); }
+    [[nodiscard]] bool lapSummaryEnabled() const noexcept { return settingsManager_.lapSummaryEnabled(); }
+    [[nodiscard]] QString lapSummaryStatus() const { return lapSummaryStatus_; }
+    [[nodiscard]] QString latestLapSummary() const { return latestLapSummary_; }
     Q_INVOKABLE void setStrategyEnabled(bool enabled);
+    Q_INVOKABLE void setSpotterEnabled(bool enabled);
+    Q_INVOKABLE void setLapSummaryEnabled(bool enabled);
     Q_INVOKABLE bool configureStrategySharing(const QString& endpoint, const QString& token);
     QObject* strategyData() { return &strategyRecorder_; }
     [[nodiscard]] QVariantList availableTtsVoices() const;
@@ -244,6 +254,8 @@ signals:
     void aiComputeSettingsChanged();
     void aiComputeStatusChanged();
     void strategyChanged();
+    void spotterSettingsChanged();
+    void lapSummaryChanged();
     void availableTtsVoicesChanged();
     void ttsVoiceChanged();
     void audioOutputChanged();
@@ -279,6 +291,11 @@ private:
     [[nodiscard]] QJsonObject pitStrategyToolData() const;
     void setStrategyState(const QString& status, const QString& detail, int pitLap = 0);
     void announceStrategy(const QString& text, EventPriority priority);
+    void updateLapSummary(const RaceState& state);
+    void updateLapSummaryStatus();
+    [[nodiscard]] QJsonObject featureSettings() const;
+    [[nodiscard]] QJsonObject setFeatureEnabled(const QString& feature, bool enabled,
+        quint64 expectedRevision);
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     SettingsManager settingsManager_;
@@ -301,6 +318,16 @@ private:
     QVariantMap telemetry_;
     bool mockEnabled_{false};
     RaceHistory raceHistory_;
+    int lapSummaryObservedLap_{0};
+    int lapSummaryLastLap_{0};
+    double lapSummaryLastLapSeconds_{0.0};
+    std::optional<double> lapSummaryBoundaryFuel_;
+    bool lapSummaryLastLapComparable_{false};
+    bool lapSummaryLapHadIssue_{false};
+    bool lapSummaryLapContextComplete_{false};
+    QString lapSummaryStatus_{QStringLiteral("Đã tắt")};
+    QString latestLapSummary_;
+    quint64 featureSettingsRevision_{1};
     StrategyRecorder strategyRecorder_;
     std::unique_ptr<StrategyPredictor> strategyPredictor_;
     QString strategyStatus_{QStringLiteral("Đã tắt")};

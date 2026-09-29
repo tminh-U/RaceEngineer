@@ -65,6 +65,10 @@ public:
     void setLocalAi(const LocalAiSettings& settings);
     [[nodiscard]] bool strategyEnabled() const noexcept { return strategyEnabled_; }
     void setStrategyEnabled(bool enabled);
+    [[nodiscard]] bool spotterEnabled() const noexcept { return spotterEnabled_; }
+    void setSpotterEnabled(bool enabled);
+    [[nodiscard]] bool lapSummaryEnabled() const noexcept { return lapSummaryEnabled_; }
+    void setLapSummaryEnabled(bool enabled);
     bool strategyRecordingEnabled() const { return strategyRecordingEnabled_; }
     void setStrategyRecordingEnabled(bool enabled);
     bool strategySharingEnabled() const { return strategySharingEnabled_; }
@@ -95,6 +99,8 @@ private:
     AudioInputSettings audioInput_;
     LocalAiSettings localAi_;
     bool strategyEnabled_{false};
+    bool spotterEnabled_{true};
+    bool lapSummaryEnabled_{false};
     bool strategyRecordingEnabled_{true};
     bool strategySharingEnabled_{false};
     bool minimizeToTray_{false};

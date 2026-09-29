@@ -57,12 +57,12 @@ through `-ISCCPath`.
 
 ```powershell
 .\production\scripts\package-portable.ps1 `
-  -Version 1.0.3 `
+  -Version 1.0.4 `
   -QtPrefix C:\Qt\6.8.3\msvc2022_64 `
   -ISCCPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 .\production\scripts\verify-release.ps1 `
-  -PackageDirectory .\production\dist\RaceEngineer-1.0.3
+  -PackageDirectory .\production\dist\RaceEngineer-1.0.4
 ```
 
 The package script:
@@ -73,7 +73,7 @@ The package script:
 4. Bundles the MSVC runtime files and `vc_redist.x64.exe`.
 5. Writes `release-manifest.json` with SHA-256 hashes.
 6. Creates a Windows x64 portable ZIP.
-7. Compiles `RaceEngineer-1.0.3-Setup.exe` with Inno Setup.
+7. Compiles `RaceEngineer-1.0.4-Setup.exe` with Inno Setup.
 
 The Inno Setup installer installs per-user under
 `%LOCALAPPDATA%\Programs\RaceEngineer`, creates a Start Menu shortcut, and

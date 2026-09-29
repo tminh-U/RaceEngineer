@@ -154,7 +154,10 @@ void OpenAICompatibleProvider::startConnectionTest()
     latency_.restart();
     emit stateChanged(ApiState::Requesting, QStringLiteral("Checking LLM server"));
     reply_ = network_.get(request);
-    connect(reply_, &QNetworkReply::finished, this, &OpenAICompatibleProvider::finishConnectionTest);
+    const QPointer<QNetworkReply> testReply = reply_;
+    connect(reply_, &QNetworkReply::finished, this, [this, testReply] {
+        if (testReply) finishConnectionTest(testReply.data());
+    });
     timeout_.start(configuration_.timeoutMilliseconds);
 }
 
@@ -190,20 +193,25 @@ void OpenAICompatibleProvider::startRequest(QJsonObject request, const int retry
     latency_.restart();
     emit stateChanged(ApiState::Requesting, QStringLiteral("Requesting"));
     reply_ = network_.post(networkRequest, QJsonDocument(request).toJson(QJsonDocument::Compact));
+    const QPointer<QNetworkReply> requestReply = reply_;
     if (configuration_.streaming) {
-        connect(reply_, &QNetworkReply::readyRead, this, &OpenAICompatibleProvider::consumeStreamingData);
+        connect(reply_, &QNetworkReply::readyRead, this, [this, requestReply] {
+            if (requestReply) consumeStreamingData(requestReply.data());
+        });
     }
-    connect(reply_, &QNetworkReply::finished, this, &OpenAICompatibleProvider::finishRequest);
+    connect(reply_, &QNetworkReply::finished, this, [this, requestReply] {
+        if (requestReply) finishRequest(requestReply.data());
+    });
     timeout_.start(configuration_.timeoutMilliseconds);
     qCInfo(logApi) << "Chat request started for" << configuration_.name << configuration_.model;
 }
 
-void OpenAICompatibleProvider::consumeStreamingData()
+void OpenAICompatibleProvider::consumeStreamingData(QNetworkReply* const source)
 {
-    if (!reply_) {
+    if (!source || reply_ != source) {
         return;
     }
-    const QByteArray chunk = reply_->readAll();
+    const QByteArray chunk = source->readAll();
     // The explicit timer guards connection/first-byte latency. Once streaming
     // begins, QNetworkRequest's transfer timeout handles stalled connections.
     if (!chunk.isEmpty()) timeout_.stop();
@@ -265,13 +273,14 @@ void OpenAICompatibleProvider::processSseLine(const QByteArray& line)
     }
 }
 
-void OpenAICompatibleProvider::finishRequest()
+void OpenAICompatibleProvider::finishRequest(QNetworkReply* const source)
 {
-    if (!reply_) {
+    if (!source || reply_ != source) {
+        if (source) source->deleteLater();
         return;
     }
     timeout_.stop();
-    QNetworkReply* const finished = reply_;
+    QNetworkReply* const finished = source;
     const int status = finished->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const auto networkError = finished->error();
     const QString networkMessage = finished->errorString();
@@ -279,7 +288,7 @@ void OpenAICompatibleProvider::finishRequest()
     if (configuration_.streaming) {
         // Drain the final bytes before clearing the guarded reply pointer. Some
         // providers place the last content/tool delta in the finished packet.
-        consumeStreamingData();
+        consumeStreamingData(finished);
         if (!streamBuffer_.trimmed().isEmpty()) {
             processSseLine(streamBuffer_.trimmed());
             streamBuffer_.clear();
@@ -340,11 +349,14 @@ void OpenAICompatibleProvider::finishRequest()
     emit responseReceived(response, latency_.elapsed(), firstTokenMilliseconds_);
 }
 
-void OpenAICompatibleProvider::finishConnectionTest()
+void OpenAICompatibleProvider::finishConnectionTest(QNetworkReply* const source)
 {
-    if (!reply_ || !testingConnection_) return;
+    if (!source || reply_ != source || !testingConnection_) {
+        if (source && reply_ != source) source->deleteLater();
+        return;
+    }
     timeout_.stop();
-    QNetworkReply* const finished = reply_;
+    QNetworkReply* const finished = source;
     reply_.clear();
     testingConnection_ = false;
     const QByteArray body = finished->readAll();

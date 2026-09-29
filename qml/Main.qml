@@ -775,9 +775,12 @@ Component { id: engineerPage
             }
             MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
-                Repeater { model: [{t:"Kích hoạt Spotter",s:"Cảnh báo âm thanh cho các xe kế bên"},{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Cảnh báo hư hại",s:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"}]
+                Repeater { model: [{t:"Xe Trái / Xe Phải",s:"Radar 360 độ"},{t:"Cờ hiệu & Nguy hiểm chặng",s:"Cờ vàng, xanh lá và xanh dương"},{t:"Cảnh báo hư hại",s:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"}]
                     delegate: SettingRow { required property var modelData; width: parent.width; title:modelData.t; subtitle:modelData.s; value:"Tự động" }
                 }
+                SettingRow { width: parent.width; title:"Kích hoạt Spotter"; subtitle:"Cảnh báo âm thanh cho xe bên cạnh"; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
+                SettingRow { width: parent.width; title:"Tổng kết sau mỗi vòng"; subtitle:backend.lapSummaryStatus; showSwitch:true; checked:backend.lapSummaryEnabled; onToggled:checked => backend.setLapSummaryEnabled(checked) }
+                BodyText { width: parent.width; visible:backend.latestLapSummary.length > 0; text:backend.latestLapSummary; wrapMode:Text.Wrap; font.pixelSize:12*root.ui; color:root.textMuted }
             }
             MutedText { text: "HÀNH VI TƯƠNG TÁC" }
             Card { width: parent.width-56*root.ui; title: ""

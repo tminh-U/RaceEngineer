@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 
 #include <algorithm>
+#include <utility>
 
 namespace raceengineer {
 namespace {
@@ -99,8 +100,15 @@ void LLMManager::configure(const LlmSettings& settings, const QString& apiKey)
             : QStringLiteral("Base URL and model are required"));
 }
 
+void LLMManager::setFeatureControlHandlers(ToolRegistry::FeatureSettingsReader reader,
+    ToolRegistry::FeatureToggle toggle)
+{
+    tools_.setFeatureControlHandlers(std::move(reader), std::move(toggle));
+}
+
 void LLMManager::ask(const QString& text, const RaceState& state, const RaceHistory& history,
-    const QString& responseLanguage, const QJsonObject& pitStrategy)
+    const QString& responseLanguage, const QJsonObject& pitStrategy,
+    const quint64 featureControlRevision)
 {
     if (!provider_) {
         emit errorOccurred(QStringLiteral("AI provider is unavailable."));
@@ -110,6 +118,8 @@ void LLMManager::ask(const QString& text, const RaceState& state, const RaceHist
     stateSnapshot_ = state;
     historySnapshot_ = history;
     pitStrategySnapshot_ = pitStrategy;
+    featureControlRevision_ = featureControlRevision;
+    pendingControlConfirmation_.clear();
     responseLanguage_ = responseLanguage;
     toolRounds_ = 0;
     authoritativeFuelResult_ = {};
@@ -128,6 +138,7 @@ void LLMManager::testConnection()
 void LLMManager::resetConversation()
 {
     if (provider_) provider_->cancelRequest();
+    pendingControlConfirmation_.clear();
     conversation_.clear();
 }
 
@@ -171,9 +182,10 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
             qCWarning(logApp) << "AI exceeded tool call rounds limit (" << toolRounds_
                               << "). Synthesizing fallback radio message.";
             const bool vietnamese = responseLanguage_.contains(QStringLiteral("Vietnamese"), Qt::CaseInsensitive);
-            const QString fallback = vietnamese
-                ? QStringLiteral("Hiện chưa có dữ liệu telemetry.")
-                : QStringLiteral("No telemetry data available.");
+            const QString fallback = pendingControlConfirmation_.isEmpty()
+                ? (vietnamese ? QStringLiteral("Hiện chưa có dữ liệu telemetry.")
+                              : QStringLiteral("No telemetry data available."))
+                : std::exchange(pendingControlConfirmation_, {});
             conversation_.addAssistantMessage(fallback);
             emit responseReady(fallback);
             return;
@@ -237,12 +249,24 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
                 function.value(QStringLiteral("arguments")).toString().toUtf8());
             if (argumentsDocument.isObject()) arguments = argumentsDocument.object();
             const QJsonObject result = tools_.execute(name, stateSnapshot_, historySnapshot_,
-                arguments, pitStrategySnapshot_);
+                arguments, pitStrategySnapshot_, featureControlRevision_);
             if (result.value(QStringLiteral("available")).toBool(false)) {
                 anyAvailable = true;
             }
             lastTool_ = name;
             if (name == QStringLiteral("get_fuel_status")) authoritativeFuelResult_ = result;
+            if (name == QStringLiteral("set_feature_enabled")
+                && result.value(QStringLiteral("success")).toBool()) {
+                featureControlRevision_ = result.value(QStringLiteral("revision"))
+                    .toVariant().toULongLong();
+                const QString confirmation = result.value(QStringLiteral("message")).toString();
+                if (!confirmation.isEmpty()
+                    && (result.value(QStringLiteral("changed")).toBool()
+                        || pendingControlConfirmation_.isEmpty())) {
+                    if (!pendingControlConfirmation_.isEmpty()) pendingControlConfirmation_ += QLatin1Char(' ');
+                    pendingControlConfirmation_ += confirmation;
+                }
+            }
             conversation_.addToolResult(call.value(QStringLiteral("id")).toString(), name, result);
             emit toolCalled(name, result);
             qCInfo(logTool).noquote() << name << QJsonDocument(result).toJson(QJsonDocument::Compact);
@@ -266,6 +290,7 @@ void LLMManager::handleResponse(const QJsonObject& response, const qint64 latenc
         }
     }
     text = applyAuthoritativePostValidation(text, authoritativeFuelResult_, responseLanguage_);
+    pendingControlConfirmation_.clear();
     conversation_.addAssistantMessage(text);
     emit responseReady(text);
 }
@@ -278,6 +303,12 @@ void LLMManager::handleFailure(const ApiState state, const int httpStatus, const
     lastHttpStatus_ = httpStatus;
     lastLatency_ = latencyMilliseconds;
     emit statisticsChanged();
+    if (!pendingControlConfirmation_.isEmpty()) {
+        const QString confirmation = std::exchange(pendingControlConfirmation_, {});
+        conversation_.addAssistantMessage(confirmation);
+        emit responseReady(confirmation);
+        return;
+    }
     emit errorOccurred(state == ApiState::RateLimited
             ? QStringLiteral("AI API rate limit reached.") : message);
 }
@@ -444,6 +475,10 @@ QString LLMManager::systemPrompt() const
         "alternative data; immediately answer that the requested data is unavailable. "
         "For every live telemetry or car-condition question, you MUST call the relevant tool before answering; "
         "never answer from memory or from a vague generalization. "
+        "For a driver's explicit request to enable or disable a supported feature, call set_feature_enabled with the exact requested state; use get_feature_settings to answer state questions. "
+        "Never change settings for a question, a negative instruction (for example, 'do not turn off the spotter'), or an ambiguous request; ask which feature they mean. Only change a feature named in the current driver message. "
+        "Supported feature IDs: spotter means nearby-car warnings only; lap_summary means automatic completed-lap summaries; audio_ducking means lowering game audio while radio speaks; pit_strategy means automatic pit strategy; ptt_keyboard and ptt_directinput mean their push-to-talk inputs; race_recording means local lap/pit recording. "
+        "Report the native tool result faithfully and never claim a failed or unavailable feature was enabled. "
         "For which lap to pit or the AI pit recommendation, call get_pit_strategy; say pit at the end of pit_lap. "
         "For position/leader/ahead/behind questions "
         "call get_position. For lap pace or lap-time questions call get_lap_times, get_recent_laps, or "

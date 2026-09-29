@@ -26,7 +26,9 @@ public:
     void configure(const LlmSettings& settings, const QString& apiKey);
     void ask(const QString& text, const RaceState& state, const RaceHistory& history,
         const QString& responseLanguage = QStringLiteral("Vietnamese"),
-        const QJsonObject& pitStrategy = {});
+        const QJsonObject& pitStrategy = {}, quint64 featureControlRevision = 0);
+    void setFeatureControlHandlers(ToolRegistry::FeatureSettingsReader reader,
+        ToolRegistry::FeatureToggle toggle);
     void testConnection();
     void resetConversation();
     [[nodiscard]] QVariantMap statistics() const;
@@ -86,6 +88,8 @@ private:
     int lastHttpStatus_{0};
     QString lastTool_;
     QJsonObject authoritativeFuelResult_;
+    quint64 featureControlRevision_{0};
+    QString pendingControlConfirmation_;
 };
 
 } // namespace raceengineer

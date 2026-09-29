@@ -12,15 +12,19 @@ namespace raceengineer {
 
 class ITtsBackend;
 
+enum class MessageSource { General, ProximitySpotter, LapSummary };
+
 class MessageDispatcher final : public QObject {
     Q_OBJECT
 
 public:
     explicit MessageDispatcher(ITtsBackend* backend, QObject* parent = nullptr);
     void setBackend(ITtsBackend* backend);
-    void enqueue(const QString& text, EventPriority priority);
+    void enqueue(const QString& text, EventPriority priority,
+        MessageSource source = MessageSource::General);
     void clear();
     void cancelByPrefix(const QString& prefix);
+    void cancelBySource(MessageSource source);
 
 signals:
     void requestSpeak(const QString& text);
@@ -28,7 +32,7 @@ signals:
     void speakingChanged(bool speaking, const QString& text);
 
 private:
-    struct Message { QString text; EventPriority priority; quint64 sequence; };
+    struct Message { QString text; EventPriority priority; MessageSource source; quint64 sequence; };
     void playNext();
 
     ITtsBackend* backend_{nullptr};
@@ -38,6 +42,7 @@ private:
     quint64 currentSpokenSequence_{0};
     bool speaking_{false};
     EventPriority activePriority_{EventPriority::Conversation};
+    MessageSource activeSource_{MessageSource::General};
     QString currentText_{};
     QString lastSpokenText_{};
     std::chrono::steady_clock::time_point lastSpokenTime_{};

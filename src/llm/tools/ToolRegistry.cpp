@@ -159,9 +159,27 @@ QJsonObject opponentJson(const OpponentState& opponent)
 
 } // namespace
 
+void ToolRegistry::setFeatureControlHandlers(FeatureSettingsReader reader, FeatureToggle toggle)
+{
+    featureSettingsReader_ = std::move(reader);
+    featureToggle_ = std::move(toggle);
+}
+
 QJsonArray ToolRegistry::definitions() const
 {
     return {
+        definition(QStringLiteral("get_feature_settings"), QStringLiteral("Returns the current state and availability of supported race-engineer features. Use only to answer questions about those settings.")),
+        definition(QStringLiteral("set_feature_enabled"), QStringLiteral("Changes one supported feature only when the driver explicitly asks to enable or disable it. Use the exact requested state; never treat a question or negative instruction as a change."),
+            QJsonObject{
+                {QStringLiteral("feature"), QJsonObject{
+                    {QStringLiteral("type"), QStringLiteral("string")},
+                    {QStringLiteral("enum"), QJsonArray{
+                        QStringLiteral("spotter"), QStringLiteral("lap_summary"),
+                        QStringLiteral("audio_ducking"), QStringLiteral("pit_strategy"),
+                        QStringLiteral("ptt_keyboard"), QStringLiteral("ptt_directinput"),
+                        QStringLiteral("race_recording")}}}},
+                {QStringLiteral("enabled"), QJsonObject{{QStringLiteral("type"), QStringLiteral("boolean")}}}},
+            QJsonArray{QStringLiteral("feature"), QStringLiteral("enabled")}),
         definition(QStringLiteral("get_session_status"), QStringLiteral("Returns authoritative current simulator, track, session and remaining race status. Never infer missing fields.")),
         definition(QStringLiteral("get_position"), QStringLiteral("Mandatory for any question about position, the leader, the car ahead or the car behind. Returns authoritative P position plus driver names when ACC opponent data is available; never infer missing names.")),
         definition(QStringLiteral("get_leaderboard"), QStringLiteral("Returns the live ACC leaderboard, explicit leader/player/ahead/behind positions and lap pace. Use only the returned data.")),
@@ -189,8 +207,22 @@ QJsonArray ToolRegistry::definitions() const
 
 QJsonObject ToolRegistry::execute(const QString& name, const RaceState& state,
     const RaceHistory& history, const QJsonObject& arguments,
-    const QJsonObject& pitStrategy) const
+    const QJsonObject& pitStrategy, const quint64 featureControlRevision) const
 {
+    if (name == QStringLiteral("get_feature_settings")) {
+        return featureSettingsReader_ ? featureSettingsReader_()
+                                      : QJsonObject{{QStringLiteral("available"), false}};
+    }
+    if (name == QStringLiteral("set_feature_enabled")) {
+        const auto feature = arguments.value(QStringLiteral("feature"));
+        const auto enabled = arguments.value(QStringLiteral("enabled"));
+        if (arguments.size() != 2 || !feature.isString() || !enabled.isBool()) {
+            return {{QStringLiteral("available"), true}, {QStringLiteral("success"), false},
+                {QStringLiteral("message"), QStringLiteral("Thiếu feature hoặc enabled hợp lệ.")}};
+        }
+        return featureToggle_ ? featureToggle_(feature.toString(), enabled.toBool(), featureControlRevision)
+                              : QJsonObject{{QStringLiteral("available"), false}};
+    }
     if (name == QStringLiteral("get_pit_strategy"))
         return pitStrategy.isEmpty() ? unavailable() : pitStrategy;
     if (name == QStringLiteral("get_session_status")) {

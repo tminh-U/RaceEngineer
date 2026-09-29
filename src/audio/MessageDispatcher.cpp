@@ -41,7 +41,8 @@ void MessageDispatcher::setBackend(ITtsBackend* const backend)
     }, Qt::QueuedConnection));
 }
 
-void MessageDispatcher::enqueue(const QString& text, const EventPriority priority)
+void MessageDispatcher::enqueue(const QString& text, const EventPriority priority,
+    const MessageSource source)
 {
     const QString trimmed = text.trimmed();
     if (trimmed.isEmpty() || !backend_ || !backend_->isAvailable()) return;
@@ -55,26 +56,32 @@ void MessageDispatcher::enqueue(const QString& text, const EventPriority priorit
     }
 
     // Spotter-specific queue protections:
-    if (priority == EventPriority::Spotter) {
+    if (source == MessageSource::ProximitySpotter) {
         // 1. If currently speaking a spotter call, do NOT queue another spotter alert.
         // Spotter callouts are instantaneous real-time alerts. Queuing them causes
         // back-to-back chatter ("Có xe bên trái. Có xe bên phải.") which is obsolete
         // and clashes with the active radio message.
-        if (speaking_ && activePriority_ == EventPriority::Spotter) {
+        if (speaking_ && activeSource_ == MessageSource::ProximitySpotter) {
             return;
         }
 
         // 2. Drop duplicates or obsolete spotter alerts waiting in queue
         queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [](const Message& m) {
-            return m.priority == EventPriority::Spotter;
+            return m.source == MessageSource::ProximitySpotter;
         }), queue_.end());
     }
 
-    const Message message{trimmed, priority, nextSequence_++};
+    if (source == MessageSource::LapSummary) {
+        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [](const Message& message) {
+            return message.source == MessageSource::LapSummary;
+        }), queue_.end());
+    }
+
+    const Message message{trimmed, priority, source, nextSequence_++};
 
     // Preemption: if a higher-priority message arrives while speaking
     if (speaking_ && static_cast<int>(priority) > static_cast<int>(activePriority_)) {
-        const Message interrupted{currentText_, activePriority_, nextSequence_++};
+        const Message interrupted{currentText_, activePriority_, activeSource_, nextSequence_++};
 
         // Clear lower-priority messages in queue so they don't play after this urgent alert
         queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [priority](const Message& m) {
@@ -86,12 +93,15 @@ void MessageDispatcher::enqueue(const QString& text, const EventPriority priorit
         // TTS backends can stop, but they cannot resume from the middle of an
         // utterance. Replay the interrupted lower-priority transmission after
         // the spotter/critical message instead of dropping the conversation.
-        if (activePriority_ != EventPriority::Spotter && !interrupted.text.trimmed().isEmpty()) {
+        if (activePriority_ != EventPriority::Spotter
+            && activeSource_ != MessageSource::LapSummary
+            && !interrupted.text.trimmed().isEmpty()) {
             queue_.insert(queue_.begin() + 1, interrupted);
         }
         currentSpokenSequence_ = 0; // Invalidate any in-flight speakingFinished from aborted utterance
         speaking_ = false;
         currentText_.clear();
+        activeSource_ = MessageSource::General;
         emit speakingChanged(false, {});
         emit requestStop();
 
@@ -116,9 +126,25 @@ void MessageDispatcher::clear()
     const bool wasSpeaking = speaking_;
     currentSpokenSequence_ = 0;
     speaking_ = false;
+    activeSource_ = MessageSource::General;
     currentText_.clear();
     emit requestStop();
     if (wasSpeaking) emit speakingChanged(false, {});
+}
+
+void MessageDispatcher::cancelBySource(const MessageSource source)
+{
+    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [source](const Message& message) {
+        return message.source == source;
+    }), queue_.end());
+    if (!speaking_ || activeSource_ != source) return;
+    currentSpokenSequence_ = 0;
+    speaking_ = false;
+    currentText_.clear();
+    activeSource_ = MessageSource::General;
+    emit requestStop();
+    emit speakingChanged(false, {});
+    QTimer::singleShot(250, this, [this] { playNext(); });
 }
 
 void MessageDispatcher::cancelByPrefix(const QString& prefix)
@@ -130,6 +156,7 @@ void MessageDispatcher::cancelByPrefix(const QString& prefix)
         currentSpokenSequence_ = 0;
         speaking_ = false;
         currentText_.clear();
+        activeSource_ = MessageSource::General;
         emit requestStop();
         emit speakingChanged(false, {});
         QTimer::singleShot(250, this, [this] { playNext(); });
@@ -144,6 +171,7 @@ void MessageDispatcher::playNext()
     speaking_ = true;
     currentSpokenSequence_ = nextSequence_++;
     activePriority_ = message.priority;
+    activeSource_ = message.source;
     currentText_ = message.text;
     lastSpokenText_ = message.text;
     lastSpokenTime_ = std::chrono::steady_clock::now();

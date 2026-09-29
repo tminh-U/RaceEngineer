@@ -12,7 +12,7 @@
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 11;
+constexpr int currentSettingsVersion = 12;
 }
 
 SettingsManager::SettingsManager()
@@ -90,6 +90,20 @@ void SettingsManager::setStrategyEnabled(const bool enabled)
 {
     if (strategyEnabled_ == enabled) return;
     strategyEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setSpotterEnabled(const bool enabled)
+{
+    if (spotterEnabled_ == enabled) return;
+    spotterEnabled_ = enabled;
+    save();
+}
+
+void SettingsManager::setLapSummaryEnabled(const bool enabled)
+{
+    if (lapSummaryEnabled_ == enabled) return;
+    lapSummaryEnabled_ = enabled;
     save();
 }
 
@@ -172,6 +186,8 @@ void SettingsManager::load()
     }
     const QJsonObject root = document.object();
     strategyEnabled_ = root.value(QStringLiteral("strategy_enabled")).toBool(false);
+    spotterEnabled_ = root.value(QStringLiteral("spotter_enabled")).toBool(true);
+    lapSummaryEnabled_ = root.value(QStringLiteral("lap_summary_enabled")).toBool(false);
     strategyRecordingEnabled_ = root.value(QStringLiteral("strategy_recording_enabled")).toBool(true);
     strategySharingEnabled_ = root.value(QStringLiteral("strategy_sharing_enabled")).toBool(false);
     minimizeToTray_ = root.value(QStringLiteral("minimize_to_tray")).toBool(minimizeToTray_);
@@ -316,6 +332,8 @@ void SettingsManager::save() const
         {QStringLiteral("audio_input"), audioInput},
             {QStringLiteral("local_ai"), localAi},
             {QStringLiteral("strategy_enabled"), strategyEnabled_},
+            {QStringLiteral("spotter_enabled"), spotterEnabled_},
+            {QStringLiteral("lap_summary_enabled"), lapSummaryEnabled_},
         {QStringLiteral("strategy_recording_enabled"), strategyRecordingEnabled_},
         {QStringLiteral("strategy_sharing_enabled"), strategySharingEnabled_},
         {QStringLiteral("minimize_to_tray"), minimizeToTray_},

@@ -49,11 +49,10 @@ public slots:
     void cancelRequest() override;
 
 private slots:
-    void consumeStreamingData();
-    void finishRequest();
-    void finishConnectionTest();
-
 private:
+    void consumeStreamingData(QNetworkReply* reply);
+    void finishRequest(QNetworkReply* reply);
+    void finishConnectionTest(QNetworkReply* reply);
     struct ToolAccumulator {
         QString id;
         QString name;
