@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 
 namespace raceengineer {
@@ -43,11 +44,33 @@ struct AcExtSharedData {
     AcExtHeader header;
     AcExtCar cars[64];
 };
+
+struct AcSpotterHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t sequence;
+    uint32_t numCars;
+};
+
+struct AcSpotterCar {
+    int32_t carId;
+    int32_t flags;
+    float worldPos[3];
+    float wheelContactPoints[12];
+};
+
+struct AcSpotterSharedData {
+    AcSpotterHeader header;
+    AcSpotterCar cars[64];
+};
 #pragma pack(pop)
 
 static_assert(sizeof(AcExtHeader) == 188, "AcExtHeader size mismatch");
 static_assert(sizeof(AcExtCar) == 160, "AcExtCar size mismatch");
 static_assert(sizeof(AcExtSharedData) == 188 + 64 * 160, "AcExtSharedData size mismatch");
+static_assert(sizeof(AcSpotterHeader) == 16, "AcSpotterHeader size mismatch");
+static_assert(sizeof(AcSpotterCar) == 68, "AcSpotterCar size mismatch");
+static_assert(sizeof(AcSpotterSharedData) == 16 + 64 * 68, "AcSpotterSharedData size mismatch");
 
 namespace {
 
@@ -66,9 +89,13 @@ struct AcExtensionClient::Impl final {
     std::unique_ptr<QUdpSocket> socket;
     quint16 port{9996};
     WindowsSharedMemory shm;
+    WindowsSharedMemory spotterShm;
     std::chrono::steady_clock::time_point lastPacketTime{};
     std::chrono::steady_clock::time_point lastShmAttempt{};
+    std::chrono::steady_clock::time_point lastSpotterShmAttempt{};
+    std::chrono::steady_clock::time_point lastSpotterFrameTime{};
     uint32_t lastReadSequence{0};
+    uint32_t lastSpotterReadSequence{0};
 };
 
 AcExtensionClient::AcExtensionClient()
@@ -86,6 +113,7 @@ bool AcExtensionClient::start(const uint16_t port)
     stop();
     impl_->port = port;
     impl_->shm.createOrOpen(L"Local\\race_engineer_ac_ext", sizeof(AcExtSharedData));
+    impl_->spotterShm.createOrOpen(L"Local\\race_engineer_ac_spotter", sizeof(AcSpotterSharedData));
 
     impl_->socket = std::make_unique<QUdpSocket>();
     if (!impl_->socket->bind(QHostAddress::LocalHost, port, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
@@ -101,7 +129,11 @@ void AcExtensionClient::stop() noexcept
         impl_->socket.reset();
     }
     impl_->shm.close();
+    impl_->spotterShm.close();
     opponents_.clear();
+    spotterGeometryOpponents_.clear();
+    playerSpotterWorldPosition_.reset();
+    playerSpotterWheelContactPoints_.reset();
     playerPosition_.reset();
     gapAhead_.reset();
     gapBehind_.reset();
@@ -111,7 +143,10 @@ void AcExtensionClient::stop() noexcept
     brakeTemps_.reset();
     impl_->lastPacketTime = {};
     impl_->lastShmAttempt = {};
+    impl_->lastSpotterShmAttempt = {};
+    impl_->lastSpotterFrameTime = {};
     impl_->lastReadSequence = 0;
+    impl_->lastSpotterReadSequence = 0;
 }
 
 bool AcExtensionClient::hasData() const noexcept
@@ -122,10 +157,70 @@ bool AcExtensionClient::hasData() const noexcept
     return std::chrono::steady_clock::now() - impl_->lastPacketTime < std::chrono::seconds(2);
 }
 
+bool AcExtensionClient::hasSpotterGeometry() const noexcept
+{
+    return playerSpotterWorldPosition_.has_value() && playerSpotterWheelContactPoints_.has_value()
+        && impl_->lastSpotterFrameTime != std::chrono::steady_clock::time_point{}
+        && std::chrono::steady_clock::now() - impl_->lastSpotterFrameTime < std::chrono::milliseconds(250);
+}
+
 void AcExtensionClient::update()
 {
     const auto now = std::chrono::steady_clock::now();
     bool packetProcessed = false;
+
+    if (!impl_->spotterShm.isOpen()
+        && now - impl_->lastSpotterShmAttempt > std::chrono::seconds(1)) {
+        impl_->lastSpotterShmAttempt = now;
+        impl_->spotterShm.createOrOpen(L"Local\\race_engineer_ac_spotter", sizeof(AcSpotterSharedData));
+    }
+    if (impl_->spotterShm.isOpen() && impl_->spotterShm.size() >= sizeof(AcSpotterSharedData)) {
+        const auto* src = static_cast<const AcSpotterSharedData*>(impl_->spotterShm.data());
+        if (std::memcmp(src->header.magic, "RSGE", 4) == 0 && src->header.version == 1) {
+            AcSpotterSharedData snapshot{};
+            for (int attempt = 0; attempt < 3; ++attempt) {
+                const uint32_t firstSequence = src->header.sequence;
+                if (firstSequence == 0 || firstSequence % 2 != 0) continue;
+                std::memcpy(&snapshot, src, sizeof(snapshot));
+                if (firstSequence != src->header.sequence || firstSequence != snapshot.header.sequence) continue;
+                if (firstSequence == impl_->lastSpotterReadSequence) break;
+
+                impl_->lastSpotterReadSequence = firstSequence;
+                playerSpotterWorldPosition_.reset();
+                playerSpotterWheelContactPoints_.reset();
+                spotterGeometryOpponents_.clear();
+                const auto numCars = std::min<uint32_t>(snapshot.header.numCars, 64);
+                for (uint32_t i = 0; i < numCars; ++i) {
+                    const auto& car = snapshot.cars[i];
+                    const WorldPoint position{car.worldPos[0], car.worldPos[1], car.worldPos[2]};
+                    WheelContactPoints contacts{};
+                    for (size_t point = 0; point < contacts.size(); ++point) {
+                        for (size_t axis = 0; axis < 3; ++axis) {
+                            contacts[point][axis] = car.wheelContactPoints[point * 3 + axis];
+                        }
+                    }
+                    if (!std::all_of(position.begin(), position.end(), [](double value) { return std::isfinite(value); })
+                        || !std::all_of(contacts.begin(), contacts.end(), [](const WorldPoint& point) {
+                            return std::all_of(point.begin(), point.end(), [](double value) { return std::isfinite(value); });
+                        })) continue;
+
+                    if (car.carId == 0) {
+                        playerSpotterWorldPosition_ = position;
+                        playerSpotterWheelContactPoints_ = contacts;
+                        continue;
+                    }
+                    OpponentState opponent;
+                    opponent.carId = car.carId;
+                    opponent.inPitLane = (car.flags & 1) != 0;
+                    opponent.worldPosition = position;
+                    opponent.spotterWheelContactPoints = contacts;
+                    spotterGeometryOpponents_.push_back(std::move(opponent));
+                }
+                impl_->lastSpotterFrameTime = now;
+                break;
+            }
+        }
+    }
 
     // 1. Check Windows Shared Memory from Assetto Corsa Python companion app
     if (!impl_->shm.isOpen()) {

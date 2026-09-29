@@ -10,6 +10,8 @@
 #include "telemetry/ac/AcExtensionClient.h"
 #include "tts/RacingTextNormalizer.h"
 #include "audio/AudioDucker.h"
+#include "audio/MessageDispatcher.h"
+#include "tts/ITtsBackend.h"
 #include "telemetry/common/WindowsSharedMemory.h"
 #include "structed_file_AC.h"
 #include "structed_file_ACC.h"
@@ -24,6 +26,22 @@
 #include <QJsonDocument>
 #include <QFileInfo>
 #include <QCoreApplication>
+#include <QEventLoop>
+#include <QTimer>
+
+class RadioTestBackend final : public raceengineer::ITtsBackend
+{
+public:
+    bool isAvailable() const override { return true; }
+    QString backendName() const override { return QStringLiteral("test"); }
+    void warmUp() override {}
+    void speak(const QString&) override {}
+    void stop() override {}
+    void setVolume(float) override {}
+    void setSpeed(float) override {}
+    void setAudioOutputDevice(const QString&) override {}
+    void finish() { emit speakingFinished(); }
+};
 
 int main(int argc, char* argv[])
 {
@@ -324,16 +342,28 @@ int main(int argc, char* argv[])
     SpotterEngine spotter;
     RaceState spotterState;
     spotterState.connected = true;
+    spotterState.spotterGeometryFresh = true;
     spotterState.worldPosition = std::array<double, 3>{0.0, 0.0, 0.0};
-    spotterState.heading = 0.0;
+    spotterState.spotterWorldPosition = spotterState.worldPosition;
+    const WheelContactPoints playerWheels{{
+        {-0.75, 0.0, 1.2}, {0.75, 0.0, 1.2},
+        {-0.75, 0.0, -1.2}, {0.75, 0.0, -1.2}
+    }};
+    spotterState.spotterWheelContactPoints = playerWheels;
+    const auto wheelsAt = [&](const double x) {
+        auto points = playerWheels;
+        for (auto& point : points) point[0] += x;
+        return points;
+    };
     const auto spotterBase = std::chrono::steady_clock::now();
 
     expect(spotter.process(spotterState, spotterBase).empty());
 
     OpponentState oppLeft;
     oppLeft.carId = 1;
-    oppLeft.worldPosition = std::array<double, 3>{-2.5, 0.0, 1.0};
-    spotterState.opponents = {oppLeft};
+    oppLeft.worldPosition = std::array<double, 3>{-1.8, 0.0, 0.0};
+    oppLeft.spotterWheelContactPoints = wheelsAt(-1.8);
+    spotterState.spotterOpponents = {oppLeft};
 
     auto spotterEvents = spotter.process(spotterState, spotterBase);
     expect(spotterEvents.empty());
@@ -349,19 +379,18 @@ int main(int argc, char* argv[])
 
     OpponentState oppRight;
     oppRight.carId = 2;
-    oppRight.worldPosition = std::array<double, 3>{2.5, 0.0, 0.0};
-    spotterState.opponents = {oppLeft, oppRight};
+    oppRight.worldPosition = std::array<double, 3>{1.8, 0.0, 0.0};
+    oppRight.spotterWheelContactPoints = wheelsAt(1.8);
+    spotterState.spotterOpponents = {oppLeft, oppRight};
 
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(300));
     expect(spotterEvents.empty());
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(500));
     expect(spotterEvents.size() == 1);
-    expect(spotterEvents.front().type == EventType::ThreeWide);
+    expect(spotterEvents.front().type == EventType::CarRight);
     expect(spotter.hasLeft());
     expect(spotter.hasRight());
-    expect(spotter.isThreeWide());
-
-    spotterState.opponents.clear();
+    spotterState.spotterOpponents.clear();
     expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(600)).empty());
     expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2099)).empty());
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2200));
@@ -370,18 +399,19 @@ int main(int argc, char* argv[])
     expect(!spotter.hasRight());
 
     // Test: Quick re-engagement within repeat cooldown (8.0s) must NOT repeat verbal callout
-    spotterState.opponents = {oppLeft};
+    spotterState.spotterOpponents = {oppLeft};
     expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2300)).empty());
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2500));
     expect(spotter.hasLeft());
     expect(spotterEvents.empty()); // Suppressed: quiet tracking, no radio spam!
 
-    // Test: Speed gating below 15 km/h suppresses spotter chatter
+    // Spotter geometry remains active at low speed.
     spotter.reset();
     spotterState.speedKmh = 10.0;
     expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2600)).empty());
-    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2800)).empty());
-    expect(!spotter.hasLeft());
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2800));
+    expect(spotterEvents.size() == 1 && spotterEvents.front().type == EventType::CarLeft);
+    expect(spotter.hasLeft());
     spotterState.speedKmh.reset();
 
     AcExtensionClient acExt;
@@ -687,7 +717,7 @@ int main(int argc, char* argv[])
         checkSwitch(&SettingsManager::damageAlertsEnabled, &SettingsManager::setDamageAlertsEnabled,
             {EventType::DamageDetected});
         checkSwitch(&SettingsManager::spotterEnabled, &SettingsManager::setSpotterEnabled,
-            {EventType::CarLeft, EventType::CarRight, EventType::ThreeWide});
+            {EventType::CarLeft, EventType::CarRight});
 
         EventEngine tyreEvents;
         RaceState tyreState;
@@ -936,6 +966,68 @@ int main(int argc, char* argv[])
     settingsMgr.setTts(duckSettings);
     expect(!settingsMgr.tts().audioDucking);
     expect(std::abs(settingsMgr.tts().duckFactor - 0.5f) < 0.001f);
+
+    {
+        RadioTestBackend radioBackend;
+        MessageDispatcher radio(&radioBackend);
+        QStringList spoken;
+        QObject::connect(&radio, &MessageDispatcher::requestSpeak, &app,
+                         [&spoken](const QString& text) { spoken.append(text); });
+        const auto waitForRadio = [](int milliseconds) {
+            QEventLoop loop;
+            QTimer::singleShot(milliseconds, &loop, &QEventLoop::quit);
+            loop.exec();
+        };
+        const auto finishRadio = [&] {
+            radioBackend.finish();
+            waitForRadio(300);
+        };
+        const QString firstSummary = QStringLiteral("Lap 1 summary");
+        const QString latestSummary = QStringLiteral("Lap 2 summary");
+        const QString bestLapAlert = QStringLiteral("New best lap");
+        const QString safetyAlert = QStringLiteral("Yellow flag");
+
+        // A best-lap event on the same telemetry tick must not lose the summary.
+        radio.enqueue(firstSummary, EventPriority::Conversation, MessageSource::LapSummary);
+        radio.enqueue(bestLapAlert, EventPriority::Engineer, MessageSource::LapDelta);
+        waitForRadio(120);
+        expect(spoken == QStringList({firstSummary, bestLapAlert}));
+        finishRadio();
+        expect(spoken == QStringList({firstSummary, bestLapAlert, firstSummary}));
+        finishRadio();
+
+        // Preserve a waiting summary through safety preemption, keeping only the latest lap.
+        radio.enqueue(QStringLiteral("Car left"), EventPriority::Spotter, MessageSource::ProximitySpotter);
+        radio.enqueue(firstSummary, EventPriority::Conversation, MessageSource::LapSummary);
+        radio.enqueue(latestSummary, EventPriority::Conversation, MessageSource::LapSummary);
+        radio.enqueue(safetyAlert, EventPriority::Critical, MessageSource::FlagAlerts);
+        waitForRadio(120);
+        expect(spoken.last() == safetyAlert);
+        finishRadio();
+        expect(spoken.last() == latestSummary);
+        finishRadio();
+
+        // Do not replay an interrupted older lap when a newer summary is waiting.
+        const auto beforeLatestLap = spoken.size();
+        radio.enqueue(QStringLiteral("Lap 3 summary"), EventPriority::Conversation, MessageSource::LapSummary);
+        radio.enqueue(QStringLiteral("Lap 4 summary"), EventPriority::Conversation, MessageSource::LapSummary);
+        radio.enqueue(safetyAlert, EventPriority::Critical, MessageSource::FlagAlerts);
+        waitForRadio(120);
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("Lap 4 summary"));
+        finishRadio();
+        expect(spoken.size() == beforeLatestLap + 3);
+        radio.enqueue(QStringLiteral("Lap 5 summary"), EventPriority::Conversation, MessageSource::LapSummary);
+        radio.cancelBySource(MessageSource::LapSummary);
+        const auto spokenAfterCancel = spoken;
+        waitForRadio(300);
+        expect(spoken == spokenAfterCancel);
+        radio.enqueue(QStringLiteral("Car right"), EventPriority::Spotter, MessageSource::ProximitySpotter);
+        radio.enqueue(QStringLiteral("Lap 6 summary"), EventPriority::Conversation, MessageSource::LapSummary);
+        radio.cancelBySource(MessageSource::LapSummary);
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("Car right"));
+    }
 
     return failures == 0 ? 0 : 1;
 }

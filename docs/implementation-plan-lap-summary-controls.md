@@ -71,8 +71,8 @@ Ví dụ UI: `Vòng 12: 1:48.320, nhanh hơn vòng trước 0.400 s. P5, nhiên 
 - Xử lý tổng kết một lần khi có vòng mới; không chạy model, worker hoặc gọi API ở mỗi frame.
 - Tổng kết dùng `EventPriority::Conversation`: thấp hơn callout engineer/strategy, Spotter và Critical; không ngắt câu trả lời người lái đang nghe.
 - Chỉ giữ tối đa một tổng kết chờ đọc. Tổng kết vòng mới thay tổng kết cũ chưa đọc; sang phiên khác hoặc tắt tính năng thì bỏ.
-- Nếu Spotter/Critical ngắt tổng kết, không phát lại tổng kết từ đầu. Các phản hồi hội thoại hiện có vẫn giữ hành vi phát lại như trước.
-- Khi người lái đang PTT/STT/chờ phản hồi trực tiếp, vẫn lưu text nhưng không chen lời tổng kết tự động; bỏ phần audio của vòng đó.
+- Nếu thông báo engineer/Spotter/Critical ngắt tổng kết, giữ tổng kết mới nhất để đọc lại sau cảnh báo. Tổng kết vòng mới thay tổng kết cũ đang chờ; không phát lại cả danh sách vòng cũ. Các phản hồi hội thoại hiện có vẫn giữ hành vi phát lại như trước.
+- Khi hoàn thành vòng trong lúc người lái đang PTT/STT/chờ phản hồi trực tiếp, vẫn lưu text và giữ tổng kết mới nhất để đọc khi radio rảnh; không chen lời tổng kết tự động.
 
 ## 4. Điều khiển tính năng bằng LLM
 
@@ -169,7 +169,7 @@ Nhập văn bản -----+                     |
 | --- | --- | --- | --- |
 | P1 | Settings và setter chung; công tắc Spotter thật; định nghĩa rõ phạm vi proximity | `src/config/SettingsManager.{h,cpp}`, `src/app/Application.{h,cpp}`, `qml/Main.qml` | UI bật/tắt đúng runtime; lưu/khôi phục defaults và trạng thái |
 | P2 | Tạo tổng kết từ vòng hoàn thành; thêm công tắc và text gần nhất | Helper nhỏ `src/race/LapSummary.{h,cpp}`, Application, QML | Mỗi vòng đúng một text; không tổng kết sai phiên/vòng thiếu dữ liệu |
-| P3 | Hủy audio theo nguồn, không phát lại tổng kết bị ngắt | `src/audio/MessageDispatcher.{h,cpp}`, Application | Tắt không còn audio của feature; cảnh báo/hội thoại khác giữ nguyên |
+| P3 | Hủy audio theo nguồn, giữ tổng kết mới nhất qua cảnh báo ưu tiên cao | `src/audio/MessageDispatcher.{h,cpp}`, Application | Tắt không còn audio của feature; cảnh báo/hội thoại khác giữ nguyên |
 | P4 | Tool đọc/ghi feature; hook tới setters; prompt, validation, revision và xác nhận | `src/llm/tools/ToolRegistry.{h,cpp}`, `src/llm/LLMManager.{h,cpp}`, Application | Text/STT điều khiển đúng các feature trong danh sách; UI đồng bộ |
 | P5 | Kiểm tra offline và kiểm tra trực tiếp UI/radio | Tests hiện có, `CMakeLists.txt`; cập nhật `REQUIREMENTS.md` khi hoàn tất | Đạt tiêu chí mục 6; báo rõ phần cần AC/ACC thật |
 
@@ -181,7 +181,7 @@ Nhập văn bản -----+                     |
 2. Qua vạch một lần tạo đúng một tổng kết vòng vừa chạy; nhiều telemetry update không lặp. Sau 100 vòng vẫn phát hiện được vòng mới.
 3. Bật giữa phiên không đọc lại vòng cũ; kết nối giữa vòng, lap rollback, reconnect, nhảy counter và thiếu/NaN/Inf thời gian không phát tổng kết sai.
 4. Delta được tính từ hai vòng hoàn thành phù hợp; thiếu fuel/tyre/position thì bỏ đúng trường; vòng pit/caution không dẫn đến kết luận pace sai hoặc lời khuyên pit giả.
-5. Tắt tổng kết/Spotter khi audio đang đọc hoặc chờ chỉ hủy nguồn tương ứng. Spotter/Critical ngắt tổng kết; tổng kết bị ngắt không phát lại sau cảnh báo.
+5. Tắt tổng kết/Spotter khi audio đang đọc hoặc chờ chỉ hủy nguồn tương ứng. Engineer/Spotter/Critical ngắt tổng kết; tổng kết mới nhất được đọc sau cảnh báo. Hoàn thành vòng khi PTT/STT/chờ phản hồi không làm mất tổng kết; tắt tính năng hoặc đổi phiên hủy tổng kết đang chờ.
 6. “Tắt spotter” dừng proximity, “bật lại spotter” khôi phục cảnh báo; cờ, hư hại và fuel/engine critical vẫn hoạt động. Không đánh đồng priority Spotter với nguồn proximity.
 7. Lệnh rõ ràng, lệnh nhiều feature, câu phủ định, lệnh mơ hồ, sai arguments, feature lạ, gọi lặp và API lỗi được xử lý theo mục 4. Không có xác nhận thành công giả.
 8. Pit strategy thiếu model và DirectInput thiếu binding trả lý do chưa bật được; strategy đã bật nhưng thiếu profile/telemetry phải báo đang chờ, không báo ready. Tắt không bị availability gate cản. LLM không đổi consent hoặc realism confirmation.

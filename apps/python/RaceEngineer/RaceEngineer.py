@@ -27,6 +27,7 @@ except Exception:
 
 APP_NAME = "RaceEngineer"
 SHM_NAME = "race_engineer_ac_ext"
+SPOTTER_SHM_NAME = "race_engineer_ac_spotter"
 UPDATE_INTERVAL = 1.0 / 30.0  # Target 30 Hz update rate.
 UDP_IP = "127.0.0.1"
 UDP_PORT = 9996
@@ -44,12 +45,20 @@ CAR_SIZE = struct.calcsize(CAR_FMT)  # 160 bytes
 MAX_CARS = 64
 # Must match sizeof(AcExtSharedData) = 188 + 64 * 160 = 10428 bytes
 SHM_SIZE = HDR_SIZE + MAX_CARS * CAR_SIZE
+SPOTTER_HEADER_FMT = "<4sIII"
+SPOTTER_HEADER_SIZE = struct.calcsize(SPOTTER_HEADER_FMT)
+SPOTTER_CAR_FMT = "<ii15f"
+SPOTTER_CAR_SIZE = struct.calcsize(SPOTTER_CAR_FMT)
+SPOTTER_SHM_SIZE = SPOTTER_HEADER_SIZE + MAX_CARS * SPOTTER_CAR_SIZE
 
 shm = None
+spotter_shm = None
 sock = None
 last_update = 0
 last_shm_retry = 0
+last_spotter_shm_retry = 0
 sequence = 0
+spotter_sequence = 0
 app_window = 0
 status_label = 0
 
@@ -79,6 +88,60 @@ def get_or_init_shm():
                 ac.log("RaceEngineer: SHM try failed for " + name + ": " + str(e))
     shm = None
     return None
+
+
+def get_or_init_spotter_shm():
+    global spotter_shm, last_spotter_shm_retry
+    if spotter_shm is not None:
+        return spotter_shm
+
+    now = time.time()
+    if now - last_spotter_shm_retry < 1.0:
+        return None
+    last_spotter_shm_retry = now
+
+    try:
+        spotter_shm = mmap.mmap(-1, SPOTTER_SHM_SIZE, "Local\\" + SPOTTER_SHM_NAME)
+        if spotter_shm[0:4] != b"RSGE":
+            spotter_shm[0:4] = b"RSGE"
+            struct.pack_into("<I", spotter_shm, 4, 1)
+        return spotter_shm
+    except Exception as error:
+        if ac:
+            ac.log("RaceEngineer: Spotter SHM unavailable: " + str(error))
+        spotter_shm = None
+        return None
+
+
+def wheel_contact_points(car_id):
+    points = []
+    for wheel in (acsys.WHEELS.FL, acsys.WHEELS.FR, acsys.WHEELS.RL, acsys.WHEELS.RR):
+        point = ac.getCarState(car_id, acsys.CS.TyreContactPoint, wheel)
+        if not isinstance(point, (tuple, list)) or len(point) < 3:
+            return None
+        values = (float(point[0]), float(point[1]), float(point[2]))
+        if not all(math.isfinite(value) for value in values):
+            return None
+        points.extend(values)
+    return points
+
+
+def publish_spotter_geometry(memory, cars):
+    global spotter_sequence
+    if memory is None:
+        return
+    sequence = (spotter_sequence + 1) & 0xFFFFFFFF
+    if sequence % 2 == 0:
+        sequence = (sequence + 1) & 0xFFFFFFFF
+    struct.pack_into(SPOTTER_HEADER_FMT, memory, 0, b"RSGE", 1, sequence, len(cars))
+    offset = SPOTTER_HEADER_SIZE
+    for car_id, flags, position, contacts in cars:
+        struct.pack_into(SPOTTER_CAR_FMT, memory, offset, car_id, flags, *position, *contacts)
+        offset += SPOTTER_CAR_SIZE
+    spotter_sequence = (sequence + 1) & 0xFFFFFFFF
+    if spotter_sequence % 2 != 0:
+        spotter_sequence = (spotter_sequence + 1) & 0xFFFFFFFF
+    struct.pack_into("<I", memory, 8, spotter_sequence)
 
 
 def acMain(ac_version):
@@ -161,7 +224,7 @@ def relative_gap_seconds(player_progress, player_speed, other_progress,
 
 
 def acUpdate(delta_t):
-    global last_update, sequence, shm, sock, status_label
+    global last_update, sequence, shm, spotter_shm, sock, status_label
     now = time.time()
     if now - last_update < UPDATE_INTERVAL:
         return
@@ -171,6 +234,7 @@ def acUpdate(delta_t):
         return
 
     cur_shm = get_or_init_shm()
+    spotter_shm = get_or_init_spotter_shm()
     if cur_shm is None:
         if status_label:
             ac.setText(status_label, "RaceEngineer: Waiting SHM...")
@@ -188,6 +252,29 @@ def acUpdate(delta_t):
         player_progress = car_progress(0)
 
         cars_data = []
+        spotter_data = []
+        world_positions = {}
+        for car_id in range(0, min(car_count, MAX_CARS)):
+            try:
+                if car_id != 0 and hasattr(ac, "isConnected") and not ac.isConnected(car_id):
+                    continue
+                coords = ac.getCarState(car_id, acsys.CS.WorldPosition)
+                if not isinstance(coords, (tuple, list)) or len(coords) < 3:
+                    continue
+                position = (float(coords[0]), float(coords[1]), float(coords[2]))
+                if not all(math.isfinite(value) for value in position):
+                    continue
+                world_positions[car_id] = position
+                contacts = wheel_contact_points(car_id)
+                if contacts is not None:
+                    try:
+                        in_pit = bool(ac.getCarState(car_id, acsys.CS.IsInPit))
+                    except Exception:
+                        in_pit = False
+                    spotter_data.append((car_id, 1 if in_pit else 0, position, contacts))
+            except Exception:
+                continue
+        publish_spotter_geometry(spotter_shm, spotter_data)
         # Reserve car id 0 for the player in the fixed-size shared-memory
         # stream; the native client consumes its live position and excludes it
         # from the opponent list.
@@ -214,8 +301,8 @@ def acUpdate(delta_t):
                 if not car_name or str(car_name) == "-1":
                     continue
 
-                coords = ac.getCarState(car_id, acsys.CS.WorldPosition)
-                if not isinstance(coords, (tuple, list)) or len(coords) < 3:
+                coords = world_positions.get(car_id)
+                if coords is None:
                     continue
 
                 pos = car_position(car_id) or (car_id + 1)
@@ -244,7 +331,7 @@ def acUpdate(delta_t):
                     speed,
                     last_lap if last_lap > 0 else 0.0,
                     best_lap if best_lap > 0 else 0.0,
-                    float(coords[0]), float(coords[1]), float(coords[2]),
+                    coords[0], coords[1], coords[2],
                     driver_bytes,
                     car_bytes
                 ))

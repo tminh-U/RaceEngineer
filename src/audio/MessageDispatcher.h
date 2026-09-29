@@ -6,6 +6,7 @@
 #include <QMetaObject>
 #include <QString>
 #include <chrono>
+#include <optional>
 #include <vector>
 
 namespace raceengineer {
@@ -22,7 +23,9 @@ public:
     explicit MessageDispatcher(ITtsBackend* backend, QObject* parent = nullptr);
     void setBackend(ITtsBackend* backend);
     void enqueue(const QString& text, EventPriority priority,
-        MessageSource source = MessageSource::General);
+        MessageSource source = MessageSource::General,
+        std::optional<EventType> eventType = std::nullopt);
+    void setProximitySpotterState(bool left, bool right);
     void clear();
     void cancelByPrefix(const QString& prefix);
     void cancelBySource(MessageSource source);
@@ -33,7 +36,14 @@ signals:
     void speakingChanged(bool speaking, const QString& text);
 
 private:
-    struct Message { QString text; EventPriority priority; MessageSource source; quint64 sequence; };
+    struct Message {
+        QString text;
+        EventPriority priority;
+        MessageSource source;
+        std::optional<EventType> eventType;
+        quint64 sequence;
+    };
+    [[nodiscard]] bool isCurrentSpotterMessage(const Message& message) const noexcept;
     void playNext();
 
     ITtsBackend* backend_{nullptr};
@@ -44,6 +54,9 @@ private:
     bool speaking_{false};
     EventPriority activePriority_{EventPriority::Conversation};
     MessageSource activeSource_{MessageSource::General};
+    std::optional<EventType> activeEventType_;
+    bool spotterLeftCurrent_{false};
+    bool spotterRightCurrent_{false};
     QString currentText_{};
     QString lastSpokenText_{};
     std::chrono::steady_clock::time_point lastSpokenTime_{};

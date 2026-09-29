@@ -774,7 +774,7 @@ Component { id: engineerPage
             }
             MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
-                SettingRow { width: parent.width; title:"Xe Trái / Xe Phải"; subtitle:"Bật Spotter cảnh báo âm thanh cho xe bên cạnh"; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
+        SettingRow { width: parent.width; title:"Xe Trái / Xe Phải"; subtitle:backend.spotterStatus; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
                 SettingRow { width: parent.width; title:"Cờ hiệu & Nguy hiểm chặng"; subtitle:"Cảnh báo cờ hiệu trên đường đua"; showSwitch:true; checked:backend.flagAlertsEnabled; onToggled:checked => backend.setFlagAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Cảnh báo hư hại"; subtitle:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"; showSwitch:true; checked:backend.damageAlertsEnabled; onToggled:checked => backend.setDamageAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Tổng kết sau mỗi vòng"; subtitle:backend.lapSummaryStatus; showSwitch:true; checked:backend.lapSummaryEnabled; onToggled:checked => backend.setLapSummaryEnabled(checked) }

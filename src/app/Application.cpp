@@ -82,7 +82,6 @@ MessageSource eventMessageSource(const EventType type)
     switch (type) {
     case EventType::CarLeft:
     case EventType::CarRight:
-    case EventType::ThreeWide:
         return MessageSource::ProximitySpotter;
     case EventType::FuelLow:
     case EventType::FuelCritical: return MessageSource::FuelAlerts;
@@ -934,6 +933,7 @@ void Application::finishStartupIfReady()
     if (sttWarmUpReady_ && ttsWarmUpReady_) {
         startupReady_ = true;
         startupError_.clear();
+        QTimer::singleShot(0, this, &Application::speakPendingLapSummary);
         qCInfo(logApp) << "STT and TTS warm-up complete; enabling the main UI";
     }
     emit startupChanged();
@@ -1137,6 +1137,7 @@ void Application::onStateUpdated(const RaceState& state)
     strategyRecorder_.setRaceActive(state.connected && state.sessionType == SessionType::Race);
     latestState_ = state;
     updateLapSummaryStatus();
+    updateSpotterStatus();
     const QString sessionKey = state.connected
         ? QStringLiteral("%1|%2|%3|%4|%5")
               .arg(static_cast<int>(state.simulator))
@@ -1149,6 +1150,9 @@ void Application::onStateUpdated(const RaceState& state)
         || (state.currentLap && strategyLastTelemetryLap_ > 0 && *state.currentLap < strategyLastTelemetryLap_);
     if (sessionChanged) {
         eventEngine_.reset();
+        spotterEngine_.reset();
+        messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
+        messageDispatcher_->setProximitySpotterState(false, false);
         if (previousWasRace && strategyRecordedLap_ > 0)
             strategyRecorder_.finishSession(previousSessionId);
         raceHistory_.reset();
@@ -1159,6 +1163,7 @@ void Application::onStateUpdated(const RaceState& state)
         lapSummaryLastLapComparable_ = false;
         lapSummaryLapHadIssue_ = false;
         lapSummaryLapContextComplete_ = false;
+        lapSummaryPending_ = false;
         if (!latestLapSummary_.isEmpty()) {
             latestLapSummary_.clear();
             emit lapSummaryChanged();
@@ -1216,8 +1221,12 @@ void Application::onStateUpdated(const RaceState& state)
     }
     updateStrategy(state);
     auto events = eventEngine_.process(state);
-    auto spotterEvents = spotterEngine_.process(state);
-    if (settingsManager_.spotterEnabled())
+    const bool spotterEnabled = settingsManager_.spotterEnabled();
+    auto spotterEvents = spotterEnabled ? spotterEngine_.process(state) : std::vector<RaceEvent>{};
+    if (!spotterEnabled) spotterEngine_.reset();
+    messageDispatcher_->setProximitySpotterState(spotterEnabled && spotterEngine_.hasLeft(),
+        spotterEnabled && spotterEngine_.hasRight());
+    if (spotterEnabled)
         events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
     for (const auto& event : events) {
         if (!settingsManager_.eventEnabled(event.type)) continue;
@@ -1233,7 +1242,7 @@ void Application::onStateUpdated(const RaceState& state)
         }
         qCInfo(logEvent).noquote() << latestEvent_;
         const auto source = eventMessageSource(event.type);
-        messageDispatcher_->enqueue(latestEvent_, event.priority, source);
+        messageDispatcher_->enqueue(latestEvent_, event.priority, source, event.type);
     }
     if (!events.empty()) {
         emit latestEventChanged();
@@ -1276,7 +1285,9 @@ void Application::setSpotterEnabled(const bool enabled)
     settingsManager_.setSpotterEnabled(enabled);
     ++featureSettingsRevision_;
     spotterEngine_.reset();
+    messageDispatcher_->setProximitySpotterState(false, false);
     if (!enabled) messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
+    updateSpotterStatus();
     emit spotterSettingsChanged();
 }
 
@@ -1333,7 +1344,10 @@ void Application::setLapSummaryEnabled(const bool enabled)
     lapSummaryLastLap_ = 0;
     lapSummaryLastLapComparable_ = false;
     lapSummaryLapContextComplete_ = false;
-    if (!enabled) messageDispatcher_->cancelBySource(MessageSource::LapSummary);
+    if (!enabled) {
+        lapSummaryPending_ = false;
+        messageDispatcher_->cancelBySource(MessageSource::LapSummary);
+    }
     updateLapSummaryStatus();
     emit lapSummaryChanged();
 }
@@ -1363,6 +1377,25 @@ void Application::updateLapSummaryStatus()
     if (lapSummaryStatus_ == status) return;
     lapSummaryStatus_ = status;
     emit lapSummaryChanged();
+}
+
+void Application::updateSpotterStatus()
+{
+    QString status;
+    if (!settingsManager_.spotterEnabled()) {
+        status = QStringLiteral("Đã tắt");
+    } else if (!latestState_.connected) {
+        status = QStringLiteral("Chờ kết nối Assetto Corsa");
+    } else if (latestState_.simulator != Simulator::AssettoCorsa) {
+        status = QStringLiteral("Chưa có hình học xe cho simulator này");
+    } else if (!latestState_.spotterGeometryFresh || !latestState_.spotterWheelContactPoints) {
+        status = QStringLiteral("Cần cập nhật AC companion");
+    } else {
+        status = QStringLiteral("Đang theo dõi xe bên cạnh");
+    }
+    if (spotterStatus_ == status) return;
+    spotterStatus_ = status;
+    emit spotterStatusChanged();
 }
 
 void Application::updateLapSummary(const RaceState& state)
@@ -1438,10 +1471,8 @@ void Application::updateLapSummary(const RaceState& state)
                     qCInfo(logEvent).noquote() << summary;
                     emit lapSummaryChanged();
                     emit latestEventChanged();
-                    if (voiceStatus_ == QStringLiteral("Idle") && !pushToTalkPressed_) {
-                        messageDispatcher_->enqueue(summary, EventPriority::Conversation,
-                            MessageSource::LapSummary);
-                    }
+                    lapSummaryPending_ = true;
+                    QTimer::singleShot(0, this, &Application::speakPendingLapSummary);
                 }
                 lapSummaryLastLap_ = completed.lapNumber;
                 lapSummaryLastLapSeconds_ = completed.lapTimeSeconds;
@@ -1766,11 +1797,23 @@ void Application::onConnectionStatusChanged(const QString& simulator, const bool
     }
 }
 
+void Application::speakPendingLapSummary()
+{
+    if (!lapSummaryPending_ || !settingsManager_.lapSummaryEnabled() || !startupReady_
+        || pushToTalkPressed_
+        || (voiceStatus_ != QStringLiteral("Idle") && voiceStatus_ != QStringLiteral("Speaking"))) return;
+    lapSummaryPending_ = false;
+    messageDispatcher_->enqueue(latestLapSummary_, EventPriority::Conversation, MessageSource::LapSummary);
+}
+
 void Application::onVoiceStatusChanged(const QString& status)
 {
     if (voiceStatus_ != status) {
         voiceStatus_ = status;
         emit voiceStatusChanged();
+        if (status == QStringLiteral("Idle")) {
+            QTimer::singleShot(0, this, &Application::speakPendingLapSummary);
+        }
     }
 }
 

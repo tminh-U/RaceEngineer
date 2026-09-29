@@ -101,6 +101,7 @@ class Application final : public QObject {
     Q_PROPERTY(int strategyPitLap READ strategyPitLap NOTIFY strategyChanged)
     Q_PROPERTY(QString strategyDetail READ strategyDetail NOTIFY strategyChanged)
     Q_PROPERTY(bool spotterEnabled READ spotterEnabled NOTIFY spotterSettingsChanged)
+    Q_PROPERTY(QString spotterStatus READ spotterStatus NOTIFY spotterStatusChanged)
     Q_PROPERTY(bool fuelAlertsEnabled READ fuelAlertsEnabled NOTIFY engineerSettingsChanged)
     Q_PROPERTY(bool tyreAlertsEnabled READ tyreAlertsEnabled NOTIFY engineerSettingsChanged)
     Q_PROPERTY(bool lapDeltaEnabled READ lapDeltaEnabled NOTIFY engineerSettingsChanged)
@@ -166,6 +167,7 @@ public:
     [[nodiscard]] int strategyPitLap() const noexcept { return strategyPitLap_; }
     [[nodiscard]] QString strategyDetail() const { return strategyDetail_; }
     [[nodiscard]] bool spotterEnabled() const noexcept { return settingsManager_.spotterEnabled(); }
+    [[nodiscard]] QString spotterStatus() const { return spotterStatus_; }
     [[nodiscard]] bool fuelAlertsEnabled() const noexcept { return settingsManager_.fuelAlertsEnabled(); }
     [[nodiscard]] bool tyreAlertsEnabled() const noexcept { return settingsManager_.tyreAlertsEnabled(); }
     [[nodiscard]] bool lapDeltaEnabled() const noexcept { return settingsManager_.lapDeltaEnabled(); }
@@ -270,6 +272,7 @@ signals:
     void aiComputeStatusChanged();
     void strategyChanged();
     void spotterSettingsChanged();
+    void spotterStatusChanged();
     void engineerSettingsChanged();
     void lapSummaryChanged();
     void availableTtsVoicesChanged();
@@ -309,6 +312,8 @@ private:
     void announceStrategy(const QString& text, EventPriority priority);
     void updateLapSummary(const RaceState& state);
     void updateLapSummaryStatus();
+    void updateSpotterStatus();
+    void speakPendingLapSummary();
     [[nodiscard]] QJsonObject featureSettings() const;
     [[nodiscard]] QJsonObject setFeatureEnabled(const QString& feature, bool enabled,
         quint64 expectedRevision);
@@ -343,6 +348,7 @@ private:
     bool lapSummaryLapContextComplete_{false};
     QString lapSummaryStatus_{QStringLiteral("Đã tắt")};
     QString latestLapSummary_;
+    bool lapSummaryPending_{false};
     quint64 featureSettingsRevision_{1};
     StrategyRecorder strategyRecorder_;
     std::unique_ptr<StrategyPredictor> strategyPredictor_;
@@ -400,6 +406,7 @@ private:
     bool sttWarmUpReady_{false};
     bool ttsWarmUpReady_{false};
     bool startupReady_{false};
+    QString spotterStatus_{QStringLiteral("Chờ dữ liệu AC")};
     QString startupError_;
 };
 

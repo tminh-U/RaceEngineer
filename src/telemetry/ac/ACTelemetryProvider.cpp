@@ -227,6 +227,15 @@ bool ACTelemetryProvider::update()
 
     // Process companion Python app extended telemetry if available
     extensionClient_.update();
+    state_.spotterGeometryFresh = extensionClient_.hasSpotterGeometry();
+    state_.spotterWorldPosition.reset();
+    state_.spotterWheelContactPoints.reset();
+    state_.spotterOpponents.clear();
+    if (state_.spotterGeometryFresh) {
+        state_.spotterWorldPosition = extensionClient_.playerSpotterWorldPosition();
+        state_.spotterWheelContactPoints = extensionClient_.playerSpotterWheelContactPoints();
+        state_.spotterOpponents = extensionClient_.spotterGeometryOpponents();
+    }
     if (extensionClient_.hasData()) {
         state_.opponents = extensionClient_.opponents();
         if (extensionClient_.playerPosition()) {

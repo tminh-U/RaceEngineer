@@ -153,8 +153,7 @@ bool SettingsManager::eventEnabled(const EventType type) const noexcept
     case EventType::ChequeredFlag: return flagAlertsEnabled_;
     case EventType::DamageDetected: return damageAlertsEnabled_;
     case EventType::CarLeft:
-    case EventType::CarRight:
-    case EventType::ThreeWide: return spotterEnabled_;
+    case EventType::CarRight: return spotterEnabled_;
     default: return true;
     }
 }

@@ -28,7 +28,6 @@ enum class EventType {
     NewBestLap,
     CarLeft,
     CarRight,
-    ThreeWide,
     DamageDetected,
     TyreOverheating,
     LapDelta

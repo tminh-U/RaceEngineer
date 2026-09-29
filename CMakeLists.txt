@@ -343,6 +343,9 @@ if(BUILD_TESTING)
         src/telemetry/common/WindowsSharedMemory.cpp
         src/tts/RacingTextNormalizer.cpp
         src/audio/AudioDucker.cpp
+        src/audio/MessageDispatcher.cpp
+        src/audio/MessageDispatcher.h
+        src/tts/ITtsBackend.h
     )
     target_include_directories(RaceStateTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}

@@ -25,6 +25,6 @@
 
 ## Dữ liệu được bổ sung cho Assetto Corsa
 Khi app Python này được kích hoạt, RaceEngineer sẽ tự động mở khóa các tính năng sau trên AC:
-- 🔊 **Hệ thống Spotter vị trí**: Cảnh báo *"Có xe bên trái"*, *"Có xe bên phải"*, *"Kẹp ba"*, *"Bên trái thoáng"*, *"Bên phải thoáng"*.
+- 🔊 **Hệ thống Spotter vị trí**: Cung cấp hình học bánh xe và tọa độ xe cho cảnh báo *"Có xe bên trái"* / *"Có xe bên phải"* của RaceEngineer.
 - 🏎️ **Thông tin đối thủ & Leaderboard**: Tên các tay đua xung quanh, xe dẫn đầu, bảng xếp hạng toàn đoàn (`get_position`, `get_leaderboard`, `get_driver_pace`).
 - ⏱️ **Phân tích 3 Sector**: So sánh thời gian từng sector trong vòng chạy (`get_sector_analysis`).

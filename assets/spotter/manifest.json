@@ -342,27 +342,6 @@
       ]
     },
     {
-      "id": "three_wide",
-      "text": "Kẹp ba, giữ làn.",
-      "files": [
-        "three_wide/01.wav",
-        "three_wide/02.wav",
-        "three_wide/03.wav",
-        "three_wide/04.wav",
-        "three_wide/05.wav",
-        "three_wide/06.wav",
-        "three_wide/07.wav",
-        "three_wide/08.wav",
-        "three_wide/09.wav",
-        "three_wide/10.wav",
-        "three_wide/11.wav",
-        "three_wide/12.wav",
-        "three_wide/13.wav",
-        "three_wide/14.wav",
-        "three_wide/15.wav"
-      ]
-    },
-    {
       "id": "clear_left",
       "text": "Bên trái thoáng.",
       "files": [

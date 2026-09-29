@@ -26,6 +26,19 @@ public:
     void update();
 
     [[nodiscard]] bool hasData() const noexcept;
+    [[nodiscard]] bool hasSpotterGeometry() const noexcept;
+    [[nodiscard]] const std::optional<WorldPoint>& playerSpotterWorldPosition() const noexcept
+    {
+        return playerSpotterWorldPosition_;
+    }
+    [[nodiscard]] const std::optional<WheelContactPoints>& playerSpotterWheelContactPoints() const noexcept
+    {
+        return playerSpotterWheelContactPoints_;
+    }
+    [[nodiscard]] const std::vector<OpponentState>& spotterGeometryOpponents() const noexcept
+    {
+        return spotterGeometryOpponents_;
+    }
     [[nodiscard]] const std::vector<OpponentState>& opponents() const noexcept { return opponents_; }
     [[nodiscard]] std::optional<int> playerPosition() const noexcept { return playerPosition_; }
     [[nodiscard]] std::optional<double> gapAhead() const noexcept { return gapAhead_; }
@@ -40,6 +53,9 @@ private:
     std::unique_ptr<Impl> impl_;
 
     std::vector<OpponentState> opponents_;
+    std::vector<OpponentState> spotterGeometryOpponents_;
+    std::optional<WorldPoint> playerSpotterWorldPosition_;
+    std::optional<WheelContactPoints> playerSpotterWheelContactPoints_;
     std::optional<int> playerPosition_;
     std::optional<double> gapAhead_;
     std::optional<double> gapBehind_;

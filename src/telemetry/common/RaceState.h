@@ -14,6 +14,8 @@ enum class FlagState { Unknown, None, Green, Yellow, Blue, Red, Black, Chequered
 enum class PitState { Unknown, Track, Entering, PitLane, PitBox, Exiting };
 
 using WheelValues = std::array<double, 4>; // FL, FR, RL, RR
+using WorldPoint = std::array<double, 3>;
+using WheelContactPoints = std::array<WorldPoint, 4>; // FL, FR, RL, RR
 
 struct OpponentState final {
     int carId{-1};
@@ -33,6 +35,7 @@ struct OpponentState final {
     std::vector<double> recentLapTimesSeconds;
     std::optional<std::array<double, 3>> worldPosition;
     bool inPitLane{false};
+    std::optional<WheelContactPoints> spotterWheelContactPoints;
 };
 
 struct RaceState final {
@@ -64,6 +67,10 @@ struct RaceState final {
     std::optional<double> steering;
     std::optional<double> heading;
     std::optional<std::array<double, 3>> worldPosition;
+    std::optional<WorldPoint> spotterWorldPosition;
+    std::optional<WheelContactPoints> spotterWheelContactPoints;
+    bool spotterGeometryFresh{false};
+    std::vector<OpponentState> spotterOpponents;
 
     std::optional<double> currentLapTimeSeconds;
     std::optional<double> previousLapTimeSeconds;
