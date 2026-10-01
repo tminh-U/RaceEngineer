@@ -22,10 +22,11 @@ void MessageDispatcher::setBackend(ITtsBackend* const backend)
     backend_ = backend;
     if (!backend_) return;
     backendConnections_.push_back(connect(this, &MessageDispatcher::requestSpeak,
-        backend_, &ITtsBackend::speak, Qt::QueuedConnection));
+        backend_, &ITtsBackend::speak, Qt::AutoConnection));
     backendConnections_.push_back(connect(this, &MessageDispatcher::requestStop,
-        backend_, &ITtsBackend::stop, Qt::QueuedConnection));
+        backend_, &ITtsBackend::stop, Qt::AutoConnection));
     backendConnections_.push_back(connect(backend_, &ITtsBackend::speakingFinished, this, [this] {
+        if (activeLocalBackend_) return;
         if (currentSpokenSequence_ == 0) {
             return; // Ignore stale finished signal from cancelled/preempted utterance
         }
@@ -38,87 +39,115 @@ void MessageDispatcher::setBackend(ITtsBackend* const backend)
         QTimer::singleShot(250, this, [this] {
             playNext();
         });
-    }, Qt::QueuedConnection));
+    }, Qt::AutoConnection));
+}
+
+void MessageDispatcher::setLocalBackend(ITtsBackend* const backend)
+{
+    if (localBackend_ == backend) return;
+    clear();
+    for (const auto& connection : localBackendConnections_) QObject::disconnect(connection);
+    localBackendConnections_.clear();
+    localBackend_ = backend;
+    if (!localBackend_) return;
+    localBackendConnections_.push_back(connect(this, &MessageDispatcher::requestLocalSpeak,
+        localBackend_, &ITtsBackend::speak, Qt::AutoConnection));
+    localBackendConnections_.push_back(connect(this, &MessageDispatcher::requestLocalStop,
+        localBackend_, &ITtsBackend::stop, Qt::AutoConnection));
+    localBackendConnections_.push_back(connect(localBackend_, &ITtsBackend::speakingFinished,
+        this, [this] {
+            if (!activeLocalBackend_ || currentSpokenSequence_ == 0) return;
+            currentSpokenSequence_ = 0;
+            speaking_ = false;
+            currentText_.clear();
+            emit speakingChanged(false, {});
+            QTimer::singleShot(250, this, [this] { playNext(); });
+        }, Qt::AutoConnection));
+}
+
+void MessageDispatcher::stopActiveBackend()
+{
+    if (activeLocalBackend_) emit requestLocalStop();
+    else emit requestStop();
 }
 
 void MessageDispatcher::enqueue(const QString& text, const EventPriority priority,
     const MessageSource source, const std::optional<EventType> eventType)
 {
     const QString trimmed = text.trimmed();
-    if (trimmed.isEmpty() || !backend_ || !backend_->isAvailable()) return;
+    if (conversationSuppressed_ && priority == EventPriority::Conversation
+        && source != MessageSource::LocalSystem) return;
+    const bool local = source == MessageSource::ProximitySpotter
+        || source == MessageSource::FuelAlerts || source == MessageSource::TyreAlerts
+        || source == MessageSource::EngineAlerts || source == MessageSource::FlagAlerts
+        || source == MessageSource::DamageAlerts
+        || source == MessageSource::LocalSystem;
+    ITtsBackend* const target = local ? localBackend_ : backend_;
+    if (trimmed.isEmpty() || !target) return;
+    if (local && !target->canSpeakCached(trimmed)) return;
+    if (!local && !target->isAvailable()) return;
 
     const auto now = std::chrono::steady_clock::now();
 
     // Prevent immediate audio repetition of identical text
-    if (trimmed == lastSpokenText_ && lastSpokenTime_.time_since_epoch().count() != 0
+    if (source != MessageSource::ProximitySpotter && source != MessageSource::LocalSystem
+        && trimmed == lastSpokenText_
+        && lastSpokenTime_.time_since_epoch().count() != 0
         && (now - lastSpokenTime_ < std::chrono::milliseconds{3500})) {
+        return;
+    }
+
+    if (source == MessageSource::LocalSystem
+        && ((speaking_ && activeSource_ == source && currentText_ == trimmed)
+            || std::any_of(queue_.begin(), queue_.end(), [&trimmed](const Message& message) {
+                return message.source == MessageSource::LocalSystem && message.text == trimmed;
+            }))) {
         return;
     }
 
     // Spotter-specific queue protections:
     if (source == MessageSource::ProximitySpotter) {
-        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [eventType](const Message& queued) {
-            return queued.source == MessageSource::ProximitySpotter && queued.eventType == eventType;
+        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this, eventType](const Message& queued) {
+            const bool remove = queued.source == MessageSource::ProximitySpotter && queued.eventType == eventType;
+            if (remove) discardMessage(queued);
+            return remove;
         }), queue_.end());
         if (speaking_ && activeSource_ == MessageSource::ProximitySpotter
             && activeEventType_ == eventType) return;
     }
 
     if (source == MessageSource::LapSummary) {
-        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [](const Message& message) {
-            return message.source == MessageSource::LapSummary;
+        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this](const Message& message) {
+            const bool remove = message.source == MessageSource::LapSummary;
+            if (remove) discardMessage(message);
+            return remove;
         }), queue_.end());
     }
 
-    const Message message{trimmed, priority, source, eventType, nextSequence_++};
+    const Message message{trimmed, priority, source, eventType, nextSequence_++, local};
 
-    // Preemption: if a higher-priority message arrives while speaking
-    if (speaking_ && static_cast<int>(priority) > static_cast<int>(activePriority_)) {
-        const Message interrupted{currentText_, activePriority_, activeSource_, activeEventType_, nextSequence_++};
-
-        // Keep the latest lap summary waiting while urgent alerts take priority.
-        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [priority](const Message& m) {
-            return m.source != MessageSource::LapSummary && m.source != MessageSource::ProximitySpotter
-                && static_cast<int>(m.priority) < static_cast<int>(priority);
-        }), queue_.end());
-
-        // Put the high-priority message at front
-        queue_.insert(queue_.begin(), message);
-        // TTS backends can stop, but they cannot resume from the middle of an
-        // utterance. Replay the interrupted lower-priority transmission after
-        // the spotter/critical message instead of dropping the conversation.
-        if (activeSource_ == MessageSource::ProximitySpotter
-            && isCurrentSpotterMessage(interrupted)) {
-            const bool alreadyWaiting = std::any_of(queue_.begin(), queue_.end(), [&](const Message& queued) {
-                return queued.source == MessageSource::ProximitySpotter
-                    && queued.eventType == interrupted.eventType;
-            });
-            if (!alreadyWaiting) queue_.insert(queue_.begin() + 1, interrupted);
-        } else if (activePriority_ != EventPriority::Spotter && !interrupted.text.trimmed().isEmpty()) {
-            if (activeSource_ == MessageSource::LapSummary) {
-                const bool newerSummaryWaiting = std::any_of(queue_.begin(), queue_.end(), [](const Message& queued) {
-                    return queued.source == MessageSource::LapSummary;
-                });
-                if (!newerSummaryWaiting) queue_.push_back(interrupted);
-            } else {
-                queue_.insert(queue_.begin() + 1, interrupted);
-            }
+    if (speaking_ && priority > activePriority_) {
+        Message interrupted{currentText_, activePriority_, activeSource_, activeEventType_,
+            activeMessageSequence_, activeLocalBackend_};
+        auto* activeBackend = activeLocalBackend_ ? localBackend_ : backend_;
+        interrupted.resumeToken = activeBackend->pauseSpeech();
+        if (interrupted.resumeToken != 0) {
+            const bool obsolete = (interrupted.source == MessageSource::ProximitySpotter
+                    && !isCurrentSpotterMessage(interrupted))
+                || (interrupted.source == MessageSource::LapSummary
+                    && std::any_of(queue_.begin(), queue_.end(), [](const Message& queued) {
+                        return queued.source == MessageSource::LapSummary;
+                    }));
+            if (obsolete) discardMessage(interrupted);
+            else queue_.push_back(interrupted);
+            currentSpokenSequence_ = 0;
+            speaking_ = false;
+            currentText_.clear();
+            activeSource_ = MessageSource::General;
+            activeEventType_.reset();
         }
-        currentSpokenSequence_ = 0; // Invalidate any in-flight speakingFinished from aborted utterance
-        speaking_ = false;
-        currentText_.clear();
-        activeSource_ = MessageSource::General;
-        activeEventType_.reset();
-        emit speakingChanged(false, {});
-        emit requestStop();
-
-        // Brief delay (80ms) to allow audio sink to stop before starting urgent message
-        QTimer::singleShot(80, this, [this] {
-            playNext();
-        });
-        return;
+        // If a backend cannot suspend, finish its current utterance before draining priorities.
     }
-
     queue_.push_back(message);
     std::stable_sort(queue_.begin(), queue_.end(), [](const Message& left, const Message& right) {
         if (left.priority != right.priority) return left.priority > right.priority;
@@ -129,6 +158,7 @@ void MessageDispatcher::enqueue(const QString& text, const EventPriority priorit
 
 void MessageDispatcher::clear()
 {
+    for (const auto& message : queue_) discardMessage(message);
     queue_.clear();
     const bool wasSpeaking = speaking_;
     currentSpokenSequence_ = 0;
@@ -136,14 +166,16 @@ void MessageDispatcher::clear()
     activeSource_ = MessageSource::General;
     activeEventType_.reset();
     currentText_.clear();
-    emit requestStop();
+    stopActiveBackend();
     if (wasSpeaking) emit speakingChanged(false, {});
 }
 
 void MessageDispatcher::cancelBySource(const MessageSource source)
 {
-    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [source](const Message& message) {
-        return message.source == source;
+    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this, source](const Message& message) {
+        const bool remove = message.source == source;
+        if (remove) discardMessage(message);
+        return remove;
     }), queue_.end());
     if (!speaking_ || activeSource_ != source) return;
     currentSpokenSequence_ = 0;
@@ -151,7 +183,7 @@ void MessageDispatcher::cancelBySource(const MessageSource source)
     currentText_.clear();
     activeSource_ = MessageSource::General;
     activeEventType_.reset();
-    emit requestStop();
+    stopActiveBackend();
     emit speakingChanged(false, {});
     QTimer::singleShot(250, this, [this] { playNext(); });
 }
@@ -168,18 +200,21 @@ void MessageDispatcher::setProximitySpotterState(const bool left, const bool rig
     spotterLeftCurrent_ = left;
     spotterRightCurrent_ = right;
     queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this](const Message& message) {
-        return message.source == MessageSource::ProximitySpotter && !isCurrentSpotterMessage(message);
+        const bool remove = message.source == MessageSource::ProximitySpotter && !isCurrentSpotterMessage(message);
+        if (remove) discardMessage(message);
+        return remove;
     }), queue_.end());
 
     if (speaking_ && activeSource_ == MessageSource::ProximitySpotter) {
-        const Message active{currentText_, activePriority_, activeSource_, activeEventType_, 0};
+        const Message active{currentText_, activePriority_, activeSource_, activeEventType_,
+            0, activeLocalBackend_};
         if (!isCurrentSpotterMessage(active)) {
             currentSpokenSequence_ = 0;
             speaking_ = false;
             currentText_.clear();
             activeSource_ = MessageSource::General;
             activeEventType_.reset();
-            emit requestStop();
+            stopActiveBackend();
             emit speakingChanged(false, {});
             QTimer::singleShot(250, this, [this] { playNext(); });
         }
@@ -188,8 +223,10 @@ void MessageDispatcher::setProximitySpotterState(const bool left, const bool rig
 
 void MessageDispatcher::cancelByPrefix(const QString& prefix)
 {
-    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [&prefix](const Message& message) {
-        return message.text.startsWith(prefix);
+    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this, &prefix](const Message& message) {
+        const bool remove = message.text.startsWith(prefix);
+        if (remove) discardMessage(message);
+        return remove;
     }), queue_.end());
     if (speaking_ && currentText_.startsWith(prefix)) {
         currentSpokenSequence_ = 0;
@@ -197,10 +234,28 @@ void MessageDispatcher::cancelByPrefix(const QString& prefix)
         currentText_.clear();
         activeSource_ = MessageSource::General;
     activeEventType_.reset();
-        emit requestStop();
+        stopActiveBackend();
         emit speakingChanged(false, {});
         QTimer::singleShot(250, this, [this] { playNext(); });
     }
+}
+
+void MessageDispatcher::setConversationSuppressed(const bool suppressed)
+{
+    conversationSuppressed_ = suppressed;
+    if (suppressed) {
+        queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [this](const Message& message) {
+            const bool remove = message.priority == EventPriority::Conversation && !message.localBackend;
+            if (remove) discardMessage(message);
+            return remove;
+        }), queue_.end());
+    }
+}
+
+void MessageDispatcher::discardMessage(const Message& message)
+{
+    auto* target = message.localBackend ? localBackend_ : backend_;
+    if (target && message.resumeToken != 0) target->discardSpeech(message.resumeToken);
 }
 
 void MessageDispatcher::playNext()
@@ -210,14 +265,26 @@ void MessageDispatcher::playNext()
     queue_.erase(queue_.begin());
     speaking_ = true;
     currentSpokenSequence_ = nextSequence_++;
+    activeMessageSequence_ = message.sequence;
     activePriority_ = message.priority;
+    activeLocalBackend_ = message.localBackend;
     activeSource_ = message.source;
     activeEventType_ = message.eventType;
     currentText_ = message.text;
     lastSpokenText_ = message.text;
     lastSpokenTime_ = std::chrono::steady_clock::now();
     emit speakingChanged(true, message.text);
-    emit requestSpeak(message.text);
+    if (message.resumeToken != 0) {
+        auto* target = message.localBackend ? localBackend_ : backend_;
+        if (!target || !target->resumeSpeech(message.resumeToken)) {
+            currentSpokenSequence_ = 0;
+            speaking_ = false;
+            currentText_.clear();
+            emit speakingChanged(false, {});
+            QTimer::singleShot(0, this, [this] { playNext(); });
+        }
+    } else if (activeLocalBackend_) emit requestLocalSpeak(message.text);
+    else emit requestSpeak(message.text);
 }
 
 } // namespace raceengineer

@@ -8,7 +8,9 @@
 #include "llm/LLMManager.h"
 #include "audio/MessageDispatcher.h"
 #include "audio/AudioDucker.h"
+#include "tts/GoogleTtsBackend.h"
 #include "tts/VieNeuTtsBackend.h"
+#include "tts/TtsBenchmark.h"
 #include "input/DInputButtonMonitor.h"
 #include "utils/Logging.h"
 
@@ -85,6 +87,8 @@ MessageSource eventMessageSource(const EventType type)
         return MessageSource::ProximitySpotter;
     case EventType::FuelLow:
     case EventType::FuelCritical: return MessageSource::FuelAlerts;
+    case EventType::EngineHot:
+    case EventType::EngineCritical: return MessageSource::EngineAlerts;
     case EventType::TyreOverheating: return MessageSource::TyreAlerts;
     case EventType::NewBestLap:
     case EventType::LapDelta: return MessageSource::LapDelta;
@@ -98,6 +102,28 @@ MessageSource eventMessageSource(const EventType type)
     case EventType::DamageDetected: return MessageSource::DamageAlerts;
     default:
         return MessageSource::General;
+    }
+}
+
+QString cachedEventSpeech(const EventType type)
+{
+    switch (type) {
+    case EventType::FuelLow: return QStringLiteral("Nhiên liệu sắp hết.");
+    case EventType::FuelCritical: return QStringLiteral("Nhiên liệu nguy cấp.");
+    case EventType::EngineHot: return QStringLiteral("Nhiệt độ động cơ cao.");
+    case EventType::EngineCritical: return QStringLiteral("Động cơ quá nhiệt.");
+    case EventType::YellowFlag: return QStringLiteral("Cờ vàng.");
+    case EventType::BlueFlag: return QStringLiteral("Cờ xanh dương.");
+    case EventType::GreenFlag: return QStringLiteral("Cờ xanh lá.");
+    case EventType::RedFlag: return QStringLiteral("Cờ đỏ.");
+    case EventType::BlackFlag: return QStringLiteral("Cờ đen.");
+    case EventType::WhiteFlag: return QStringLiteral("Cờ trắng.");
+    case EventType::ChequeredFlag: return QStringLiteral("Cờ ca rô.");
+    case EventType::CarLeft: return QStringLiteral("Có xe bên trái.");
+    case EventType::CarRight: return QStringLiteral("Có xe bên phải.");
+    case EventType::TyreOverheating: return QStringLiteral("Lốp quá nóng.");
+    case EventType::DamageDetected: return QStringLiteral("Phát hiện hư hại xe.");
+    default: return {};
     }
 }
 
@@ -130,7 +156,9 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , speechRecognizer_(new WhisperRecognizer(
           resolvePhoWhisperModelPath(), aiRuntimeSelection_))
     , vieNeuTtsBackend_(new VieNeuTtsBackend(
-          resolveVieNeuModelPath(), settingsManager_.tts().voice, aiRuntimeSelection_, this))
+          resolveVieNeuModelPath(), settingsManager_.tts().voice, aiRuntimeSelection_,
+        settingsManager_.tts().cpuThreads, this))
+    , googleTtsBackend_(new GoogleTtsBackend(this))
     , ttsBackend_(vieNeuTtsBackend_)
     , directInput_(new DInputButtonMonitor)
     , pttSoundPlayer_(new QMediaPlayer(this))
@@ -142,6 +170,43 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , audioDucker_(std::make_unique<AudioDucker>(this))
 {
     qRegisterMetaType<RaceState>();
+    setupVisible_ = !settingsManager_.setupCompleted();
+    benchmarkFingerprint_ = ttsBenchmarkFingerprint(resolveVieNeuModelPath(),
+        settingsManager_.tts().voice, selectedAiComputeDevice());
+    ttsBenchmark_ = std::make_unique<TtsBenchmark>();
+    connect(ttsBenchmark_.get(), &TtsBenchmark::changed, this, &Application::ttsBenchmarkChanged);
+    connect(vieNeuTtsBackend_, &VieNeuTtsBackend::modelReleased, this, [this] {
+        localContextReleased_ = true;
+        if (ttsBenchmarkRunning()) {
+            ttsBenchmark_->start(QDir(QCoreApplication::applicationDirPath()).filePath("RaceEngineerTtsBench.exe"),
+                {"--model-dir", resolveVieNeuModelPath(), "--voice", settingsManager_.tts().voice,
+                    "--device", aiRuntimeSelection_.requestedDeviceId});
+        } else if (ttsBackend_ == vieNeuTtsBackend_) {
+            vieNeuTtsBackend_->setCpuThreads(settingsManager_.tts().cpuThreads);
+            localContextReleased_ = false;
+            vieNeuTtsBackend_->warmUp();
+        }
+    });
+    connect(ttsBenchmark_.get(), &TtsBenchmark::finished, this, [this](int selected) {
+        if (selected) {
+            auto settings = settingsManager_.tts();
+            settings.cpuThreads = selected;
+            settingsManager_.setTts(settings);
+            ++featureSettingsRevision_;
+            emit aiComputeSettingsChanged();
+        }
+        settingsManager_.setTtsBenchmark({{"timestamp", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
+            {"fingerprint", benchmarkFingerprint_}, {"voice", settingsManager_.tts().voice},
+            {"device", aiRuntimeSelection_.requestedDeviceId}, {"corpus_version", ttsBenchmarkVersion},
+            {"complete", selected != 0}, {"selected_threads", selected},
+            {"status", ttsBenchmark_->status()}, {"results", ttsBenchmark_->results()}});
+        if (localContextReleased_ && ttsBackend_ == vieNeuTtsBackend_) {
+            vieNeuTtsBackend_->setCpuThreads(settingsManager_.tts().cpuThreads);
+            localContextReleased_ = false;
+            vieNeuTtsBackend_->warmUp();
+        }
+        emit ttsBenchmarkChanged();
+    });
     strategyRecorder_.setEnabled(settingsManager_.strategyRecordingEnabled());
     connect(&strategyRecorder_, &StrategyRecorder::enabledChanged, this,
             [this](bool enabled) {
@@ -342,57 +407,129 @@ Application::Application(const bool startWithMock, QObject* const parent)
             if (manualConnectionTestActive_) {
                 updateEngineerMessage(detail);
                 manualConnectionTestActive_ = false;
+                streamedResponse_.clear();
+                onVoiceStatusChanged(QStringLiteral("Idle"));
+                emit interactionChanged();
             }
-            streamedResponse_.clear();
-            onVoiceStatusChanged(QStringLiteral("Idle"));
-            emit interactionChanged();
         });
 
-    ttsBackend_ = vieNeuTtsBackend_;
+    const auto& ttsSettings = settingsManager_.tts();
+    const QString googleKey = CredentialStore::readGoogleTtsApiKey();
+    googleTtsApiKeyConfigured_ = !googleKey.trimmed().isEmpty();
+    googleTtsBackend_->setApiKey(googleKey);
+    googleTtsBackend_->setModel(ttsSettings.googleModel);
+    googleTtsBackend_->setVoice(ttsSettings.googleVoice, ttsSettings.googleVoiceId);
+    googleTtsBackend_->setAudioOutputDevice(ttsSettings.outputDevice);
+    googleTtsBackend_->setVolume(ttsSettings.volume);
+    vieNeuTtsBackend_->setVoice(ttsSettings.voice);
+    vieNeuTtsBackend_->setAudioOutputDevice(ttsSettings.outputDevice);
+    vieNeuTtsBackend_->setVolume(ttsSettings.volume);
+    messageDispatcher_->setLocalBackend(vieNeuTtsBackend_);
+    ttsBackend_ = ttsSettings.backend == QStringLiteral("Google Gemini API")
+        ? static_cast<ITtsBackend*>(googleTtsBackend_)
+        : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
     messageDispatcher_->setBackend(ttsBackend_);
-    connect(ttsBackend_, &ITtsBackend::warmUpFinished,
-        this, &Application::onTtsWarmUpFinished, Qt::QueuedConnection);
+
+    const auto connectWarmUp = [this](ITtsBackend* const backend) {
+        connect(backend, &ITtsBackend::warmUpFinished, this,
+            [this, backend](const bool success, const QString& error) {
+                if (backend == ttsBackend_) onTtsWarmUpFinished(success, error);
+            }); // Backends own GUI-thread state; do not queue a stale warm-up completion again.
+    };
+    connectWarmUp(vieNeuTtsBackend_);
+    connectWarmUp(googleTtsBackend_);
     connect(vieNeuTtsBackend_, &VieNeuTtsBackend::runtimeBackendChanged, this,
         [this](const QString& backend, const QString& fallbackReason) {
             vieNeuComputeBackend_ = backend;
             vieNeuComputeFallback_ = fallbackReason;
             emit aiComputeStatusChanged();
+            emit ttsBenchmarkChanged();
         }, Qt::QueuedConnection);
-    vieNeuTtsBackend_->setVoice(settingsManager_.tts().voice);
-    vieNeuTtsBackend_->setAudioOutputDevice(settingsManager_.tts().outputDevice);
-    vieNeuTtsBackend_->setVolume(settingsManager_.tts().volume);
     ttsAvailable_ = ttsBackend_->isAvailable();
     ttsStatus_ = ttsAvailable_
         ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
-        : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName());
+        : QStringLiteral("Thiếu cấu hình/runtime %1").arg(ttsBackend_->backendName());
     connect(messageDispatcher_.get(), &MessageDispatcher::speakingChanged, this,
         [this](const bool speaking, const QString&) {
             isSpeaking_ = speaking;
+            emit ttsBenchmarkChanged();
             updateAudioDuckingState();
-            ttsStatus_ = speaking
-                ? QStringLiteral("Đang chuẩn bị · %1…").arg(ttsBackend_->backendName())
-                : (ttsAvailable_
+            if (speaking) {
+                ttsStatus_ = QStringLiteral("Đang chuẩn bị · %1…").arg(ttsBackend_->backendName());
+                onVoiceStatusChanged(QStringLiteral("Speaking"));
+            } else {
+                ttsStatus_ = ttsAvailable_
                     ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
-                    : QStringLiteral("Thiếu runtime/model %1").arg(ttsBackend_->backendName()));
-            if (speaking) onVoiceStatusChanged(QStringLiteral("Speaking"));
-            else if (voiceStatus_ == QStringLiteral("Speaking")) onVoiceStatusChanged(QStringLiteral("Idle"));
+                    : QStringLiteral("Thiếu cấu hình/runtime %1").arg(ttsBackend_->backendName());
+                if (voiceStatus_ == QStringLiteral("Speaking")) onVoiceStatusChanged(QStringLiteral("Idle"));
+            }
             emit ttsStatusChanged();
-    });
-    connect(vieNeuTtsBackend_, &VieNeuTtsBackend::statusChanged,
-        this, [this](const QString& status) {
+        });
+    connect(vieNeuTtsBackend_, &VieNeuTtsBackend::statusChanged, this,
+        [this](const QString& status) {
             if (ttsBackend_ != vieNeuTtsBackend_) return;
             ttsStatus_ = status;
             emit ttsStatusChanged();
         }, Qt::QueuedConnection);
-    const auto connectBackendError = [this](ITtsBackend* backend) {
-        connect(backend, &ITtsBackend::errorOccurred, this, [this, backend](const QString& error) {
-            qCWarning(logTts).noquote() << error;
-            if (ttsBackend_ != backend) return;
-            ttsStatus_ = error;
-            emit ttsStatusChanged();
-        }, Qt::QueuedConnection);
+    const auto connectBackendError = [this](ITtsBackend* const backend) {
+        connect(backend, &ITtsBackend::errorOccurred, this,
+            [this, backend](const QString& error) {
+                qCWarning(logTts).noquote() << error;
+                if (ttsBackend_ != backend) return;
+                QTimer::singleShot(0, this, [this, backend, error] {
+                    if (ttsBackend_ != backend) return;
+                    ttsStatus_ = error;
+                    emit ttsStatusChanged();
+                });
+                if (backend == googleTtsBackend_ && !googleTtsFailureAnnounced_
+                    && (connected_ || !setupVisible_)) {
+                    googleTtsFailureAnnounced_ = true;
+                    messageDispatcher_->enqueue(QStringLiteral("Google TTS hiện không khả dụng."),
+                        EventPriority::Conversation, MessageSource::LocalSystem);
+                }
+            }, Qt::QueuedConnection);
     };
     connectBackendError(vieNeuTtsBackend_);
+    connectBackendError(googleTtsBackend_);
+    connect(googleTtsBackend_, &GoogleTtsBackend::speakingStarted, this,
+        [this](const QString&) { googleTtsFailureAnnounced_ = false; }, Qt::QueuedConnection);
+    connect(googleTtsBackend_, &GoogleTtsBackend::voiceCreated, this,
+        [this](const QString& name, const QString& voiceId) {
+            auto settings = settingsManager_.tts();
+            settings.googleVoiceName = name;
+            settings.googleVoiceId = voiceId;
+            settings.googleCustomVoices.append(QJsonObject{{"name", name}, {"id", voiceId}});
+            settingsManager_.setTts(settings);
+            googleTtsBackend_->setVoice(name, voiceId);
+            ++featureSettingsRevision_;
+            emit googleTtsSettingsChanged();
+        }, Qt::QueuedConnection);
+    connect(googleTtsBackend_, &GoogleTtsBackend::voiceOperationFinished, this,
+        [this](const bool, const QString& message) {
+            if (ttsBackend_ == googleTtsBackend_) {
+                ttsStatus_ = message;
+                emit ttsStatusChanged();
+            }
+        }, Qt::QueuedConnection);
+
+    connect(googleTtsBackend_, &GoogleTtsBackend::retryScheduled, this, [this](int attempt, int delayMs) {
+        if (ttsBackend_ != googleTtsBackend_) return;
+        ttsStatus_ = QStringLiteral("TTS đang thử kết nối lại %1/2 sau %2 ms…").arg(attempt).arg(delayMs);
+        emit ttsStatusChanged();
+    });
+    connect(googleTtsBackend_, &GoogleTtsBackend::connectionRecovered, this, [this] {
+        if (ttsBackend_ != googleTtsBackend_) return;
+        ttsStatus_ = QStringLiteral("Đã kết nối lại Google TTS; yêu cầu kế tiếp sẽ thử phát audio.");
+        emit ttsStatusChanged();
+    });
+    connect(googleTtsBackend_, &GoogleTtsBackend::firstAudioReceived, this, [this](qint64 milliseconds) {
+        googleTtsFirstAudioMs_ = milliseconds;
+        if (ttsBackend_ == googleTtsBackend_) {
+            ttsStatus_ = QStringLiteral("Google TTS sẵn sàng.");
+            emit ttsStatusChanged();
+        }
+        emit googleTtsSettingsChanged();
+    });
     ttsBackend_->warmUp();
 
     connect(&inputThread_, &QThread::finished, directInput_, &QObject::deleteLater);
@@ -446,6 +583,8 @@ Application::Application(const bool startWithMock, QObject* const parent)
 
 Application::~Application()
 {
+    ttsBenchmark_->disconnect(this);
+    ttsBenchmark_.reset(); // Stop the child before restoring/freeing the application's native backend.
     if (latestState_.sessionType == SessionType::Race && strategyRecordedLap_ > 0)
         strategyRecorder_.finishSession(strategySessionId_);
     QCoreApplication::instance()->removeEventFilter(this);
@@ -463,7 +602,7 @@ Application::~Application()
     if (sttThread_.isRunning()) {
         speechRecognizer_->cancel();
         sttThread_.quit();
-        sttThread_.wait(5000);
+        sttThread_.wait(); // Model initialization may still be running when setup is closed early.
     }
     if (audioThread_.isRunning()) {
         QMetaObject::invokeMethod(voiceInput_, &VoiceInputController::stop,
@@ -481,7 +620,7 @@ Application::~Application()
 
 void Application::beginPushToTalk()
 {
-    if (!startupReady_) return;
+    if (!startupReady_ || ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     if (!pushToTalkPressed_) {
         pushToTalkPressed_ = true;
         updateAudioDuckingState();
@@ -572,6 +711,7 @@ bool Application::aiComputeRestartRequired() const
 
 void Application::setAiComputeDevice(const QString& deviceId)
 {
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     if (deviceId == selectedAiComputeDevice()) {
         return;
     }
@@ -596,6 +736,8 @@ void Application::setAiComputeDevice(const QString& deviceId)
         settings.vulkanDevice = deviceId;
     }
     settingsManager_.setLocalAi(settings);
+    benchmarkFingerprint_ = ttsBenchmarkFingerprint(resolveVieNeuModelPath(), settingsManager_.tts().voice, selectedAiComputeDevice());
+    emit ttsBenchmarkChanged();
     emit aiComputeSettingsChanged();
     emit aiComputeDevicesChanged();
     emit aiComputeStatusChanged();
@@ -603,10 +745,250 @@ void Application::setAiComputeDevice(const QString& deviceId)
 
 void Application::setTtsBackend(const QString& backend)
 {
-    Q_UNUSED(backend);
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    ITtsBackend* const selected = backend == QStringLiteral("Google Gemini API")
+        ? static_cast<ITtsBackend*>(googleTtsBackend_)
+        : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
+    if (selected == ttsBackend_) return;
     auto settings = settingsManager_.tts();
-    settings.backend = QStringLiteral("VieNeu-TTS");
+    settings.backend = selected == googleTtsBackend_
+        ? QStringLiteral("Google Gemini API") : QStringLiteral("VieNeu-TTS");
     settingsManager_.setTts(settings);
+    messageDispatcher_->setBackend(selected);
+    const bool switchingToGoogle = selected == googleTtsBackend_;
+    ttsBackend_ = selected;
+    ttsAvailable_ = ttsBackend_->isAvailable();
+    ttsWarmUpReady_ = false;
+    startupError_.clear();
+    ttsStatus_ = ttsAvailable_
+        ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
+        : QStringLiteral("Thiếu cấu hình/runtime %1").arg(ttsBackend_->backendName());
+    if (switchingToGoogle) {
+        vieNeuTtsBackend_->releaseModel();
+        googleTtsBackend_->warmUp();
+    } else {
+        vieNeuTtsBackend_->warmUp();
+    }
+    ++featureSettingsRevision_;
+    emit ttsStatusChanged();
+    emit googleTtsSettingsChanged();
+    emit startupChanged();
+    emit ttsBenchmarkChanged();
+}
+
+void Application::setGoogleTtsApiKey(const QString& apiKey)
+{
+    const QString trimmed = apiKey.trimmed();
+    if (trimmed.size() > 4096) return;
+    if (!CredentialStore::writeGoogleTtsApiKey(trimmed)) {
+        ttsStatus_ = QStringLiteral("Could not update Google TTS key in Windows Credential Manager.");
+        emit ttsStatusChanged();
+        return;
+    }
+    googleTtsApiKeyConfigured_ = !trimmed.isEmpty();
+    googleTtsBackend_->setApiKey(trimmed);
+    ++featureSettingsRevision_;
+    emit googleTtsSettingsChanged();
+    if (ttsBackend_ == googleTtsBackend_) googleTtsBackend_->warmUp();
+}
+
+void Application::setGoogleTtsModel(const QString& model)
+{
+    auto settings = settingsManager_.tts();
+    settings.googleModel = model;
+    settingsManager_.setTts(settings);
+    googleTtsBackend_->setModel(settingsManager_.tts().googleModel);
+    ++featureSettingsRevision_;
+    emit googleTtsSettingsChanged();
+}
+
+QString Application::googleTtsVoice() const
+{
+    const auto& settings = settingsManager_.tts();
+    return settings.googleVoiceId.isEmpty() ? settings.googleVoice : settings.googleVoiceName;
+}
+
+QStringList Application::googleTtsVoices() const
+{
+    QStringList voices = GoogleTtsBackend::builtInVoices();
+    const auto& settings = settingsManager_.tts();
+    for (const auto& value : settings.googleCustomVoices) {
+        const auto name = value.toObject().value("name").toString();
+        if (!voices.contains(name)) voices.append(name);
+    }
+    return voices;
+}
+
+void Application::setGoogleTtsVoice(const QString& voice)
+{
+    const QString selected = voice.trimmed();
+    if (selected.isEmpty()) return;
+    auto settings = settingsManager_.tts();
+    const auto custom = std::find_if(settings.googleCustomVoices.cbegin(),
+        settings.googleCustomVoices.cend(), [&selected](const QJsonValue& value) {
+            return value.toObject().value("name").toString() == selected;
+        });
+    if (custom != settings.googleCustomVoices.cend()) {
+        settings.googleVoiceName = selected;
+        settings.googleVoiceId = custom->toObject().value("id").toString();
+        googleTtsBackend_->setVoice(selected, settings.googleVoiceId);
+    } else {
+        const auto voices = GoogleTtsBackend::builtInVoices();
+        const auto match = std::find_if(voices.cbegin(), voices.cend(), [&selected](const QString& item) {
+            return item.compare(selected, Qt::CaseInsensitive) == 0;
+        });
+        if (match == voices.cend()) return;
+        settings.googleVoice = *match;
+        settings.googleVoiceId.clear();
+        settings.googleVoiceName.clear();
+        googleTtsBackend_->setVoice(settings.googleVoice);
+    }
+    settingsManager_.setTts(settings);
+    ++featureSettingsRevision_;
+    emit googleTtsSettingsChanged();
+}
+
+void Application::createGoogleTtsVoice(const QString& name, const QString& sourceWavPath,
+    const QString& consentWavPath)
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    if (googleTtsVoices().contains(name.trimmed()) || settingsManager_.tts().googleCustomVoices.size() >= 200) {
+        ttsStatus_ = QStringLiteral("Tên giọng đã tồn tại hoặc danh sách giọng đã đầy.");
+        emit ttsStatusChanged();
+        return;
+    }
+    const QFileInfo sourceInfo(sourceWavPath);
+    const QFileInfo consentInfo(consentWavPath);
+    constexpr qint64 maximumWavBytes = 5 * 1024 * 1024;
+    if (!sourceInfo.isFile() || !consentInfo.isFile()
+        || sourceInfo.size() > maximumWavBytes || consentInfo.size() > maximumWavBytes) {
+        ttsStatus_ = QStringLiteral("Choose WAV files under 5 MiB each.");
+        emit ttsStatusChanged();
+        return;
+    }
+    QFile source(sourceInfo.absoluteFilePath());
+    QFile consent(consentInfo.absoluteFilePath());
+    if (!source.open(QIODevice::ReadOnly) || !consent.open(QIODevice::ReadOnly)) {
+        ttsStatus_ = QStringLiteral("Could not read the selected voice WAV files.");
+        emit ttsStatusChanged();
+        return;
+    }
+    googleTtsBackend_->createReplicatedVoice(name, source.readAll(), consent.readAll());
+}
+
+QString Application::bonoVoiceDescription() const { return GoogleTtsBackend::bonoVoiceDescription(); }
+
+void Application::createGooglePromptedVoice(const QString& name, const QString& description)
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    if (googleTtsVoices().contains(name.trimmed()) || settingsManager_.tts().googleCustomVoices.size() >= 200) {
+        ttsStatus_ = QStringLiteral("Tên giọng đã tồn tại hoặc danh sách giọng đã đầy.");
+        emit ttsStatusChanged();
+        return;
+    }
+    ttsStatus_ = QStringLiteral("Đang tạo giọng %1 từ mô tả…").arg(name.trimmed());
+    emit ttsStatusChanged();
+    googleTtsBackend_->createPromptedVoice(name, description);
+}
+
+void Application::previewGoogleTtsVoice()
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    if (ttsBackend_ == googleTtsBackend_)
+    messageDispatcher_->enqueue(QStringLiteral("Kiểm tra giọng kỹ sư."), EventPriority::Conversation);
+}
+
+void Application::setTtsCpuThreads(const int threads)
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_ || isSpeaking_ || connected_ || VieNeuTtsBackend::hasExternalThreadOverride()) return;
+    if (threads != 2 && threads != 3 && threads != 4) return;
+    if (settingsManager_.tts().cpuThreads == threads) return;
+    auto settings = settingsManager_.tts();
+    settings.cpuThreads = threads;
+    settingsManager_.setTts(settings);
+    localContextReleased_ = false;
+    vieNeuTtsBackend_->releaseModel();
+    ++featureSettingsRevision_;
+    emit aiComputeSettingsChanged();
+    emit ttsBenchmarkChanged();
+}
+
+bool Application::ttsExternalThreadOverride() const { return VieNeuTtsBackend::hasExternalThreadOverride(); }
+
+
+void Application::openSetup()
+{
+    setupVisible_ = true;
+    settingsManager_.setSetupState(false, 0);
+    emit setupChanged();
+}
+void Application::setSetupStep(int step)
+{
+    if (!setupVisible_ || ttsBenchmarkRunning()) return;
+    settingsManager_.setSetupState(false, step);
+    emit setupChanged();
+}
+void Application::finishSetup()
+{
+    if (ttsBenchmarkRunning()) cancelTtsBenchmark();
+    setupVisible_ = false;
+    settingsManager_.setSetupState(true, settingsManager_.setupStep());
+    emit setupChanged();
+}
+bool Application::ttsBenchmarkRunning() const { return ttsBenchmark_ && ttsBenchmark_->running(); }
+double Application::ttsBenchmarkProgress() const { return ttsBenchmark_ ? ttsBenchmark_->progress() : 0; }
+QString Application::ttsBenchmarkStatus() const
+{
+    if (ttsBenchmark_ && !ttsBenchmark_->status().isEmpty()) return ttsBenchmark_->status();
+    return settingsManager_.ttsBenchmark().value("status").toString();
+}
+QVariantList Application::ttsBenchmarkResults() const
+{
+    const auto rows = ttsBenchmark_ && !ttsBenchmark_->status().isEmpty()
+        ? ttsBenchmark_->results() : settingsManager_.ttsBenchmark().value("results").toArray();
+    return rows.toVariantList();
+}
+bool Application::ttsBenchmarkStale() const
+{
+    const auto previous = settingsManager_.ttsBenchmark();
+    const auto rows = previous.value("results").toArray();
+    return !previous.isEmpty() && (previous.value("fingerprint").toString() != benchmarkFingerprint_
+        || (!rows.isEmpty() && vieNeuComputeBackend_.contains(QStringLiteral("backbone"))
+            && rows[0].toObject().value("runtime").toString() != vieNeuComputeBackend_));
+}
+QString Application::ttsBenchmarkUnavailableReason() const
+{
+    if (ttsBenchmarkRestoring_ && !ttsBenchmarkRunning()) return QStringLiteral("Đang khôi phục VieNeu…");
+    if (settingsManager_.tts().backend == QStringLiteral("Google Gemini API"))
+        return QStringLiteral("Không cần benchmark TTS local.");
+    if (VieNeuTtsBackend::hasExternalThreadOverride())
+        return QStringLiteral("OMP_NUM_THREADS bên ngoài đang ghi đè setting; tự chọn bị vô hiệu hóa.");
+    if (connected_ || latestState_.connected) return QStringLiteral("Ngắt kết nối AC / ACC trước khi đo.");
+    if (isSpeaking_ || pushToTalkPressed_ || voiceStatus_ != QStringLiteral("Idle"))
+        return QStringLiteral("Chờ radio và hội thoại kết thúc trước khi đo.");
+    if (aiComputeRestartRequired()) return QStringLiteral("Khởi động lại để áp dụng GPU đã chọn trước khi đo.");
+    if (!vieNeuTtsBackend_->isAvailable()) return QStringLiteral("Thiếu mô hình VieNeu; có thể bỏ qua bước này.");
+    return {};
+}
+bool Application::ttsBenchmarkAllowed() const
+{
+    return !ttsBenchmarkRunning() && ttsBenchmarkUnavailableReason().isEmpty();
+}
+void Application::startTtsBenchmark()
+{
+    if (!ttsBenchmarkAllowed()) return;
+    benchmarkFingerprint_ = ttsBenchmarkFingerprint(resolveVieNeuModelPath(), settingsManager_.tts().voice, selectedAiComputeDevice());
+    messageDispatcher_->setConversationSuppressed(true);
+    ttsBenchmarkRestoring_ = true;
+    localContextReleased_ = false;
+    ttsBenchmark_->prepare();
+    vieNeuTtsBackend_->releaseModel();
+}
+void Application::cancelTtsBenchmark() { if (ttsBenchmark_) ttsBenchmark_->cancel(); }
+void Application::previewTtsVoice()
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_ || connected_ || isSpeaking_) return;
+    messageDispatcher_->enqueue(QStringLiteral("Kiểm tra giọng kỹ sư."), EventPriority::Conversation);
 }
 
 QVariantList Application::availableTtsVoices() const
@@ -689,11 +1071,14 @@ QVariantList Application::availableTtsVoices() const
 
 void Application::setTtsVoice(const QString& voice)
 {
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     const QString trimmed = voice.trimmed();
     if (trimmed.isEmpty() || settingsManager_.tts().voice == trimmed) return;
     auto settings = settingsManager_.tts();
     settings.voice = trimmed;
     settingsManager_.setTts(settings);
+    benchmarkFingerprint_ = ttsBenchmarkFingerprint(resolveVieNeuModelPath(), settings.voice, selectedAiComputeDevice());
+    emit ttsBenchmarkChanged();
     if (vieNeuTtsBackend_) {
         vieNeuTtsBackend_->setVoice(trimmed);
     }
@@ -730,6 +1115,7 @@ void Application::setAudioOutputDevice(const QString& description)
     settings.outputDevice = audioOutputDevices().contains(description) ? description : QString{};
     settingsManager_.setTts(settings);
     vieNeuTtsBackend_->setAudioOutputDevice(settings.outputDevice);
+    googleTtsBackend_->setAudioOutputDevice(settings.outputDevice);
     pttSoundOutput_->setDevice(QMediaDevices::defaultAudioOutput());
     for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
         if (device.description() == settings.outputDevice) {
@@ -809,6 +1195,7 @@ void Application::setTtsVolume(const double volume)
     settings.volume = std::clamp(static_cast<float>(volume), 0.0F, 1.0F);
     settingsManager_.setTts(settings);
     vieNeuTtsBackend_->setVolume(settings.volume);
+    googleTtsBackend_->setVolume(settings.volume);
     emit ttsVolumeChanged();
 }
 
@@ -886,15 +1273,12 @@ void Application::setGpuRendererEnabled(const bool enabled)
 
 void Application::retryStartup()
 {
-    if (startupReady_) return;
+    if (ttsBenchmarkRunning()) return;
+    if (startupReady_ && startupError_.isEmpty()) return;
     startupError_.clear();
     emit startupChanged();
-    if (!sttWarmUpReady_) {
-        QMetaObject::invokeMethod(speechRecognizer_, "warmUp", Qt::QueuedConnection);
-    }
-    if (!ttsWarmUpReady_) {
-        ttsBackend_->warmUp();
-    }
+    if (!sttWarmUpReady_) QMetaObject::invokeMethod(speechRecognizer_, "warmUp", Qt::QueuedConnection);
+    if (!ttsWarmUpReady_) ttsBackend_->warmUp();
 }
 
 void Application::onSttWarmUpFinished(const bool success, const QString& error)
@@ -914,17 +1298,26 @@ void Application::onSttWarmUpFinished(const bool success, const QString& error)
 
 void Application::onTtsWarmUpFinished(const bool success, const QString& error)
 {
-    if (startupReady_) return;
+    if (ttsBenchmarkRestoring_ && !ttsBenchmarkRunning()) {
+        ttsBenchmarkRestoring_ = false;
+        messageDispatcher_->setConversationSuppressed(false);
+        emit ttsBenchmarkChanged();
+    }
     ttsWarmUpReady_ = success;
-    if (!success && vieNeuComputeBackend_ == QStringLiteral("Chưa khởi tạo")) {
+    ttsAvailable_ = success && ttsBackend_->isAvailable();
+    if (!success && ttsBackend_ == vieNeuTtsBackend_
+        && vieNeuComputeBackend_ == QStringLiteral("Chưa khởi tạo")) {
         vieNeuComputeBackend_ = QStringLiteral("Không sẵn sàng");
         vieNeuComputeFallback_ = error;
     }
     emit aiComputeStatusChanged();
+    ttsStatus_ = success
+        ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName()) : error;
     if (!success) {
-        startupError_ = QStringLiteral("VieNeu-TTS không khởi tạo được.");
-        qCWarning(logApp).noquote() << "Startup TTS warm-up failed:" << error;
+        startupError_ = error;
+        qCWarning(logTts).noquote() << "TTS warm-up failed:" << error;
     }
+    emit ttsStatusChanged();
     finishStartupIfReady();
 }
 
@@ -935,6 +1328,9 @@ void Application::finishStartupIfReady()
         startupError_.clear();
         QTimer::singleShot(0, this, &Application::speakPendingLapSummary);
         qCInfo(logApp) << "STT and TTS warm-up complete; enabling the main UI";
+    } else if (!startupError_.isEmpty()) {
+        // Failed optional model/API setup must not block telemetry, settings, or text interaction.
+        startupReady_ = true;
     }
     emit startupChanged();
 }
@@ -1105,7 +1501,7 @@ void Application::updateEngineerMessage(const QString& text)
 
 void Application::askText(const QString& text)
 {
-    if (!startupReady_) return;
+    if (!startupReady_ || ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     if (text.trimmed().isEmpty()) return;
     latestUserText_ = text.trimmed();
     latestEngineerText_.clear();
@@ -1131,6 +1527,8 @@ void Application::resetConversation()
 
 void Application::onStateUpdated(const RaceState& state)
 {
+    if (state.connected && ttsBenchmarkRunning())
+        ttsBenchmark_->cancel(QStringLiteral("Đã kết nối game; hủy benchmark và giữ cấu hình cũ."));
     const bool previousWasRace = latestState_.sessionType == SessionType::Race;
     const QString previousSessionId = strategySessionId_;
     strategyRecorder_.setSimulatorConnected(state.connected);
@@ -1222,10 +1620,12 @@ void Application::onStateUpdated(const RaceState& state)
     updateStrategy(state);
     auto events = eventEngine_.process(state);
     const bool spotterEnabled = settingsManager_.spotterEnabled();
+    spotterEngine_.setLateralWarningGap(settingsManager_.spotterWarningGapMeters());
     auto spotterEvents = spotterEnabled ? spotterEngine_.process(state) : std::vector<RaceEvent>{};
     if (!spotterEnabled) spotterEngine_.reset();
     messageDispatcher_->setProximitySpotterState(spotterEnabled && spotterEngine_.hasLeft(),
         spotterEnabled && spotterEngine_.hasRight());
+    updateSpotterStatus();
     if (spotterEnabled)
         events.insert(events.end(), spotterEvents.begin(), spotterEvents.end());
     for (const auto& event : events) {
@@ -1242,7 +1642,9 @@ void Application::onStateUpdated(const RaceState& state)
         }
         qCInfo(logEvent).noquote() << latestEvent_;
         const auto source = eventMessageSource(event.type);
-        messageDispatcher_->enqueue(latestEvent_, event.priority, source, event.type);
+            const QString cachedSpeech = cachedEventSpeech(event.type);
+            messageDispatcher_->enqueue(cachedSpeech.isEmpty() ? latestEvent_ : cachedSpeech,
+                event.priority, source, event.type);
     }
     if (!events.empty()) {
         emit latestEventChanged();
@@ -1288,6 +1690,15 @@ void Application::setSpotterEnabled(const bool enabled)
     messageDispatcher_->setProximitySpotterState(false, false);
     if (!enabled) messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
     updateSpotterStatus();
+    emit spotterSettingsChanged();
+}
+
+void Application::setSpotterWarningGapMeters(const double meters)
+{
+    const double clamped = std::clamp(meters, 0.5, 2.5);
+    if (settingsManager_.spotterWarningGapMeters() == clamped) return;
+    settingsManager_.setSpotterWarningGapMeters(clamped);
+    ++featureSettingsRevision_;
     emit spotterSettingsChanged();
 }
 
@@ -1388,10 +1799,18 @@ void Application::updateSpotterStatus()
         status = QStringLiteral("Chờ kết nối Assetto Corsa");
     } else if (latestState_.simulator != Simulator::AssettoCorsa) {
         status = QStringLiteral("Chưa có hình học xe cho simulator này");
+    } else if (latestState_.spotterGeometryStale) {
+        status = QStringLiteral("Dữ liệu hình học AC đã cũ");
     } else if (!latestState_.spotterGeometryFresh || !latestState_.spotterWheelContactPoints) {
         status = QStringLiteral("Cần cập nhật AC companion");
+    } else if (spotterEngine_.hasInvalidGeometry()
+        && spotterEngine_.usableOpponentCount() == 0) {
+        status = QStringLiteral("Hình học đối thủ không hợp lệ");
+    } else if (spotterEngine_.usableOpponentCount() == 0) {
+        status = QStringLiteral("Đang chờ dữ liệu xe đối thủ");
     } else {
-        status = QStringLiteral("Đang theo dõi xe bên cạnh");
+        status = QStringLiteral("Đang theo dõi %1 xe đối thủ")
+            .arg(spotterEngine_.usableOpponentCount());
     }
     if (spotterStatus_ == status) return;
     spotterStatus_ = status;
@@ -1511,6 +1930,8 @@ QJsonObject Application::featureSettings() const
     append(QStringLiteral("damage_alerts"), damageAlertsEnabled(), true);
     append(QStringLiteral("lap_summary"), lapSummaryEnabled(), true);
     append(QStringLiteral("audio_ducking"), audioDuckingEnabled(), true);
+    append(QStringLiteral("tts_api"), ttsBackend_ == googleTtsBackend_,
+        googleTtsApiKeyConfigured_, googleTtsApiKeyConfigured_ ? QString{} : QStringLiteral("Cần lưu Google AI Studio API key."));
     append(QStringLiteral("pit_strategy"), strategyEnabled(), strategyAvailable(),
         strategyAvailable() ? QString{} : QStringLiteral("Chưa có model chiến thuật khả dụng."));
     append(QStringLiteral("ptt_keyboard"), keyboardPttEnabled(), true);
@@ -1550,6 +1971,7 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     else if (feature == QStringLiteral("damage_alerts")) label = QStringLiteral("cảnh báo hư hại");
     else if (feature == QStringLiteral("lap_summary")) label = QStringLiteral("tổng kết vòng");
     else if (feature == QStringLiteral("audio_ducking")) label = QStringLiteral("tự hạ âm game");
+    else if (feature == QStringLiteral("tts_api")) label = QStringLiteral("Google Gemini TTS");
     else if (feature == QStringLiteral("pit_strategy")) label = QStringLiteral("chiến thuật Pit");
     else if (feature == QStringLiteral("ptt_keyboard")) label = QStringLiteral("PTT bàn phím");
     else if (feature == QStringLiteral("ptt_directinput")) label = QStringLiteral("PTT DirectInput");
@@ -1581,6 +2003,8 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     else if (feature == QStringLiteral("damage_alerts")) setDamageAlertsEnabled(enabled);
     else if (feature == QStringLiteral("lap_summary")) setLapSummaryEnabled(enabled);
     else if (feature == QStringLiteral("audio_ducking")) setAudioDuckingEnabled(enabled);
+    else if (feature == QStringLiteral("tts_api"))
+        setTtsBackend(enabled ? QStringLiteral("Google Gemini API") : QStringLiteral("VieNeu-TTS"));
     else if (feature == QStringLiteral("pit_strategy")) setStrategyEnabled(enabled);
     else if (feature == QStringLiteral("ptt_keyboard"))
         setPushToTalkOptions(enabled, directInputPttEnabled());
@@ -1789,11 +2213,14 @@ void Application::updateStrategy(const RaceState& state)
 
 void Application::onConnectionStatusChanged(const QString& simulator, const bool connected)
 {
+    if (connected && ttsBenchmarkRunning())
+        ttsBenchmark_->cancel(QStringLiteral("Đã kết nối game; hủy benchmark và giữ cấu hình cũ."));
     const bool changed = simulatorName_ != simulator || connected_ != connected;
     simulatorName_ = simulator;
     connected_ = connected;
     if (changed) {
         emit connectionChanged();
+        emit ttsBenchmarkChanged();
     }
 }
 
@@ -1811,6 +2238,7 @@ void Application::onVoiceStatusChanged(const QString& status)
     if (voiceStatus_ != status) {
         voiceStatus_ = status;
         emit voiceStatusChanged();
+        emit ttsBenchmarkChanged();
         if (status == QStringLiteral("Idle")) {
             QTimer::singleShot(0, this, &Application::speakPendingLapSummary);
         }
@@ -1826,6 +2254,7 @@ void Application::onUtteranceReady(const QByteArray& pcm16k)
 
 void Application::onTranscriptionReady(const QString& text, const QString& detectedLanguage)
 {
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     latestUserText_ = text;
     latestEngineerText_.clear();
     streamedResponse_.clear();

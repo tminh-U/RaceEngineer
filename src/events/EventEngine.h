@@ -61,7 +61,6 @@ private:
     FuelLevel fuelLevel_{FuelLevel::Unknown};
     EngineLevel engineLevel_{EngineLevel::Unknown};
     std::optional<FlagState> flag_;
-    std::optional<bool> pitLimiter_;
     std::optional<bool> connected_;
     std::optional<double> bestLap_;
     bool tyresOverheating_{false};

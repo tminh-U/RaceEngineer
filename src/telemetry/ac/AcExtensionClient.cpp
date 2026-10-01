@@ -164,6 +164,13 @@ bool AcExtensionClient::hasSpotterGeometry() const noexcept
         && std::chrono::steady_clock::now() - impl_->lastSpotterFrameTime < std::chrono::milliseconds(250);
 }
 
+bool AcExtensionClient::spotterGeometryStale() const noexcept
+{
+    return impl_->lastSpotterFrameTime != std::chrono::steady_clock::time_point{}
+        && std::chrono::steady_clock::now() - impl_->lastSpotterFrameTime
+            >= std::chrono::milliseconds(250);
+}
+
 void AcExtensionClient::update()
 {
     const auto now = std::chrono::steady_clock::now();

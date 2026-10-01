@@ -28,10 +28,12 @@ class VoiceInputController;
 class WhisperRecognizer;
 class LLMManager;
 class ITtsBackend;
+class GoogleTtsBackend;
 class VieNeuTtsBackend;
 class MessageDispatcher;
 class DInputButtonMonitor;
 class AudioDucker;
+class TtsBenchmark;
 
 class Application final : public QObject {
     Q_OBJECT
@@ -67,6 +69,13 @@ class Application final : public QObject {
     Q_PROPERTY(bool ttsAvailable READ ttsAvailable NOTIFY ttsStatusChanged)
     Q_PROPERTY(QString ttsBackend READ ttsBackend NOTIFY ttsStatusChanged)
     Q_PROPERTY(QString ttsStatus READ ttsStatus NOTIFY ttsStatusChanged)
+    Q_PROPERTY(bool googleTtsApiKeyConfigured READ googleTtsApiKeyConfigured NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(QString googleTtsModel READ googleTtsModel NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(QString googleTtsVoice READ googleTtsVoice NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(QStringList googleTtsVoices READ googleTtsVoices NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(qint64 googleTtsFirstAudioMs READ googleTtsFirstAudioMs NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(int ttsCpuThreads READ ttsCpuThreads NOTIFY aiComputeSettingsChanged)
+    Q_PROPERTY(bool ttsExternalThreadOverride READ ttsExternalThreadOverride CONSTANT)
     Q_PROPERTY(QVariantList availableTtsVoices READ availableTtsVoices NOTIFY availableTtsVoicesChanged)
     Q_PROPERTY(QString selectedTtsVoice READ selectedTtsVoice NOTIFY ttsVoiceChanged)
     Q_PROPERTY(QStringList audioOutputDevices READ audioOutputDevices NOTIFY audioOutputChanged)
@@ -89,6 +98,17 @@ class Application final : public QObject {
     Q_PROPERTY(bool gpuRendererEnabled READ gpuRendererEnabled NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool gpuRendererRestartRequired READ gpuRendererRestartRequired NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool startupReady READ startupReady NOTIFY startupChanged)
+    Q_PROPERTY(bool setupVisible READ setupVisible NOTIFY setupChanged)
+    Q_PROPERTY(int setupStep READ setupStep NOTIFY setupChanged)
+    Q_PROPERTY(bool ttsBenchmarkRunning READ ttsBenchmarkRunning NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(bool ttsBenchmarkRestoring READ ttsBenchmarkRestoring NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(double ttsBenchmarkProgress READ ttsBenchmarkProgress NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(QString ttsBenchmarkStatus READ ttsBenchmarkStatus NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(QString ttsBenchmarkTimestamp READ ttsBenchmarkTimestamp NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(QVariantList ttsBenchmarkResults READ ttsBenchmarkResults NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(bool ttsBenchmarkStale READ ttsBenchmarkStale NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(bool ttsBenchmarkAllowed READ ttsBenchmarkAllowed NOTIFY ttsBenchmarkChanged)
+    Q_PROPERTY(QString ttsBenchmarkUnavailableReason READ ttsBenchmarkUnavailableReason NOTIFY ttsBenchmarkChanged)
     Q_PROPERTY(double startupProgress READ startupProgress NOTIFY startupChanged)
     Q_PROPERTY(QString startupError READ startupError NOTIFY startupChanged)
     Q_PROPERTY(QVariantList aiComputeDevices READ aiComputeDevices NOTIFY aiComputeDevicesChanged)
@@ -102,6 +122,7 @@ class Application final : public QObject {
     Q_PROPERTY(QString strategyDetail READ strategyDetail NOTIFY strategyChanged)
     Q_PROPERTY(bool spotterEnabled READ spotterEnabled NOTIFY spotterSettingsChanged)
     Q_PROPERTY(QString spotterStatus READ spotterStatus NOTIFY spotterStatusChanged)
+    Q_PROPERTY(double spotterWarningGapMeters READ spotterWarningGapMeters NOTIFY spotterSettingsChanged)
     Q_PROPERTY(bool fuelAlertsEnabled READ fuelAlertsEnabled NOTIFY engineerSettingsChanged)
     Q_PROPERTY(bool tyreAlertsEnabled READ tyreAlertsEnabled NOTIFY engineerSettingsChanged)
     Q_PROPERTY(bool lapDeltaEnabled READ lapDeltaEnabled NOTIFY engineerSettingsChanged)
@@ -155,6 +176,13 @@ public:
     [[nodiscard]] QVariantMap apiStatistics() const { return apiStatistics_; }
     [[nodiscard]] bool ttsAvailable() const noexcept { return ttsAvailable_; }
     [[nodiscard]] QString ttsBackend() const;
+    [[nodiscard]] bool googleTtsApiKeyConfigured() const noexcept { return googleTtsApiKeyConfigured_; }
+    [[nodiscard]] QString googleTtsModel() const { return settingsManager_.tts().googleModel; }
+    [[nodiscard]] QString googleTtsVoice() const;
+    [[nodiscard]] QStringList googleTtsVoices() const;
+    [[nodiscard]] qint64 googleTtsFirstAudioMs() const noexcept { return googleTtsFirstAudioMs_; }
+    [[nodiscard]] int ttsCpuThreads() const noexcept { return settingsManager_.tts().cpuThreads; }
+    bool ttsExternalThreadOverride() const;
     [[nodiscard]] QString ttsStatus() const { return ttsStatus_; }
     [[nodiscard]] QVariantList aiComputeDevices() const;
     [[nodiscard]] QString selectedAiComputeDevice() const;
@@ -168,6 +196,8 @@ public:
     [[nodiscard]] QString strategyDetail() const { return strategyDetail_; }
     [[nodiscard]] bool spotterEnabled() const noexcept { return settingsManager_.spotterEnabled(); }
     [[nodiscard]] QString spotterStatus() const { return spotterStatus_; }
+    [[nodiscard]] double spotterWarningGapMeters() const noexcept
+    { return settingsManager_.spotterWarningGapMeters(); }
     [[nodiscard]] bool fuelAlertsEnabled() const noexcept { return settingsManager_.fuelAlertsEnabled(); }
     [[nodiscard]] bool tyreAlertsEnabled() const noexcept { return settingsManager_.tyreAlertsEnabled(); }
     [[nodiscard]] bool lapDeltaEnabled() const noexcept { return settingsManager_.lapDeltaEnabled(); }
@@ -178,6 +208,7 @@ public:
     [[nodiscard]] QString latestLapSummary() const { return latestLapSummary_; }
     Q_INVOKABLE void setStrategyEnabled(bool enabled);
     Q_INVOKABLE void setSpotterEnabled(bool enabled);
+    Q_INVOKABLE void setSpotterWarningGapMeters(double meters);
     Q_INVOKABLE void setFuelAlertsEnabled(bool enabled);
     Q_INVOKABLE void setTyreAlertsEnabled(bool enabled);
     Q_INVOKABLE void setLapDeltaEnabled(bool enabled);
@@ -220,6 +251,23 @@ public:
     [[nodiscard]] QString startupError() const { return startupError_; }
     Q_INVOKABLE void setAudioDuckingEnabled(bool enabled);
     Q_INVOKABLE void retryStartup();
+    bool setupVisible() const { return setupVisible_; }
+    int setupStep() const { return settingsManager_.setupStep(); }
+    Q_INVOKABLE void openSetup();
+    Q_INVOKABLE void setSetupStep(int step);
+    Q_INVOKABLE void finishSetup();
+    bool ttsBenchmarkRunning() const;
+    bool ttsBenchmarkRestoring() const { return ttsBenchmarkRestoring_; }
+    double ttsBenchmarkProgress() const;
+    QString ttsBenchmarkStatus() const;
+    QString ttsBenchmarkTimestamp() const { return settingsManager_.ttsBenchmark().value("timestamp").toString(); }
+    QVariantList ttsBenchmarkResults() const;
+    bool ttsBenchmarkStale() const;
+    bool ttsBenchmarkAllowed() const;
+    QString ttsBenchmarkUnavailableReason() const;
+    Q_INVOKABLE void startTtsBenchmark();
+    Q_INVOKABLE void cancelTtsBenchmark();
+    Q_INVOKABLE void previewTtsVoice();
 
     Q_INVOKABLE void setUseMockTelemetry(bool enabled);
     Q_INVOKABLE void beginPushToTalk();
@@ -234,6 +282,15 @@ public:
     Q_INVOKABLE void askText(const QString& text);
     Q_INVOKABLE void resetConversation();
     Q_INVOKABLE void setTtsBackend(const QString& backend);
+    Q_INVOKABLE void setGoogleTtsApiKey(const QString& apiKey);
+    Q_INVOKABLE void setGoogleTtsModel(const QString& model);
+    Q_INVOKABLE void setGoogleTtsVoice(const QString& voice);
+    Q_INVOKABLE void createGoogleTtsVoice(const QString& name, const QString& sourceWavPath,
+        const QString& consentWavPath);
+    Q_INVOKABLE void createGooglePromptedVoice(const QString& name, const QString& description);
+    Q_INVOKABLE QString bonoVoiceDescription() const;
+    Q_INVOKABLE void previewGoogleTtsVoice();
+    Q_INVOKABLE void setTtsCpuThreads(int threads);
     Q_INVOKABLE void setAiComputeDevice(const QString& deviceId);
     Q_INVOKABLE void setTtsVoice(const QString& voice);
     Q_INVOKABLE void setAudioOutputDevice(const QString& description);
@@ -247,6 +304,8 @@ public:
     void startDirectInput(quintptr nativeWindowHandle);
 
 signals:
+    void setupChanged();
+    void ttsBenchmarkChanged();
     void connectionChanged();
     void telemetryChanged();
     void mockEnabledChanged();
@@ -267,6 +326,7 @@ signals:
     void apiStateChanged();
     void apiStatisticsChanged();
     void ttsStatusChanged();
+    void googleTtsSettingsChanged();
     void aiComputeDevicesChanged();
     void aiComputeSettingsChanged();
     void aiComputeStatusChanged();
@@ -302,6 +362,11 @@ private slots:
     void onTtsWarmUpFinished(bool success, const QString& error);
 
 private:
+    std::unique_ptr<TtsBenchmark> ttsBenchmark_;
+    bool setupVisible_{false};
+    bool localContextReleased_{false};
+    bool ttsBenchmarkRestoring_{false};
+    QString benchmarkFingerprint_;
     static QVariantMap toVariantMap(const RaceState& state);
     void appendConversationMessage(const QString& role, const QString& text);
     void updateEngineerMessage(const QString& text);
@@ -330,6 +395,7 @@ private:
     VoiceInputController* voiceInput_{nullptr};
     WhisperRecognizer* speechRecognizer_{nullptr};
     VieNeuTtsBackend* vieNeuTtsBackend_{nullptr};
+    GoogleTtsBackend* googleTtsBackend_{nullptr};
     ITtsBackend* ttsBackend_{nullptr};
     DInputButtonMonitor* directInput_{nullptr};
     QMediaPlayer* pttSoundPlayer_{nullptr};
@@ -393,6 +459,9 @@ private:
     QString streamedResponse_;
     std::unique_ptr<MessageDispatcher> messageDispatcher_;
     bool ttsAvailable_{false};
+    bool googleTtsApiKeyConfigured_{false};
+    qint64 googleTtsFirstAudioMs_{-1};
+    bool googleTtsFailureAnnounced_{false};
     QString ttsStatus_{QStringLiteral("Not installed")};
     QString whisperComputeBackend_{QStringLiteral("Đang khởi tạo")};
     QString vieNeuComputeBackend_{QStringLiteral("Chưa khởi tạo")};

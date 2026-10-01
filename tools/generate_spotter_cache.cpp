@@ -91,6 +91,11 @@ static bool writeWavFile(const fs::path& filePath, const int16_t* pcm, int nSamp
 
 int main(int argc, char** argv)
 {
+    const bool missingOnly = argc == 2 && std::string(argv[1]) == "--missing-only";
+    if (argc > 1 && !missingOnly) {
+        fprintf(stderr, "Usage: generate_spotter_cache [--missing-only]\n");
+        return 1;
+    }
     SetConsoleOutputCP(CP_UTF8);
     printf("=== VieNeu-TTS Spotter Cache Generator (Voice: Minh Quân) ===\n");
 
@@ -160,6 +165,15 @@ int main(int argc, char** argv)
             fs::path targetWav = phraseDir / filename;
             fs::path buildWav = buildPhraseDir / filename;
 
+            if (missingOnly && fs::exists(targetWav)) {
+                fs::copy_file(targetWav, buildWav, fs::copy_options::overwrite_existing);
+                continue;
+            }
+            if (missingOnly && fs::exists(buildWav)) {
+                fs::copy_file(buildWav, targetWav);
+                continue;
+            }
+
             struct vieneu_tts_params_v3 synth_params;
             vieneu_tts_v3_default_params(&synth_params);
             synth_params.text = phrase.text.c_str();
@@ -212,11 +226,11 @@ int main(int argc, char** argv)
 
     auto genEnd = std::chrono::high_resolution_clock::now();
     double totalSec = std::chrono::duration<double>(genEnd - genStart).count();
-    printf("\nAll %zu WAV files generated successfully in %.2f seconds (avg %.1f ms/file)\n",
-        completed, totalSec, (totalSec * 1000.0) / completed);
+    printf("\nGenerated %zu WAV files successfully in %.2f seconds (avg %.1f ms/file)\n",
+        completed, totalSec, completed ? (totalSec * 1000.0) / completed : 0.0);
 
     // Generate manifest.json
-    std::ofstream manifest(outputDir / "manifest.json");
+    std::ofstream manifest(outputDir / "manifest.json", std::ios::binary);
     manifest << "{\n";
     manifest << "  \"version\": 2,\n";
     manifest << "  \"backend\": \"VieNeu-TTS\",\n";

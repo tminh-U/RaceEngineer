@@ -16,6 +16,7 @@ if (-not (Test-Path -LiteralPath $manifestPath)) {
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $requiredFiles = @(
     'bin/RaceEngineer.exe',
+    'bin/RaceEngineerTtsBench.exe',
     'bin/Qt6Core.dll',
     'bin/Qt6Quick.dll',
     'bin/sound.mp3',
@@ -36,6 +37,21 @@ $requiredFiles = @(
     'extras/AssettoCorsa/apps/python/RaceEngineer/RaceEngineer.py',
     'extras/AssettoCorsa/apps/python/RaceEngineer/manifest.ini'
 )
+
+$spotterPath = Join-Path $binPath 'audio/spotter'
+$spotterManifest = Get-Content -Raw -LiteralPath (Join-Path $spotterPath 'manifest.json') | ConvertFrom-Json
+foreach ($requiredId in @('car_left', 'car_right', 'red_flag', 'fuel_critical', 'engine_critical',
+    'tyre_hot', 'damage_detected', 'tts_api_unavailable')) {
+    $entry = $spotterManifest.entries | Where-Object { $_.id -eq $requiredId } | Select-Object -First 1
+    if ($null -eq $entry -or $entry.files.Count -eq 0) {
+        throw "Required spotter phrase '$requiredId' is missing from the package manifest."
+    }
+    foreach ($audioFile in $entry.files) {
+        if (-not (Test-Path -LiteralPath (Join-Path $spotterPath $audioFile))) {
+            throw "Required spotter audio '$requiredId/$audioFile' is missing from the package."
+        }
+    }
+}
 
 foreach ($relativePath in $requiredFiles) {
     $path = Join-Path $packagePath ($relativePath -replace '/', '\')

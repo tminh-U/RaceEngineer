@@ -1,4 +1,5 @@
 #include "audio/AudioDucker.h"
+#include "utils/Logging.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -16,6 +17,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <map>
+#include <QElapsedTimer>
 #include <string>
 #include <vector>
 
@@ -24,27 +27,6 @@ namespace raceengineer {
 namespace {
 
 #ifdef _WIN32
-class CoInitGuard {
-public:
-    CoInitGuard()
-    {
-        hr_ = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    }
-    ~CoInitGuard()
-    {
-        if (SUCCEEDED(hr_)) {
-            CoUninitialize();
-        }
-    }
-    [[nodiscard]] bool succeeded() const noexcept
-    {
-        return SUCCEEDED(hr_) || hr_ == RPC_E_CHANGED_MODE;
-    }
-
-private:
-    HRESULT hr_;
-};
-
 std::string getProcessBaseName(const DWORD pid)
 {
     if (pid == 0) {
@@ -115,15 +97,60 @@ bool isIgnoredProcess(const std::string& name, const DWORD pid)
 
 } // namespace
 
+struct AudioDucker::WorkerState {
+    void initialize()
+    {
+#ifdef _WIN32
+        const HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        comReady_ = SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE;
+        shouldUninitialize_ = SUCCEEDED(hr);
+#endif
+    }
+
+    void shutdown()
+    {
+        performUnduck();
+#ifdef _WIN32
+        if (shouldUninitialize_) {
+            CoUninitialize();
+        }
+        shouldUninitialize_ = false;
+        comReady_ = false;
+#endif
+    }
+
+    void performDuck(float duckFactor);
+    void performUnduck();
+
+    std::map<unsigned long, float> savedVolumes_;
+#ifdef _WIN32
+    bool comReady_{false};
+    bool shouldUninitialize_{false};
+#endif
+};
+
 AudioDucker::AudioDucker(QObject* parent)
     : QObject(parent)
+    , workerContext_(new QObject)
+    , workerState_(std::make_shared<WorkerState>())
 {
+    workerContext_->moveToThread(&workerThread_);
+    connect(&workerThread_, &QThread::finished, workerContext_, &QObject::deleteLater);
+    workerThread_.start();
+    const auto state = workerState_;
+    QMetaObject::invokeMethod(workerContext_, [state] { state->initialize(); }, Qt::QueuedConnection);
 }
 
 AudioDucker::~AudioDucker()
 {
-    if (ducked_) {
-        performUnduck();
+    if (workerThread_.isRunning()) {
+        const auto state = workerState_;
+        QMetaObject::invokeMethod(workerContext_, [state] { state->shutdown(); },
+                                  Qt::BlockingQueuedConnection);
+        workerThread_.quit();
+        workerThread_.wait();
+    } else if (workerState_) {
+        workerState_->shutdown();
     }
 }
 
@@ -153,19 +180,24 @@ void AudioDucker::setDucked(const bool ducked)
         return;
     }
     ducked_ = ducked;
+    const auto state = workerState_;
     if (ducked_) {
-        performDuck();
+        const float factor = duckFactor_;
+        QMetaObject::invokeMethod(workerContext_, [state, factor] { state->performDuck(factor); },
+                                  Qt::QueuedConnection);
     } else {
-        performUnduck();
+        QMetaObject::invokeMethod(workerContext_, [state] { state->performUnduck(); },
+                                  Qt::QueuedConnection);
     }
     emit duckedChanged(ducked_);
 }
 
-void AudioDucker::performDuck()
+void AudioDucker::WorkerState::performDuck(const float duckFactor)
 {
 #ifdef _WIN32
-    CoInitGuard com;
-    if (!com.succeeded()) {
+    QElapsedTimer timer;
+    timer.start();
+    if (!comReady_) {
         return;
     }
 
@@ -251,7 +283,7 @@ void AudioDucker::performDuck()
                             if (savedVolumes_.find(pid) == savedVolumes_.end()) {
                                 savedVolumes_[pid] = currentVol;
                             }
-                            const float duckedVol = currentVol * duckFactor_;
+                            const float duckedVol = currentVol * duckFactor;
                             pVol->SetMasterVolume(duckedVol, nullptr);
                             pVol->Release();
                         }
@@ -267,18 +299,20 @@ void AudioDucker::performDuck()
     pMgr->Release();
     pDevice->Release();
     pEnum->Release();
+    qCInfo(logAudio) << "Core Audio duck operation took" << timer.elapsed() << "ms";
 #endif
 }
 
-void AudioDucker::performUnduck()
+void AudioDucker::WorkerState::performUnduck()
 {
 #ifdef _WIN32
+    QElapsedTimer timer;
+    timer.start();
     if (savedVolumes_.empty()) {
         return;
     }
 
-    CoInitGuard com;
-    if (!com.succeeded()) {
+    if (!comReady_) {
         savedVolumes_.clear();
         return;
     }
@@ -349,6 +383,7 @@ void AudioDucker::performUnduck()
     pMgr->Release();
     pDevice->Release();
     pEnum->Release();
+    qCInfo(logAudio) << "Core Audio restore operation took" << timer.elapsed() << "ms";
 #endif
 }
 

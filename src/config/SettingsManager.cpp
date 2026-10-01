@@ -8,12 +8,32 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QStringList>
 
 #include <algorithm>
 
 namespace raceengineer {
 namespace {
-constexpr int currentSettingsVersion = 13;
+constexpr int currentSettingsVersion = 15;
+
+void normalizeGoogleVoices(TtsSettings& settings)
+{
+    auto voices = settings.googleCustomVoices;
+    if (!settings.googleVoiceId.isEmpty() && !settings.googleVoiceName.isEmpty())
+        voices.append(QJsonObject{{"name", settings.googleVoiceName}, {"id", settings.googleVoiceId}});
+    QJsonArray valid;
+    QStringList names;
+    for (const auto& value : voices) {
+        const auto voice = value.toObject();
+        const auto name = voice.value("name").toString().trimmed();
+        const auto id = voice.value("id").toString();
+        if (name.isEmpty() || name.size() > 80 || !id.startsWith("voice_") || id.size() > 256
+            || names.contains(name) || valid.size() >= 200) continue;
+        names.append(name);
+        valid.append(QJsonObject{{"name", name}, {"id", id}});
+    }
+    settings.googleCustomVoices = valid;
+}
 }
 
 SettingsManager::SettingsManager()
@@ -45,8 +65,35 @@ void SettingsManager::setPushToTalk(const PushToTalkSettings& settings)
 void SettingsManager::setTts(const TtsSettings& settings)
 {
     tts_ = settings;
-    tts_.backend = QStringLiteral("VieNeu-TTS");
+    normalizeGoogleVoices(tts_);
+    if (tts_.backend != QStringLiteral("Google Gemini API")) {
+        tts_.backend = QStringLiteral("VieNeu-TTS");
+    }
+    if (tts_.googleModel != QStringLiteral("gemini-3.8-flash-tts")) {
+        tts_.googleModel = QStringLiteral("gemini-3.8-flash-lite-tts");
+    }
     tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
+    tts_.cpuThreads = tts_.cpuThreads == 2 || tts_.cpuThreads == 3 || tts_.cpuThreads == 4
+        ? tts_.cpuThreads : 4;
+    save();
+}
+
+void SettingsManager::setSetupState(const bool completed, const int step)
+{
+    setupCompleted_ = completed;
+    setupStep_ = std::clamp(step, 0, 3);
+    save();
+}
+
+void SettingsManager::setTtsBenchmark(QJsonObject benchmark)
+{
+    ttsBenchmark_ = benchmark;
+    save();
+}
+
+void SettingsManager::setSpotterWarningGapMeters(const double meters)
+{
+    spotterWarningGapMeters_ = std::clamp(meters, 0.5, 2.5);
     save();
 }
 
@@ -243,8 +290,21 @@ void SettingsManager::load()
         return;
     }
     const QJsonObject root = document.object();
+    const QJsonValue settingsVersionValue = root.value(QStringLiteral("settings_version"));
+    const int settingsVersion = settingsVersionValue.toInt(1);
+    const bool knownSettings = (settingsVersionValue.isDouble() && settingsVersionValue.toInt(-1) >= 1)
+        || root.value(QStringLiteral("llm")).isObject()
+        || root.value(QStringLiteral("tts")).isObject();
+    setupCompleted_ = knownSettings
+        && (!root.contains(QStringLiteral("setup_completed"))
+            || root.value(QStringLiteral("setup_completed")).toBool(false));
+    setupStep_ = std::clamp(root.value(QStringLiteral("setup_step")).toInt(), 0, 3);
+    ttsBenchmark_ = root.value(QStringLiteral("tts_benchmark")).toObject();
     strategyEnabled_ = root.value(QStringLiteral("strategy_enabled")).toBool(false);
     spotterEnabled_ = root.value(QStringLiteral("spotter_enabled")).toBool(true);
+    spotterWarningGapMeters_ = std::clamp(
+        root.value(QStringLiteral("spotter_warning_gap_meters")).toDouble(spotterWarningGapMeters_),
+        0.5, 2.5);
     fuelAlertsEnabled_ = root.value(QStringLiteral("fuel_alerts_enabled")).toBool(true);
     tyreAlertsEnabled_ = root.value(QStringLiteral("tyre_alerts_enabled")).toBool(true);
     lapDeltaEnabled_ = root.value(QStringLiteral("lap_delta_enabled")).toBool(true);
@@ -257,7 +317,6 @@ void SettingsManager::load()
     minimizeOnClose_ = root.value(QStringLiteral("minimize_on_close")).toBool(minimizeOnClose_);
     gpuRendererEnabled_ = root.value(QStringLiteral("gpu_renderer_enabled")).toBool(gpuRendererEnabled_);
     strategyShareEndpoint_ = root.value(QStringLiteral("strategy_share_endpoint")).toString();
-    const int settingsVersion = root.value(QStringLiteral("settings_version")).toInt(1);
     const QJsonObject localAi = root.value(QStringLiteral("local_ai")).toObject();
     localAi_.computeMode = localAi.value(QStringLiteral("compute_mode"))
         .toString(localAi_.computeMode).trimmed().toLower();
@@ -303,6 +362,13 @@ void SettingsManager::load()
     const auto tts = root.value(QStringLiteral("tts")).toObject();
     tts_.backend = tts.value(QStringLiteral("backend")).toString(tts_.backend);
     tts_.voice = tts.value(QStringLiteral("voice")).toString(tts_.voice);
+    tts_.googleModel = tts.value(QStringLiteral("google_model")).toString(tts_.googleModel);
+    tts_.googleVoice = tts.value(QStringLiteral("google_voice")).toString(tts_.googleVoice);
+    tts_.googleVoiceId = tts.value(QStringLiteral("google_voice_id")).toString();
+    tts_.googleVoiceName = tts.value(QStringLiteral("google_voice_name")).toString();
+    tts_.googleCustomVoices = tts.value(QStringLiteral("google_custom_voices")).toArray();
+    normalizeGoogleVoices(tts_);
+    tts_.cpuThreads = tts.value(QStringLiteral("cpu_threads")).toInt(4);
     bool shouldSave = false;
     if (tts_.voice.trimmed().isEmpty()) {
         tts_.voice = QStringLiteral("Minh Đức");
@@ -311,12 +377,18 @@ void SettingsManager::load()
         tts_.voice = QStringLiteral("Minh Quân");
         shouldSave = true;
     }
+    if (tts_.backend.compare(QStringLiteral("Google Gemini API"), Qt::CaseInsensitive) == 0) {
+        tts_.backend = QStringLiteral("Google Gemini API");
+    } else {
+        tts_.backend = QStringLiteral("VieNeu-TTS");
+    }
+    if (tts_.googleModel != QStringLiteral("gemini-3.8-flash-tts")) {
+        tts_.googleModel = QStringLiteral("gemini-3.8-flash-lite-tts");
+    }
+    tts_.cpuThreads = tts_.cpuThreads == 2 || tts_.cpuThreads == 3 || tts_.cpuThreads == 4
+        ? tts_.cpuThreads : 4;
     tts_.outputDevice = tts.value(QStringLiteral("output_device")).toString();
     tts_.volume = static_cast<float>(tts.value(QStringLiteral("volume")).toDouble(tts_.volume));
-    if (tts_.backend.compare(QStringLiteral("VieNeu-TTS"), Qt::CaseInsensitive) != 0) {
-        tts_.backend = QStringLiteral("VieNeu-TTS");
-        shouldSave = true;
-    }
     tts_.volume = std::clamp(tts_.volume, 0.0F, 1.0F);
     tts_.audioDucking = tts.value(QStringLiteral("audio_ducking")).toBool(tts_.audioDucking);
     tts_.duckFactor = static_cast<float>(tts.value(QStringLiteral("duck_factor")).toDouble(tts_.duckFactor));
@@ -376,6 +448,12 @@ void SettingsManager::save() const
     pushToTalk.insert(QStringLiteral("button_index"), pushToTalk_.buttonIndex);
     const QJsonObject tts{{QStringLiteral("backend"), tts_.backend},
         {QStringLiteral("voice"), tts_.voice},
+        {QStringLiteral("google_model"), tts_.googleModel},
+        {QStringLiteral("google_voice"), tts_.googleVoice},
+        {QStringLiteral("google_voice_id"), tts_.googleVoiceId},
+        {QStringLiteral("google_voice_name"), tts_.googleVoiceName},
+        {QStringLiteral("google_custom_voices"), tts_.googleCustomVoices},
+        {QStringLiteral("cpu_threads"), tts_.cpuThreads},
         {QStringLiteral("output_device"), tts_.outputDevice},
         {QStringLiteral("volume"), tts_.volume},
         {QStringLiteral("audio_ducking"), tts_.audioDucking},
@@ -396,6 +474,7 @@ void SettingsManager::save() const
             {QStringLiteral("local_ai"), localAi},
             {QStringLiteral("strategy_enabled"), strategyEnabled_},
             {QStringLiteral("spotter_enabled"), spotterEnabled_},
+            {QStringLiteral("spotter_warning_gap_meters"), spotterWarningGapMeters_},
             {QStringLiteral("fuel_alerts_enabled"), fuelAlertsEnabled_},
             {QStringLiteral("tyre_alerts_enabled"), tyreAlertsEnabled_},
             {QStringLiteral("lap_delta_enabled"), lapDeltaEnabled_},
@@ -406,8 +485,11 @@ void SettingsManager::save() const
         {QStringLiteral("strategy_sharing_enabled"), strategySharingEnabled_},
         {QStringLiteral("minimize_to_tray"), minimizeToTray_},
         {QStringLiteral("minimize_on_close"), minimizeOnClose_},
-        {QStringLiteral("gpu_renderer_enabled"), gpuRendererEnabled_},
-        {QStringLiteral("strategy_share_endpoint"), strategyShareEndpoint_}}).toJson(QJsonDocument::Indented));
+            {QStringLiteral("gpu_renderer_enabled"), gpuRendererEnabled_},
+            {QStringLiteral("strategy_share_endpoint"), strategyShareEndpoint_},
+            {QStringLiteral("setup_completed"), setupCompleted_},
+            {QStringLiteral("setup_step"), setupStep_},
+            {QStringLiteral("tts_benchmark"), ttsBenchmark_}}).toJson(QJsonDocument::Indented));
     }
 }
 

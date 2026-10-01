@@ -1,5 +1,8 @@
 {
-  "settings_version": 12,
+  "settings_version": 15,
+  "setup_completed": false,
+  "setup_step": 0,
+  "tts_benchmark": {},
   "driver_name": "Driver",
   "response_style": "Tiêu chuẩn",
   "llm": {
@@ -21,6 +24,7 @@
   },
   "tts": {
     "backend": "VieNeu-TTS",
+    "cpu_threads": 2,
     "voice": "Minh Đức",
     "output_device": "",
     "volume": 0.85,

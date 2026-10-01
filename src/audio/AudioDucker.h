@@ -1,7 +1,8 @@
 #pragma once
 
 #include <QObject>
-#include <map>
+#include <QThread>
+#include <memory>
 
 namespace raceengineer {
 
@@ -26,14 +27,15 @@ signals:
     void enabledChanged(bool enabled);
 
 private:
-    void performDuck();
-    void performUnduck();
+    struct WorkerState;
 
     bool enabled_{true};
     bool ducked_{false};
     float duckFactor_{0.25f}; // -12dB (reduces game audio to 25%)
 
-    std::map<unsigned long, float> savedVolumes_;
+    QThread workerThread_;
+    QObject* workerContext_{nullptr};
+    std::shared_ptr<WorkerState> workerState_;
 };
 
 } // namespace raceengineer

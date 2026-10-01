@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -40,6 +41,7 @@ ApplicationWindow {
     readonly property color green: "#47e266"
     readonly property color amber: "#ffb868"
     property int currentPage: 0
+    property bool startupNoticeDismissed: false
 
     FontLoader {
         id: miSansLatinFont
@@ -283,6 +285,288 @@ ApplicationWindow {
                 color: root.panel
                 border.width: 1
                 border.color: root.border
+            }
+        }
+    }
+
+    component AppTextField: TextField {
+        id: field
+        implicitHeight: 38 * root.ui
+        leftPadding: 12 * root.ui
+        rightPadding: 12 * root.ui
+        color: root.textMain
+        font.family: root.uiFontFamily
+        font.pixelSize: 13 * root.ui
+        background: Rectangle {
+            radius: 8 * root.ui
+            color: root.bg
+            border.color: field.activeFocus ? root.primary : root.border
+        }
+    }
+
+    component TtsVoiceSettings: Column {
+        enabled: !backend.ttsBenchmarkRunning && !backend.ttsBenchmarkRestoring
+        width: parent ? parent.width : 0
+        spacing: 8 * root.ui
+
+        Item {
+            width: parent.width
+            height: 56 * root.ui
+            BodyText {
+                text: "Backend giọng kỹ sư"
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                font.weight: Font.DemiBold
+            }
+            AppComboBox {
+                width: 250 * root.ui
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                model: ["VieNeu local", "Google Gemini API"]
+                currentIndex: backend.ttsBackend === "Google Gemini API" ? 1 : 0
+                onActivated: backend.setTtsBackend(index === 1 ? "Google Gemini API" : "VieNeu-TTS")
+            }
+        }
+        ColumnLayout {
+            width: parent.width
+            spacing: 8 * root.ui
+            visible: backend.ttsBackend === "Google Gemini API"
+            RowLayout {
+                Layout.fillWidth: true
+                BodyText { text: "Mô hình"; Layout.fillWidth: true; font.weight: Font.DemiBold }
+                AppComboBox {
+                    Layout.preferredWidth: 270 * root.ui
+                    model: ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts"]
+                    currentIndex: backend.googleTtsModel === "gemini-3.8-flash-tts" ? 1 : 0
+                    onActivated: backend.setGoogleTtsModel(currentText)
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                BodyText { text: "Giọng Google"; Layout.fillWidth: true; font.weight: Font.DemiBold }
+                AppComboBox {
+                    Layout.preferredWidth: 270 * root.ui
+                    model: backend.googleTtsVoices
+                    currentIndex: Math.max(0, backend.googleTtsVoices.indexOf(backend.googleTtsVoice))
+                    onActivated: backend.setGoogleTtsVoice(currentText)
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                AppTextField {
+                    id: googleTtsApiKeyInput
+                    Layout.fillWidth: true
+                    placeholderText: backend.googleTtsApiKeyConfigured ? "Đã lưu key; nhập để thay thế" : "Google AI Studio API key"
+                    echoMode: TextInput.Password
+                    onAccepted: { backend.setGoogleTtsApiKey(text); clear() }
+                }
+                AppButton {
+                    text: "Lưu key"
+                    onClicked: { backend.setGoogleTtsApiKey(googleTtsApiKeyInput.text); googleTtsApiKeyInput.clear() }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                AppButton { text: "Nghe thử"; onClicked: backend.previewTtsVoice() }
+                AppButton { text: "Thêm voice"; onClicked: root.openGoogleVoiceDialog() }
+                Item { Layout.fillWidth: true }
+            }
+            MutedText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: root.amber
+                text: "Google Gemini TTS có thể phát sinh phí API. Chỉ nghe thử khi bạn bấm nút."
+            }
+            MutedText { Layout.fillWidth: true; text: backend.ttsStatus; wrapMode: Text.Wrap }
+            MutedText {
+                Layout.fillWidth: true
+                visible: backend.googleTtsFirstAudioMs >= 0
+                text: "Lượt gần nhất — audio đầu tiên: " + (backend.googleTtsFirstAudioMs / 1000).toFixed(2) + " giây"
+            }
+        }
+        Column {
+            width: parent.width
+            spacing: 6 * root.ui
+            visible: backend.ttsBackend === "VieNeu-TTS"
+            Item {
+                width: parent.width
+                height: 54 * root.ui
+                Column {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2 * root.ui
+                    BodyText { text: "Giọng Kỹ sư AI (VieNeu)"; font.weight: Font.DemiBold }
+                    MutedText { text: "Lựa chọn chất giọng và phong cách đàm thoại của kỹ sư" }
+                }
+                AppComboBox {
+                    width: 340 * root.ui
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    textRole: "name"
+                    model: backend.availableTtsVoices
+                    currentIndex: {
+                        for (var i = 0; i < backend.availableTtsVoices.length; ++i) {
+                            if (backend.availableTtsVoices[i].id === backend.selectedTtsVoice)
+                                return i
+                        }
+                        return 0
+                    }
+                    onActivated: backend.setTtsVoice(backend.availableTtsVoices[index].id)
+                }
+            }
+            RowLayout {
+                width: parent.width
+                AppButton { text: "Nghe thử"; onClicked: backend.previewTtsVoice() }
+                MutedText { text: "Phát câu kiểm tra khi bạn bấm nút."; Layout.fillWidth: true }
+            }
+        }
+    }
+
+    component LlmConnectionForm: Column {
+        id: llmForm
+        function saveConfiguration() {
+            backend.saveAiSettings("OpenAI Compatible", endpoint.text, key.text, modelName.text,
+                llmForm.streaming, llmForm.timeoutMilliseconds, llmForm.maximumTokens,
+                llmForm.temperature, llmForm.reasoning)
+        }
+        property bool streaming: backend.apiStreaming
+        property bool reasoning: backend.apiReasoning
+        property int timeoutMilliseconds: backend.apiTimeoutMilliseconds
+        property int maximumTokens: backend.apiMaximumTokens
+        property real temperature: backend.apiTemperature
+        readonly property bool isModified: endpoint.text.trim() !== backend.apiBaseUrl.trim()
+            || modelName.text.trim() !== backend.apiModel.trim()
+            || key.text !== backend.apiKey
+            || streaming !== backend.apiStreaming
+            || reasoning !== backend.apiReasoning
+            || Math.abs(temperature - backend.apiTemperature) > 0.01
+            || maximumTokens !== backend.apiMaximumTokens
+        width: parent ? parent.width : 0
+        spacing: 8 * root.ui
+
+        MutedText { text: "Cổng Endpoint API" }
+        AppTextField { id: endpoint; width: parent.width; text: backend.apiBaseUrl }
+        MutedText { text: "Mô hình suy luận" }
+        AppTextField { id: modelName; width: parent.width; text: backend.apiModel }
+        MutedText { text: "Khóa API" }
+        AppTextField { id: key; width: parent.width; text: backend.apiKey; echoMode: TextInput.Password }
+        Row {
+            width: parent.width
+            spacing: 10 * root.ui
+            AppButton {
+                text: backend.apiState === "Requesting" ? "Đang kết nối..." : "Kiểm tra kết nối"
+                enabled: llmForm.isModified && backend.apiState !== "Requesting"
+                highlighted: llmForm.isModified
+                SequentialAnimation on scale {
+                    running: llmForm.isModified
+                    loops: Animation.Infinite
+                    PropertyAnimation { to: 1.03; duration: 600; easing.type: Easing.InOutQuad }
+                    PropertyAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
+                }
+                onClicked: backend.testApiConnection(endpoint.text, key.text, modelName.text)
+            }
+            AppButton {
+                text: "Lưu cấu hình"
+                highlighted: !llmForm.isModified
+                onClicked: llmForm.saveConfiguration()
+            }
+        }
+    }
+
+    component TtsBenchmarkPanel: Card {
+        id: benchmarkCard
+        property bool complete: backend.ttsBenchmarkResults.length === 3
+            && backend.ttsBenchmarkStatus.indexOf("Đã áp dụng") === 0
+        title: "Benchmark TTS local"
+        Column {
+            width: parent.width
+            spacing: 8 * root.ui
+
+            BodyText {
+                width: parent.width
+                text: backend.ttsBenchmarkStatus.length > 0 ? backend.ttsBenchmarkStatus : "Chưa chạy benchmark."
+                color: benchmarkCard.complete && !backend.ttsBenchmarkStale ? root.green : root.textMain
+                wrapMode: Text.Wrap
+            }
+            MutedText {
+                width: parent.width
+                text: "Kết quả chọn số luồng TTS local; không bảo đảm hết khựng trong game."
+                wrapMode: Text.Wrap
+            }
+            MutedText {
+                width: parent.width
+                text: "Mục tiêu p95 câu ngắn: không quá 1.000 ms. Nếu máy không đạt, ứng dụng chọn mức nhanh nhất đã đo thành công."
+                wrapMode: Text.Wrap
+            }
+            MutedText {
+                width: parent.width
+                visible: backend.ttsBenchmarkStale
+                text: "Cấu hình giọng, GPU hoặc runtime đã đổi. Hãy chạy lại để cập nhật kết quả."
+                color: root.amber
+                wrapMode: Text.Wrap
+            }
+            MutedText {
+                width: parent.width
+                visible: !backend.ttsBenchmarkAllowed && !backend.ttsBenchmarkRunning
+                text: backend.ttsBenchmarkUnavailableReason
+                color: root.amber
+                wrapMode: Text.Wrap
+            }
+            ProgressLine {
+                width: parent.width
+                visible: backend.ttsBenchmarkRunning
+                value: Math.max(0, Math.min(1, backend.ttsBenchmarkProgress))
+            }
+            Row {
+                spacing: 8 * root.ui
+                AppButton {
+                    text: backend.ttsBenchmarkRunning ? "Hủy benchmark" : "Chạy benchmark"
+                    enabled: backend.ttsBenchmarkRunning || backend.ttsBenchmarkAllowed
+                    highlighted: !backend.ttsBenchmarkRunning && backend.ttsBenchmarkAllowed
+                    onClicked: backend.ttsBenchmarkRunning ? backend.cancelTtsBenchmark() : backend.startTtsBenchmark()
+                }
+                MutedText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: backend.ttsBenchmarkTimestamp.length > 0
+                    text: backend.ttsBenchmarkTimestamp.length > 0 ? "Đo lúc " + backend.ttsBenchmarkTimestamp : ""
+                }
+            }
+            RowLayout {
+                width: parent.width
+                spacing: 10 * root.ui
+                BodyText { text: "Luồng"; Layout.preferredWidth: 54 * root.ui; font.weight: Font.DemiBold }
+                BodyText { text: "p95 tổng hợp (ms)"; Layout.preferredWidth: 132 * root.ui; font.weight: Font.DemiBold }
+                BodyText { text: "CPU TB (ms)"; Layout.preferredWidth: 104 * root.ui; font.weight: Font.DemiBold }
+                BodyText { text: "RAM đỉnh (WS / riêng), MB"; Layout.fillWidth: true; font.weight: Font.DemiBold; wrapMode: Text.Wrap }
+            }
+            Repeater {
+                model: backend.ttsBenchmarkResults
+                delegate: RowLayout {
+                    required property var modelData
+                    width: parent.width
+                    spacing: 10 * root.ui
+                    BodyText {
+                        text: String(modelData.threads) + (benchmarkCard.complete && !backend.ttsBenchmarkStale
+                              && modelData.threads === backend.ttsCpuThreads ? " ✓" : "")
+                        Layout.preferredWidth: 54 * root.ui
+                        color: benchmarkCard.complete && !backend.ttsBenchmarkStale
+                               && modelData.threads === backend.ttsCpuThreads ? root.green : root.textMain
+                    }
+                    BodyText { text: Number(modelData.p95_ms).toFixed(0) + " ms"; Layout.preferredWidth: 132 * root.ui }
+                    BodyText { text: Number(modelData.cpu_ms).toFixed(0) + " ms"; Layout.preferredWidth: 104 * root.ui }
+                    MutedText {
+                        text: (Number(modelData.peak_working_set) / 1048576).toFixed(0) + " / "
+                              + (Number(modelData.peak_private_bytes) / 1048576).toFixed(0)
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+            MutedText {
+                width: parent.width
+                visible: backend.ttsBenchmarkResults.length === 0
+                text: "Kết quả sẽ xuất hiện sau khi hoàn thành lượt đo 2, 3 và 4 luồng."
+                wrapMode: Text.Wrap
             }
         }
     }
@@ -644,34 +928,35 @@ Component { id: engineerPage
             }
             MutedText { text: "KỸ SƯ ĐUA XE AI" }
             Card { width: parent.width-56*root.ui; title: ""
+                TtsVoiceSettings { width: parent.width }
                 Item {
                     width: parent.width
-                    height: 54 * root.ui
+                    height: 58 * root.ui
                     visible: backend.ttsBackend === "VieNeu-TTS"
-                    Column {
+                    BodyText {
+                        text: "Luồng CPU TTS"
                         anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2 * root.ui
-                        BodyText { text: "Giọng Kỹ sư AI (VieNeu)"; font.family: root.uiFontFamily; font.weight: Font.DemiBold }
-                        MutedText { text: "Lựa chọn chất giọng và phong cách đàm thoại của kỹ sư" }
+                        anchors.top: parent.top
+                        font.family: root.uiFontFamily
+                        font.weight: Font.DemiBold
+                    }
+                    MutedText {
+                        text: "Áp dụng ngay; không cần khởi động lại ứng dụng."
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.topMargin: 23 * root.ui
                     }
                     AppComboBox {
-                        id: engTtsVoiceCombo
-                        width: 340 * root.ui
+                        width: 140 * root.ui
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        textRole: "name"
-                        model: backend.availableTtsVoices
-                        currentIndex: {
-                            for (var i = 0; i < backend.availableTtsVoices.length; ++i) {
-                                if (backend.availableTtsVoices[i].id === backend.selectedTtsVoice)
-                                    return i
-                            }
-                            return 0
-                        }
-                        onActivated: backend.setTtsVoice(backend.availableTtsVoices[index].id)
+                    model: ["2", "3", "4"]
+                    enabled: !backend.connected && !backend.ttsBenchmarkRunning
+                        && !backend.ttsBenchmarkRestoring && !backend.ttsExternalThreadOverride
+                        && backend.voiceStatus === "Idle"
+                        currentIndex: model.indexOf(String(backend.ttsCpuThreads))
+                        onActivated: backend.setTtsCpuThreads(Number(currentText))
                     }
-                    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25, .28, .33, .35) }
                 }
                 Item {
                     width: parent.width
@@ -772,9 +1057,18 @@ Component { id: engineerPage
                 SettingRow { width: parent.width; title:"Cảnh báo Lốp & Độ bám"; subtitle:"Cảnh báo lốp quá nóng khi có telemetry nhiệt độ"; showSwitch:true; checked:backend.tyreAlertsEnabled; onToggled:checked => backend.setTyreAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Phân tích Delta vòng đua"; subtitle:"Vòng vừa hoàn thành so với vòng nhanh nhất"; showSwitch:true; checked:backend.lapDeltaEnabled; onToggled:checked => backend.setLapDeltaEnabled(checked) }
             }
+            TtsBenchmarkPanel { width: parent.width; visible: backend.ttsBackend === "VieNeu-TTS" }
             MutedText { text: "SPOTTER ÂM THANH" }
             Card { width: parent.width-56*root.ui; title: ""
         SettingRow { width: parent.width; title:"Xe Trái / Xe Phải"; subtitle:backend.spotterStatus; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
+                RowLayout { width: parent.width; spacing: 8 * root.ui
+                BodyText { text: "Khoảng cảnh báo ngang"; Layout.fillWidth: true }
+                    MonoText { text: backend.spotterWarningGapMeters.toFixed(1) + " m" }
+                }
+                AppSlider { width: parent.width; from: 0.5; to: 2.5; stepSize: 0.1
+                    value: backend.spotterWarningGapMeters
+                    onPressedChanged: if (!pressed) backend.setSpotterWarningGapMeters(value)
+                }
                 SettingRow { width: parent.width; title:"Cờ hiệu & Nguy hiểm chặng"; subtitle:"Cảnh báo cờ hiệu trên đường đua"; showSwitch:true; checked:backend.flagAlertsEnabled; onToggled:checked => backend.setFlagAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Cảnh báo hư hại"; subtitle:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"; showSwitch:true; checked:backend.damageAlertsEnabled; onToggled:checked => backend.setDamageAlertsEnabled(checked) }
                 SettingRow { width: parent.width; title:"Tổng kết sau mỗi vòng"; subtitle:backend.lapSummaryStatus; showSwitch:true; checked:backend.lapSummaryEnabled; onToggled:checked => backend.setLapSummaryEnabled(checked) }
@@ -837,18 +1131,7 @@ Component { id: engineerPage
         PageScroll {
             id: aiScroll
             property bool streamingSelection: backend.apiStreaming
-            readonly property bool isModified: {
-                if (typeof endpoint === "undefined" || !endpoint ||
-                    typeof modelName === "undefined" || !modelName ||
-                    typeof key === "undefined" || !key) return false;
-                return (endpoint.text.trim() !== backend.apiBaseUrl.trim())
-                    || (modelName.text.trim() !== backend.apiModel.trim())
-                    || (key.text !== backend.apiKey)
-                    || (typeof streamingSwitch !== "undefined" && streamingSwitch && streamingSwitch.checked !== backend.apiStreaming)
-                    || (typeof reasoningSwitch !== "undefined" && reasoningSwitch && reasoningSwitch.checked !== backend.apiReasoning)
-                    || (typeof temperatureControl !== "undefined" && temperatureControl && Math.abs(temperatureControl.value - backend.apiTemperature) > 0.01)
-                    || (typeof tokenLimit !== "undefined" && tokenLimit && Math.round(tokenLimit.value) !== backend.apiMaximumTokens);
-            }
+            readonly property bool isModified: apiForm.isModified
 
             Column { width:parent.width; padding:28*root.ui; spacing:14*root.ui
                 HeadingText { text:"Máy chủ AI & Mô hình Cục bộ" }
@@ -866,36 +1149,16 @@ Component { id: engineerPage
                         }
                         MutedText { text:"THÔNG SỐ MÁY CHỦ & GIAO THỨC" }
                         Card { Layout.fillWidth:true; Layout.preferredHeight:410*root.ui; title:"Cấu hình kết nối"
-                            MutedText { text:"Cổng Endpoint API" }
-                            TextField { id:endpoint; width:parent.width; text:backend.apiBaseUrl; color:root.textMain; background:Rectangle{color:root.bg;radius:8*root.ui;border.color:root.border} }
-                            MutedText { text:"Mô hình suy luận" }
-                            TextField { id:modelName; width:parent.width; text:backend.apiModel; color:root.textMain; background:Rectangle{color:root.bg;radius:8*root.ui;border.color:root.border} }
-                            MutedText { text:"Khóa API" }
-                            TextField { id:key; width:parent.width; text:backend.apiKey; echoMode:TextInput.Password; color:root.textMain; background:Rectangle{color:root.bg;radius:8*root.ui;border.color:root.border} }
-                            Row {
-                                spacing: 10 * root.ui
-                                AppButton {
-                                    id: testBtn
-                                    text: backend.apiState === "Requesting" ? "Đang kết nối..." : "Kiểm tra Kết nối"
-                                    enabled: aiScroll.isModified && backend.apiState !== "Requesting"
-                                    highlighted: aiScroll.isModified
-                                    SequentialAnimation on scale {
-                                        running: aiScroll.isModified
-                                        loops: Animation.Infinite
-                                        PropertyAnimation { to: 1.03; duration: 600; easing.type: Easing.InOutQuad }
-                                        PropertyAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
-                                    }
-                                    onClicked: backend.testApiConnection(endpoint.text, key.text, modelName.text)
-                                }
-                                AppButton {
-                                    id: saveBtn
-                                    text: "Lưu cấu hình"
-                                    highlighted: !aiScroll.isModified
-                                    onClicked: backend.saveAiSettings("OpenAI Compatible", endpoint.text, key.text, modelName.text, streamingSwitch.checked, backend.apiTimeoutMilliseconds, Math.round(tokenLimit.value), temperatureControl.value, reasoningSwitch.checked)
-                                }
+                            LlmConnectionForm {
+                                id: apiForm
+                                streaming: streamingSwitch.checked
+                                reasoning: reasoningSwitch.checked
+                                timeoutMilliseconds: backend.apiTimeoutMilliseconds
+                                maximumTokens: Math.round(tokenLimit.value)
+                                temperature: temperatureControl.value
                             }
                         }
-                }
+                    }
                 ColumnLayout { Layout.fillWidth:true; Layout.preferredWidth:1; Layout.alignment:Qt.AlignTop; spacing:14*root.ui
                     MutedText { text:"KIẾN TRÚC SUY LUẬN & ĐƯỜNG TRUYỀN" }
                     Card { Layout.fillWidth:true; Layout.preferredHeight:215*root.ui; title:""
@@ -922,6 +1185,7 @@ Component { id: engineerPage
         PageScroll { Column { width:parent.width; padding:28*root.ui; spacing:12*root.ui
             HeadingText{text:"Cài đặt"} MutedText{text:"Quản lý tích hợp trò chơi mô phỏng, DirectInput và định tuyến âm thanh."}
             MutedText { width: Math.min(1040 * root.ui, parent.width - 56 * root.ui); text: "Ứng dụng sử dụng phông chữ MiSans Latin của Xiaomi."; wrapMode: Text.Wrap }
+            AppButton { text: "Thiết lập ban đầu"; highlighted: true; onClicked: backend.openSetup() }
             MutedText{text:"TÙY CHỌN CHUNG"}
             Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
                 SettingRow { width:parent.width; title:"Khởi động cùng Windows"; subtitle:"Tự động mở RaceEngineer khi đăng nhập"; showSwitch:true; checked:backend.startWithWindows; onToggled: checked => backend.setStartWithWindows(checked) }
@@ -1034,67 +1298,362 @@ Component { id: engineerPage
         } }
     }
 
+    Component { id: setupWelcomeStep
+        ColumnLayout {
+            width: parent.width
+            spacing: 12 * root.ui
+            HeadingText { text: "Chào mừng đến với RaceEngineer"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            MutedText {
+                text: "Thiết lập nhanh giọng kỹ sư, kết nối AI và số luồng TTS phù hợp với máy của bạn. Bạn có thể bỏ qua hoặc đổi lại sau trong Cài đặt."
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+            Card {
+                Layout.fillWidth: true
+                title: "Tên tay đua"
+                AppTextField {
+                    id: setupDriverName
+                    width: parent.width
+                    text: backend.driverName
+                    placeholderText: "Nhập tên gọi trên radio"
+                    onEditingFinished: backend.setDriverName(text)
+                }
+            }
+        }
+    }
+    Component { id: setupVoiceStep
+        ColumnLayout {
+            width: parent.width
+            spacing: 12 * root.ui
+            MutedText { text: "Chọn backend và giọng kỹ sư. Âm thanh chỉ phát khi bạn bấm Nghe thử."; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            Card {
+                Layout.fillWidth: true
+                title: "Giọng kỹ sư"
+                TtsVoiceSettings { width: parent.width }
+            }
+        }
+    }
+    Component { id: setupLlmStep
+        ColumnLayout {
+            function saveConfiguration() { setupLlmForm.saveConfiguration() }
+            width: parent.width
+            spacing: 12 * root.ui
+            MutedText {
+                text: "Nhập endpoint, API key và model để kiểm tra kết nối. Bạn vẫn có thể tiếp tục nếu chưa sẵn sàng hoặc máy chủ chưa phản hồi."
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+            StatusPill { text: "API: " + root.apiStatusText(); statusColor: root.apiStatusColor() }
+            Card {
+                Layout.fillWidth: true
+                title: "Kết nối LLM"
+                LlmConnectionForm { id: setupLlmForm; width: parent.width }
+            }
+            AppButton { text: "Thiết lập sau"; onClicked: backend.setSetupStep(3) }
+        }
+    }
+    Component { id: setupOptimizationStep
+        ColumnLayout {
+            width: parent.width
+            spacing: 12 * root.ui
+            HeadingText { text: "Tối ưu số luồng TTS"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            MutedText {
+                text: "Đo VieNeu trên máy này để chọn số luồng CPU. Kết quả giúp chọn cấu hình TTS; không bảo đảm hết khựng trong game."
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+            TtsBenchmarkPanel {
+                Layout.fillWidth: true
+                visible: backend.ttsBackend === "VieNeu-TTS"
+            }
+            Card {
+                Layout.fillWidth: true
+                visible: backend.ttsBackend === "Google Gemini API"
+                title: "TTS Google"
+                BodyText { width: parent.width; text: "Không cần benchmark TTS local khi bạn chọn Google Gemini API."; wrapMode: Text.Wrap }
+            }
+        }
+    }
+
+    function finishSetupWizard() {
+        if (backend.ttsBenchmarkRunning)
+            backend.cancelTtsBenchmark()
+        backend.finishSetup()
+    }
+
     MouseArea { width:7; anchors.left:parent.left; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.LeftEdge) }
     MouseArea { width:7; anchors.right:parent.right; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.RightEdge) }
     MouseArea { height:7; anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; cursorShape:Qt.SizeVerCursor; onPressed:root.startSystemResize(Qt.BottomEdge) }
 
-    Item {
+    Rectangle {
         id: startupOverlay
         z: 1000
-        anchors.fill: parent
-        visible: !backend.startupReady || opacity > 0
-        opacity: backend.startupReady ? 0 : 1
-        Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+        width: Math.min(390 * root.ui, root.width - 24 * root.ui)
+        implicitHeight: startupContents.implicitHeight + 28 * root.ui
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 14 * root.ui
+        visible: !root.startupNoticeDismissed && (!backend.startupReady || backend.startupError.length > 0)
+        radius: 12 * root.ui
+        color: root.panel
+        border.color: root.border
 
-        Rectangle { anchors.fill: parent; color: root.bg }
-        MouseArea { anchors.fill: parent; enabled: startupOverlay.visible }
-
-        Image {
-            id: startupLogo
-            anchors.centerIn: parent
-            width: 88 * root.ui
-            height: width
-            source: "../assets/final_icon_128.png"
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-        }
-        Rectangle {
-            id: startupBar
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: startupLogo.bottom
-            anchors.topMargin: 24 * root.ui
-            width: 190 * root.ui
-            height: 3 * root.ui
-            color: root.raised
-            Rectangle {
-                width: startupBar.width * backend.startupProgress
-                height: parent.height
-                color: root.primary
-                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Column {
+            id: startupContents
+            anchors.fill: parent
+            anchors.margins: 14 * root.ui
+            spacing: 8 * root.ui
+            BodyText {
+                width: parent.width
+                text: backend.startupError.length > 0 ? "Mô hình AI chưa sẵn sàng" : "Đang chuẩn bị mô hình AI…"
+                font.weight: Font.DemiBold
+                wrapMode: Text.Wrap
+            }
+            MutedText {
+                width: parent.width
+                visible: backend.startupError.length > 0
+                text: backend.startupError
+                color: "#ffb4ab"
+                wrapMode: Text.Wrap
+            }
+            ProgressLine { width: parent.width; visible: !backend.startupReady; value: backend.startupProgress }
+            Row {
+                spacing: 8 * root.ui
+                AppButton {
+                    visible: backend.startupError.length > 0
+                    text: "Thử lại"
+                    highlighted: true
+                    onClicked: { root.startupNoticeDismissed = false; backend.retryStartup() }
+                }
+                AppButton { text: "Đóng"; onClicked: root.startupNoticeDismissed = true }
             }
         }
-        BodyText {
-            id: startupErrorText
-            visible: backend.startupError.length > 0
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: startupBar.bottom
-            anchors.topMargin: 18 * root.ui
-            width: Math.min(480 * root.ui, parent.width - 48 * root.ui)
-            text: backend.startupError
-            color: "#ffb4ab"
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
+    }
+
+    Rectangle {
+        id: setupOverlay
+        z: 2000
+        anchors.fill: parent
+        visible: backend.setupVisible
+        color: Qt.rgba(0, 0, 0, 0.78)
+        MouseArea { anchors.fill: parent }
+
+        Rectangle {
+            id: setupPanel
+            width: Math.min(1060 * root.ui, root.width - 28 * root.ui)
+            height: Math.min(720 * root.ui, root.height - 24 * root.ui)
+            anchors.centerIn: parent
+            radius: 12 * root.ui
+            color: root.panel
+            border.color: root.border
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16 * root.ui
+                spacing: 10 * root.ui
+                RowLayout {
+                    Layout.fillWidth: true
+                    HeadingText { text: "Thiết lập ban đầu"; Layout.fillWidth: true }
+                    AppButton {
+                        text: "Bỏ qua thiết lập"
+                        onClicked: root.finishSetupWizard()
+                    }
+                }
+                ProgressLine {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 8 * root.ui
+                    value: (backend.setupStep + 1) / 4
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4 * root.ui
+                    Repeater {
+                        model: ["Chào mừng", "Giọng kỹ sư", "Kết nối LLM", "Tối ưu máy"]
+                        delegate: BodyText {
+                            required property int index
+                            required property string modelData
+                            Layout.fillWidth: true
+                            text: modelData
+                            color: index === backend.setupStep ? root.primary : root.textMuted
+                            font.pixelSize: 11 * root.ui
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+                ScrollView {
+                    id: setupContentScroll
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    Column {
+                        width: setupContentScroll.availableWidth
+                        spacing: 10 * root.ui
+                        Loader {
+                            id: setupContent
+                            width: parent.width
+                            sourceComponent: [setupWelcomeStep, setupVoiceStep, setupLlmStep, setupOptimizationStep]
+                                [Math.max(0, Math.min(3, backend.setupStep))]
+                        }
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    AppButton {
+                        text: "Quay lại"
+                        visible: backend.setupStep > 0
+                        enabled: !backend.ttsBenchmarkRunning
+                        onClicked: backend.setSetupStep(Math.max(0, backend.setupStep - 1))
+                    }
+                    Item { Layout.fillWidth: true }
+                    AppButton {
+                        highlighted: true
+                        text: backend.setupStep === 3 ? "Hoàn tất" : "Tiếp tục"
+                        enabled: !backend.ttsBenchmarkRunning
+                        onClicked: {
+                            if (backend.setupStep === 2) setupContent.item.saveConfiguration()
+                            if (backend.setupStep === 3) root.finishSetupWizard()
+                            else backend.setSetupStep(backend.setupStep + 1)
+                        }
+                    }
+                }
+            }
         }
-        AppButton {
-            visible: startupErrorText.visible
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: startupErrorText.bottom
-            anchors.topMargin: 14 * root.ui
-            width: 120 * root.ui
-            text: "Thử lại"
-            highlighted: true
-            onClicked: backend.retryStartup()
+    }
+    function applyRaceEngineerVoicePrompt() {
+        googleVoiceName.text = "RaceEngineer · Tiếng Việt"
+        voiceDescription.text = backend.bonoVoiceDescription()
+    }
+
+    function openGoogleVoiceDialog() {
+        voiceCreationMode.currentIndex = 0
+        addGoogleVoiceDialog.open()
+    }
+
+    property alias googleVoiceDialog: addGoogleVoiceDialog
+
+    Dialog {
+        id: addGoogleVoiceDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        z: 3000
+        implicitWidth: Math.min(500 * root.ui, root.width - 32 * root.ui)
+        property string sourceWavPath: ""
+        property string consentWavPath: ""
+        title: "Thêm giọng Google"
+        font.family: root.uiFontFamily
+        palette.window: root.panel
+        palette.windowText: root.textMain
+        palette.button: root.raised
+        palette.buttonText: root.textMain
+        palette.base: root.bg
+        palette.text: root.textMain
+        background: Rectangle { color: root.panel; radius: 12 * root.ui; border.color: root.border }
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: {
+            if (voiceCreationMode.currentIndex === 0)
+                backend.createGooglePromptedVoice(googleVoiceName.text, voiceDescription.text)
+            else backend.createGoogleTtsVoice(googleVoiceName.text, sourceWavPath, consentWavPath)
         }
+        contentItem: ScrollView {
+            id: voiceDialogScroll
+            implicitWidth: 470 * root.ui
+            implicitHeight: Math.min(voiceDialogFields.implicitHeight, root.height - 180 * root.ui)
+            contentWidth: availableWidth
+            clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ColumnLayout {
+            id: voiceDialogFields
+            width: voiceDialogScroll.availableWidth
+            spacing: 10 * root.ui
+            TabBar {
+                id: voiceCreationMode
+                Layout.fillWidth: true
+                background: Rectangle { color: root.bg; radius: 8 * root.ui }
+                TabButton {
+                    id: promptVoiceTab
+                    text: "Tạo bằng prompt"
+                    contentItem: BodyText { text: promptVoiceTab.text; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { color: promptVoiceTab.checked ? root.raised : root.bg; radius: 8 * root.ui }
+                }
+                TabButton {
+                    id: wavVoiceTab
+                    text: "Nhân bản từ WAV"
+                    contentItem: BodyText { text: wavVoiceTab.text; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { color: wavVoiceTab.checked ? root.raised : root.bg; radius: 8 * root.ui }
+                }
+            }
+            AppButton {
+                Layout.fillWidth: true
+                visible: voiceCreationMode.currentIndex === 0
+                text: "Dùng prompt RaceEngineer (mặc định)"
+                onClicked: root.applyRaceEngineerVoicePrompt()
+            }
+            TextField {
+                id: googleVoiceName
+                Layout.fillWidth: true
+                placeholderText: "Tên giọng"
+                text: "RaceEngineer · Tiếng Việt"
+                maximumLength: 80
+                font.family: root.uiFontFamily
+                color: root.textMain
+                background: Rectangle { color: root.bg; radius: 8 * root.ui; border.color: root.border }
+            }
+            TextArea {
+                id: voiceDescription
+                Layout.fillWidth: true
+                Layout.minimumHeight: 170 * root.ui
+                Layout.preferredHeight: implicitHeight
+                visible: voiceCreationMode.currentIndex === 0
+                text: backend.bonoVoiceDescription()
+                placeholderText: "Mô tả chất giọng, cách phát âm và nhịp nói"
+                wrapMode: TextEdit.Wrap
+                color: root.textMain
+                font.family: root.uiFontFamily
+                font.pixelSize: 13 * root.ui
+                background: Rectangle { color: root.bg; radius: 8 * root.ui; border.color: root.border }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: "Chọn mẫu WAV"; onClicked: sourceVoiceFileDialog.open() }
+                visible: voiceCreationMode.currentIndex === 1
+                MutedText { text: addGoogleVoiceDialog.sourceWavPath.length ? "Đã chọn mẫu" : "Mẫu giọng 10–30 giây"; Layout.fillWidth: true }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: "Chọn WAV đồng ý"; onClicked: consentVoiceFileDialog.open() }
+                visible: voiceCreationMode.currentIndex === 1
+                MutedText { text: addGoogleVoiceDialog.consentWavPath.length ? "Đã chọn bản ghi đồng ý" : "Bản ghi câu đồng ý"; Layout.fillWidth: true }
+            }
+            BodyText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: "WAV PCM mono 16-bit. Bản ghi đồng ý phải đọc chính xác: “Tôi là chủ sở hữu giọng nói này và tôi đồng cho Google sử dụng giọng nói này để tạo mô hình giọng nói tổng hợp.”"
+                visible: voiceCreationMode.currentIndex === 1
+            }
+            MutedText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: "Bấm OK để tạo giọng qua Google API; có thể phát sinh phí. Tạo thành công sẽ lưu tên vào danh sách giọng và chọn giọng mới."
+            }
+            }
+        }
+    }
+    FileDialog {
+        id: sourceVoiceFileDialog
+        title: "Chọn bản ghi giọng nói"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["WAV audio (*.wav)"]
+        onAccepted: addGoogleVoiceDialog.sourceWavPath = selectedFile.toLocalFile()
+    }
+    FileDialog {
+        id: consentVoiceFileDialog
+        title: "Chọn bản ghi đồng ý"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["WAV audio (*.wav)"]
+        onAccepted: addGoogleVoiceDialog.consentWavPath = selectedFile.toLocalFile()
     }
 }

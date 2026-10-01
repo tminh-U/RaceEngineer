@@ -33,14 +33,38 @@ class RadioTestBackend final : public raceengineer::ITtsBackend
 {
 public:
     bool isAvailable() const override { return true; }
+    bool canSpeakCached(const QString&) const override { return true; }
     QString backendName() const override { return QStringLiteral("test"); }
     void warmUp() override {}
-    void speak(const QString&) override {}
-    void stop() override {}
+    void speak(const QString& text) override { current = text; emit speakingStarted(text); }
+    void stop() override {
+        const bool wasActive = !current.isEmpty();
+        current.clear();
+        if (wasActive) emit speakingFinished();
+    }
+    quint64 pauseSpeech() override {
+        const auto token = ++nextToken;
+        paused.insert(token, current);
+        current.clear();
+        return token;
+    }
+    bool resumeSpeech(quint64 token) override {
+        if (!paused.contains(token)) return false;
+        ++resumes;
+        current = paused.take(token);
+        emit speakingStarted(current);
+        return true;
+    }
+    void discardSpeech(quint64 token) override { discarded += paused.remove(token); }
+    QHash<quint64, QString> paused;
+    quint64 nextToken{};
+    QString current;
+    int resumes{};
+    int discarded{};
     void setVolume(float) override {}
     void setSpeed(float) override {}
     void setAudioOutputDevice(const QString&) override {}
-    void finish() { emit speakingFinished(); }
+    void finish() { current.clear(); emit speakingFinished(); }
 };
 
 int main(int argc, char* argv[])
@@ -134,7 +158,9 @@ int main(int argc, char* argv[])
     expect(emitted.size() == 1 && emitted.front().type == EventType::FuelCritical);
     eventState.pitLimiter = true;
     emitted = events.process(eventState, baseTime + std::chrono::seconds(4));
-    expect(emitted.size() == 1 && emitted.front().type == EventType::PitLimiterOn);
+    expect(emitted.empty());
+    eventState.pitLimiter = false;
+    expect(events.process(eventState, baseTime + std::chrono::milliseconds(4500)).empty());
 
     eventState.flag = FlagState::Yellow;
     emitted = events.process(eventState, baseTime + std::chrono::seconds(5));
@@ -361,17 +387,28 @@ int main(int argc, char* argv[])
 
     OpponentState oppLeft;
     oppLeft.carId = 1;
-    oppLeft.worldPosition = std::array<double, 3>{-1.8, 0.0, 0.0};
-    oppLeft.spotterWheelContactPoints = wheelsAt(-1.8);
+    oppLeft.worldPosition = std::array<double, 3>{-3.0, 0.0, 0.0};
+    oppLeft.spotterWheelContactPoints = wheelsAt(-3.0);
     spotterState.spotterOpponents = {oppLeft};
 
     auto spotterEvents = spotter.process(spotterState, spotterBase);
     expect(spotterEvents.empty());
-    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(200));
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(99));
+    expect(spotterEvents.empty());
+    spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(100));
     expect(spotterEvents.size() == 1);
     expect(spotterEvents.front().type == EventType::CarLeft);
     expect(spotterEvents.front().priority == EventPriority::Spotter);
     expect(spotter.hasLeft());
+    expect(!spotter.hasRight());
+
+    OpponentState farRight;
+    farRight.carId = 3;
+    farRight.worldPosition = std::array<double, 3>{3.55, 0.0, 0.0};
+    farRight.spotterWheelContactPoints = wheelsAt(3.55);
+    spotterState.spotterOpponents = {oppLeft, farRight};
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(150)).empty());
+    expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(250)).empty());
     expect(!spotter.hasRight());
 
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(300));
@@ -398,12 +435,116 @@ int main(int argc, char* argv[])
     expect(!spotter.hasLeft());
     expect(!spotter.hasRight());
 
-    // Test: Quick re-engagement within repeat cooldown (8.0s) must NOT repeat verbal callout
+    // Each new approach can produce one callout after the side clears.
     spotterState.spotterOpponents = {oppLeft};
     expect(spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2300)).empty());
     spotterEvents = spotter.process(spotterState, spotterBase + std::chrono::milliseconds(2500));
     expect(spotter.hasLeft());
-    expect(spotterEvents.empty()); // Suppressed: quiet tracking, no radio spam!
+    expect(spotterEvents.size() == 1 && spotterEvents.front().type == EventType::CarLeft);
+
+    const auto geometryTestBase = spotterBase + std::chrono::milliseconds(3000);
+    RaceState geometryState = spotterState;
+    geometryState.speedKmh.reset();
+
+    // The warning window covers approach before the unexpanded footprints overlap.
+    OpponentState approaching = oppLeft;
+    approaching.worldPosition = std::array<double, 3>{-1.8, 0.0, 3.9};
+    approaching.spotterWheelContactPoints = playerWheels;
+    for (auto& point : *approaching.spotterWheelContactPoints) {
+        point[0] -= 1.8;
+        point[2] += 3.9;
+    }
+    geometryState.spotterOpponents = {approaching};
+    SpotterEngine approachSpotter;
+    expect(approachSpotter.process(geometryState, geometryTestBase).empty());
+    expect(approachSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(99)).empty());
+    spotterEvents = approachSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(100));
+    expect(spotterEvents.size() == 1 && spotterEvents.front().type == EventType::CarLeft);
+
+    // Side-specific hysteresis keeps a car through the exit margin, then clears after 250 ms.
+    SpotterEngine hysteresisSpotter;
+    geometryState.spotterOpponents = {oppLeft};
+    expect(hysteresisSpotter.process(geometryState, geometryTestBase).empty());
+    spotterEvents = hysteresisSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(100));
+    expect(spotterEvents.size() == 1 && spotterEvents.front().type == EventType::CarLeft);
+    OpponentState insideExitMargin = oppLeft;
+    insideExitMargin.worldPosition = std::array<double, 3>{-3.55, 0.0, 0.0};
+    insideExitMargin.spotterWheelContactPoints = wheelsAt(-3.55);
+    geometryState.spotterOpponents = {insideExitMargin};
+    expect(hysteresisSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(200)).empty());
+    expect(hysteresisSpotter.hasLeft());
+    OpponentState outsideExitMargin = insideExitMargin;
+    outsideExitMargin.worldPosition = std::array<double, 3>{-3.7, 0.0, 0.0};
+    outsideExitMargin.spotterWheelContactPoints = wheelsAt(-3.7);
+    geometryState.spotterOpponents = {outsideExitMargin};
+    expect(hysteresisSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(400)).empty());
+    expect(hysteresisSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(649)).empty());
+    expect(hysteresisSpotter.hasLeft());
+    expect(hysteresisSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(650)).empty());
+    expect(!hysteresisSpotter.hasLeft());
+
+    // A rotated opponent remains detectable on the correct side.
+    OpponentState rotatedRight = oppRight;
+    rotatedRight.worldPosition = std::array<double, 3>{1.8, 0.0, 0.0};
+    rotatedRight.spotterWheelContactPoints = playerWheels;
+    for (auto& point : *rotatedRight.spotterWheelContactPoints) {
+        const double x = point[0];
+        point[0] = 1.8 + point[2];
+        point[2] = -x;
+    }
+    geometryState.spotterOpponents = {rotatedRight};
+    SpotterEngine rotatedSpotter;
+    expect(rotatedSpotter.process(geometryState, geometryTestBase).empty());
+    spotterEvents = rotatedSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(100));
+    expect(spotterEvents.size() == 1 && spotterEvents.front().type == EventType::CarRight);
+
+    // A wider valid opponent is counted, while malformed and stale geometry is reported.
+    OpponentState wideOpponent = oppLeft;
+    wideOpponent.spotterWheelContactPoints = playerWheels;
+    for (std::size_t i = 0; i < wideOpponent.spotterWheelContactPoints->size(); ++i) {
+        (*wideOpponent.spotterWheelContactPoints)[i][0] = i % 2 == 0 ? -0.95 : 0.95;
+    }
+    geometryState.spotterOpponents = {wideOpponent};
+    SpotterEngine geometryStatusSpotter;
+    expect(geometryStatusSpotter.process(geometryState, geometryTestBase).empty());
+    expect(geometryStatusSpotter.usableOpponentCount() == 1);
+    expect(!geometryStatusSpotter.hasInvalidGeometry());
+
+    OpponentState overpass = oppLeft;
+    overpass.worldPosition = std::array<double, 3>{-3.0, 2.0, 0.0};
+    overpass.spotterWheelContactPoints = wheelsAt(-3.0);
+    for (auto& point : *overpass.spotterWheelContactPoints) point[1] += 2.0;
+    geometryState.spotterOpponents = {overpass};
+    SpotterEngine bridgeSpotter;
+    expect(bridgeSpotter.process(geometryState, geometryTestBase).empty());
+    expect(bridgeSpotter.usableOpponentCount() == 1);
+
+    OpponentState invalidOpponent = oppLeft;
+    invalidOpponent.spotterWheelContactPoints = WheelContactPoints{};
+    geometryState.spotterOpponents = {invalidOpponent};
+    expect(geometryStatusSpotter.process(geometryState,
+        geometryTestBase + std::chrono::milliseconds(1)).empty());
+    expect(geometryStatusSpotter.usableOpponentCount() == 0);
+    expect(geometryStatusSpotter.hasInvalidGeometry());
+    geometryState.spotterOpponents = {oppLeft};
+    geometryState.pitState = PitState::PitLane;
+    SpotterEngine pitSpotter;
+    expect(pitSpotter.process(geometryState, geometryTestBase).empty());
+    expect(!pitSpotter.hasLeft() && pitSpotter.usableOpponentCount() == 0);
+    geometryState.pitState = PitState::Track;
+    geometryState.spotterGeometryFresh = false;
+    geometryState.spotterGeometryStale = true;
+    SpotterEngine staleSpotter;
+    expect(staleSpotter.process(geometryState, geometryTestBase).empty());
+    expect(!staleSpotter.hasLeft() && staleSpotter.usableOpponentCount() == 0);
 
     // Spotter geometry remains active at low speed.
     spotter.reset();
@@ -835,6 +976,15 @@ int main(int argc, char* argv[])
     SettingsManager settingsMgr;
     expect(settingsMgr.tts().voice == QStringLiteral("Minh Đức"));
     TtsSettings ttsTest;
+    for (const int threads : {2, 3, 4, 6, 5}) {
+        ttsTest.cpuThreads = threads;
+        settingsMgr.setTts(ttsTest);
+        const int expectedThreads = threads == 5 || threads == 6 ? 4 : threads;
+        expect(settingsMgr.tts().cpuThreads == expectedThreads);
+        SettingsManager reloadedThreads;
+        expect(reloadedThreads.tts().cpuThreads == expectedThreads);
+    }
+    ttsTest.cpuThreads = 4;
     ttsTest.backend = QStringLiteral("VieNeu-TTS");
     settingsMgr.setTts(ttsTest);
     expect(settingsMgr.tts().backend == QStringLiteral("VieNeu-TTS"));
@@ -969,17 +1119,28 @@ int main(int argc, char* argv[])
 
     {
         RadioTestBackend radioBackend;
+        RadioTestBackend localRadioBackend;
         MessageDispatcher radio(&radioBackend);
+        radio.setLocalBackend(&localRadioBackend);
         QStringList spoken;
-        QObject::connect(&radio, &MessageDispatcher::requestSpeak, &app,
-                         [&spoken](const QString& text) { spoken.append(text); });
+        ITtsBackend* activeRadioBackend = &radioBackend;
+        QObject::connect(&radioBackend, &ITtsBackend::speakingStarted, &app,
+            [&spoken, &activeRadioBackend, &radioBackend](const QString& text) {
+                activeRadioBackend = &radioBackend;
+                spoken.append(text);
+            });
+        QObject::connect(&localRadioBackend, &ITtsBackend::speakingStarted, &app,
+            [&spoken, &activeRadioBackend, &localRadioBackend](const QString& text) {
+                activeRadioBackend = &localRadioBackend;
+                spoken.append(text);
+            });
         const auto waitForRadio = [](int milliseconds) {
             QEventLoop loop;
             QTimer::singleShot(milliseconds, &loop, &QEventLoop::quit);
             loop.exec();
         };
         const auto finishRadio = [&] {
-            radioBackend.finish();
+            static_cast<RadioTestBackend*>(activeRadioBackend)->finish();
             waitForRadio(300);
         };
         const QString firstSummary = QStringLiteral("Lap 1 summary");
@@ -995,6 +1156,56 @@ int main(int argc, char* argv[])
         finishRadio();
         expect(spoken == QStringList({firstSummary, bestLapAlert, firstSummary}));
         finishRadio();
+
+        expect(radioBackend.resumes == 1);
+        // Nested interruptions: critical -> still-valid Spotter -> remaining conversation.
+        radio.setProximitySpotterState(true, false);
+        const auto beforeNested = spoken.size();
+        radio.enqueue(QStringLiteral("Conversation remainder"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("Left still occupied"), EventPriority::Spotter,
+            MessageSource::ProximitySpotter, EventType::CarLeft);
+        radio.enqueue(QStringLiteral("Critical engine"), EventPriority::Critical, MessageSource::EngineAlerts);
+        expect(spoken.last() == QStringLiteral("Critical engine"));
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("Left still occupied"));
+        expect(localRadioBackend.resumes == 1);
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("Conversation remainder"));
+        expect(spoken.size() == beforeNested + 5);
+        finishRadio();
+        expect(radioBackend.paused.isEmpty() && localRadioBackend.paused.isEmpty());
+
+        // An obsolete Spotter continuation must be discarded, not resumed.
+        radio.enqueue(QStringLiteral("Left again"), EventPriority::Spotter,
+            MessageSource::ProximitySpotter, EventType::CarLeft);
+        radio.enqueue(QStringLiteral("Critical fuel"), EventPriority::Critical, MessageSource::FuelAlerts);
+        radio.setProximitySpotterState(false, false);
+        const auto afterObsolete = spoken.size();
+        finishRadio();
+        expect(spoken.size() == afterObsolete);
+        expect(localRadioBackend.paused.isEmpty() && localRadioBackend.discarded == 1);
+
+        // Keep ordinary waiting speech, and resume the interrupted FIFO head first.
+        const auto beforeFifo = spoken.size();
+        radio.enqueue(QStringLiteral("FIFO head"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("FIFO waiting"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("Urgent FIFO alert"), EventPriority::Critical, MessageSource::FlagAlerts);
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("FIFO head"));
+        radio.enqueue(QStringLiteral("Second urgent FIFO alert"), EventPriority::Critical, MessageSource::EngineAlerts);
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("FIFO head"));
+        finishRadio();
+        expect(spoken.last() == QStringLiteral("FIFO waiting"));
+        finishRadio();
+        expect(spoken.size() == beforeFifo + 6);
+
+        radio.enqueue(QStringLiteral("Cancelled remainder"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("Cancel guard alert"), EventPriority::Critical, MessageSource::FlagAlerts);
+        radio.cancelByPrefix(QStringLiteral("Cancelled"));
+        const auto afterRemainderCancel = spoken.size();
+        finishRadio();
+        expect(spoken.size() == afterRemainderCancel && radioBackend.paused.isEmpty());
 
         // Preserve a waiting summary through safety preemption, keeping only the latest lap.
         radio.enqueue(QStringLiteral("Car left"), EventPriority::Spotter, MessageSource::ProximitySpotter);
@@ -1027,6 +1238,46 @@ int main(int argc, char* argv[])
         radio.cancelBySource(MessageSource::LapSummary);
         finishRadio();
         expect(spoken.last() == QStringLiteral("Car right"));
+        const int spokenBeforeLocalSystem = spoken.size();
+        const QString apiUnavailable = QStringLiteral("Google TTS unavailable");
+        radio.enqueue(apiUnavailable, EventPriority::Conversation, MessageSource::LocalSystem);
+        waitForRadio(120);
+        expect(spoken.size() == spokenBeforeLocalSystem + 1);
+        expect(spoken.last() == apiUnavailable);
+        expect(activeRadioBackend == &localRadioBackend);
+        radio.enqueue(apiUnavailable, EventPriority::Conversation, MessageSource::LocalSystem);
+        expect(spoken.size() == spokenBeforeLocalSystem + 1);
+        finishRadio();
+        radio.setConversationSuppressed(true);
+        const auto beforeBenchmark = spoken.size();
+        radio.enqueue(QStringLiteral("Benchmark conversation"), EventPriority::Conversation);
+        waitForRadio(120);
+        expect(spoken.size() == beforeBenchmark);
+        radio.setConversationSuppressed(false);
+        radio.enqueue(QStringLiteral("Before benchmark"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("Pending benchmark conversation"), EventPriority::Conversation);
+        static_cast<RadioTestBackend*>(activeRadioBackend)->finish();
+        waitForRadio(50); // Finished, but the existing 250 ms cadence timer has not drained the queue.
+        radio.setConversationSuppressed(true);
+        const auto beforeQueuedBenchmark = spoken.size();
+        waitForRadio(300);
+        expect(spoken.size() == beforeQueuedBenchmark);
+        radio.enqueue(QStringLiteral("Cached safety during benchmark"), EventPriority::Conversation, MessageSource::LocalSystem);
+        waitForRadio(120);
+        expect(spoken.last() == QStringLiteral("Cached safety during benchmark"));
+        finishRadio();
+        radio.setConversationSuppressed(false);
+        radio.enqueue(QStringLiteral("Clear interrupted conversation"), EventPriority::Conversation);
+        radio.enqueue(QStringLiteral("Clear urgent alert"), EventPriority::Critical, MessageSource::FlagAlerts);
+        radio.clear();
+        expect(radioBackend.paused.isEmpty() && localRadioBackend.paused.isEmpty());
+        bool speakingAfterClear = false;
+        QObject::connect(&radio, &MessageDispatcher::speakingChanged, &app,
+            [&](bool speaking, const QString&) { speakingAfterClear = speaking; });
+        radio.enqueue(QStringLiteral("New conversation after clear"), EventPriority::Conversation);
+        waitForRadio(300);
+        expect(speakingAfterClear && radioBackend.current == QStringLiteral("New conversation after clear"));
+        radio.clear();
     }
 
     return failures == 0 ? 0 : 1;

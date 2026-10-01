@@ -70,6 +70,7 @@ struct RaceState final {
     std::optional<WorldPoint> spotterWorldPosition;
     std::optional<WheelContactPoints> spotterWheelContactPoints;
     bool spotterGeometryFresh{false};
+    bool spotterGeometryStale{false};
     std::vector<OpponentState> spotterOpponents;
 
     std::optional<double> currentLapTimeSeconds;

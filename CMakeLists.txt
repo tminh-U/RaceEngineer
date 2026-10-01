@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(RaceEngineer VERSION 1.0.4 LANGUAGES CXX)
+project(RaceEngineer VERSION 1.0.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -115,10 +115,14 @@ qt_add_executable(RaceEngineer
     src/llm/tools/ToolRegistry.cpp
     src/llm/tools/ToolRegistry.h
     src/tts/ITtsBackend.h
+    src/tts/GoogleTtsBackend.cpp
+    src/tts/GoogleTtsBackend.h
     src/tts/VieNeuTtsBackend.cpp
     src/tts/VieNeuTtsBackend.h
     src/tts/RacingTextNormalizer.cpp
     src/tts/RacingTextNormalizer.h
+    src/tts/TtsBenchmark.cpp
+    src/tts/TtsBenchmark.h
     src/spotter/SpotterEngine.cpp
     src/spotter/SpotterEngine.h
     src/input/DInputButtonMonitor.cpp
@@ -280,7 +284,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter/manifest.json")
 endif()
 
 if(WIN32)
-    target_link_libraries(RaceEngineer PRIVATE Advapi32 Dinput8 Dxguid Ole32)
+    target_link_libraries(RaceEngineer PRIVATE Advapi32 Dinput8 Dxguid Ole32 Dwmapi)
     target_compile_definitions(RaceEngineer PRIVATE
         WIN32_LEAN_AND_MEAN
         NOMINMAX
@@ -313,7 +317,41 @@ else()
 endif()
 
 include(CTest)
+
+add_executable(RaceEngineerTtsBench tools/benchmark_vieneu.cpp
+    src/tts/TtsBenchmark.cpp src/tts/TtsBenchmark.h
+    src/tts/VieNeuTtsBackend.cpp src/tts/VieNeuTtsBackend.h src/tts/ITtsBackend.h
+    src/tts/RacingTextNormalizer.cpp src/ai/LocalAiRuntime.cpp src/utils/Logging.cpp)
+target_include_directories(RaceEngineerTtsBench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/ggml/include)
+target_link_libraries(RaceEngineerTtsBench PRIVATE Qt6::Core Qt6::Multimedia vieneu-tts ggml psapi)
+target_compile_definitions(RaceEngineerTtsBench PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+if(GGML_VULKAN)
+    target_compile_definitions(RaceEngineerTtsBench PRIVATE RACEENGINEER_HAS_VULKAN=1)
+endif()
+if(MSVC)
+    target_compile_options(RaceEngineerTtsBench PRIVATE /utf-8 /permissive-)
+endif()
+add_dependencies(RaceEngineer RaceEngineerTtsBench)
+install(TARGETS RaceEngineerTtsBench RUNTIME DESTINATION bin)
 if(BUILD_TESTING)
+    add_executable(TtsBenchmarkTests tests/TtsBenchmarkTests.cpp src/tts/TtsBenchmark.cpp
+        src/tts/TtsBenchmark.h src/config/SettingsManager.cpp src/utils/Logging.cpp
+        src/tts/VieNeuTtsBackend.cpp src/tts/VieNeuTtsBackend.h src/tts/ITtsBackend.h
+        src/tts/RacingTextNormalizer.cpp src/ai/LocalAiRuntime.cpp)
+    target_include_directories(TtsBenchmarkTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/ggml/include)
+    target_link_libraries(TtsBenchmarkTests PRIVATE Qt6::Core Qt6::Multimedia vieneu-tts ggml)
+    target_compile_definitions(TtsBenchmarkTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    if(GGML_VULKAN)
+        target_compile_definitions(TtsBenchmarkTests PRIVATE RACEENGINEER_HAS_VULKAN=1)
+    endif()
+    if(MSVC)
+        target_compile_options(TtsBenchmarkTests PRIVATE /utf-8)
+    endif()
+    add_test(NAME TtsBenchmarkTests COMMAND TtsBenchmarkTests)
+    add_test(NAME VieNeuThreadOwnershipTests COMMAND TtsBenchmarkTests --lifecycle-owned)
+    add_test(NAME VieNeuExternalOverrideTests COMMAND TtsBenchmarkTests --lifecycle-external)
     add_executable(StrategyRecorderTests tests/StrategyRecorderTests.cpp
         src/strategy/StrategyRecorder.cpp src/strategy/StrategyRecorder.h
         src/telemetry/common/RaceState.cpp)
@@ -358,6 +396,28 @@ if(BUILD_TESTING)
         target_compile_options(RaceStateTests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
     add_test(NAME RaceStateTests COMMAND RaceStateTests)
+
+    add_executable(GoogleTtsBackendTests
+        tests/GoogleTtsBackendTests.cpp
+        src/llm/providers/OpenAICompatibleProvider.cpp
+        src/llm/providers/OpenAICompatibleProvider.h
+        src/llm/ILLMProvider.h
+        src/tts/GoogleTtsBackend.cpp
+        src/tts/GoogleTtsBackend.h
+        src/tts/ITtsBackend.h
+        src/utils/Logging.cpp
+    )
+    target_include_directories(GoogleTtsBackendTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+    target_link_libraries(GoogleTtsBackendTests PRIVATE Qt6::Core Qt6::Network Qt6::Multimedia)
+    if(MSVC)
+        target_compile_options(GoogleTtsBackendTests PRIVATE /W4 /permissive- /utf-8)
+    else()
+        target_compile_options(GoogleTtsBackendTests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME GoogleTtsBackendTests COMMAND GoogleTtsBackendTests)
 endif()
 
 install(TARGETS RaceEngineer

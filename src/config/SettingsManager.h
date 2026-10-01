@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QString>
 
 namespace raceengineer {
@@ -29,10 +31,16 @@ struct TtsSettings final {
     // VieNeu-TTS is the only supported local backend.
     QString backend{QStringLiteral("VieNeu-TTS")};
     QString voice{QStringLiteral("Minh Đức")};
+    QString googleModel{QStringLiteral("gemini-3.8-flash-lite-tts")};
+    QString googleVoice{QStringLiteral("Kore")};
+    QString googleVoiceId;
+    QString googleVoiceName;
+    QJsonArray googleCustomVoices;
     QString outputDevice;
     float volume{0.85F};
     bool audioDucking{true};
     float duckFactor{0.25F};
+    int cpuThreads{2};
 };
 
 struct AudioInputSettings final {
@@ -69,6 +77,8 @@ public:
     void setStrategyEnabled(bool enabled);
     [[nodiscard]] bool spotterEnabled() const noexcept { return spotterEnabled_; }
     void setSpotterEnabled(bool enabled);
+    [[nodiscard]] double spotterWarningGapMeters() const noexcept { return spotterWarningGapMeters_; }
+    void setSpotterWarningGapMeters(double meters);
     [[nodiscard]] bool fuelAlertsEnabled() const noexcept { return fuelAlertsEnabled_; }
     void setFuelAlertsEnabled(bool enabled);
     [[nodiscard]] bool tyreAlertsEnabled() const noexcept { return tyreAlertsEnabled_; }
@@ -100,6 +110,11 @@ public:
     void setResponseStyle(const QString& style);
     [[nodiscard]] QString filePath() const { return filePath_; }
     [[nodiscard]] bool migratedFromLegacyMistral() const noexcept { return migratedFromLegacyMistral_; }
+    [[nodiscard]] bool setupCompleted() const noexcept { return setupCompleted_; }
+    [[nodiscard]] int setupStep() const noexcept { return setupStep_; }
+    void setSetupState(bool completed, int step);
+    [[nodiscard]] QJsonObject ttsBenchmark() const { return ttsBenchmark_; }
+    void setTtsBenchmark(QJsonObject benchmark);
 
 private:
     void load();
@@ -113,6 +128,7 @@ private:
     LocalAiSettings localAi_;
     bool strategyEnabled_{false};
     bool spotterEnabled_{true};
+    double spotterWarningGapMeters_{1.5};
     bool fuelAlertsEnabled_{true};
     bool tyreAlertsEnabled_{true};
     bool lapDeltaEnabled_{true};
@@ -128,6 +144,9 @@ private:
     QString driverName_{QStringLiteral("Minh Vũ")};
     QString responseStyle_{QStringLiteral("Tiêu chuẩn")};
     bool migratedFromLegacyMistral_{false};
+    bool setupCompleted_{false};
+    int setupStep_{0};
+    QJsonObject ttsBenchmark_;
 };
 
 } // namespace raceengineer

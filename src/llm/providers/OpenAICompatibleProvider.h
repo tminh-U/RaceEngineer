@@ -61,6 +61,7 @@ private:
 
     void startRequest(QJsonObject request, int retryCount);
     void startConnectionTest();
+    void scheduleRecovery();
     void processSseLine(const QByteArray& line);
     void fail(ApiState state, int status, const QString& message);
     void resetStreamState();
@@ -69,6 +70,9 @@ private:
     QNetworkAccessManager network_;
     QPointer<QNetworkReply> reply_;
     QTimer timeout_;
+    QTimer recoveryTimer_;
+    quint64 requestGeneration_{0};
+    int recoveryAttempts_{0};
     QElapsedTimer latency_;
     QByteArray streamBuffer_;
     QByteArray rawStreamData_;

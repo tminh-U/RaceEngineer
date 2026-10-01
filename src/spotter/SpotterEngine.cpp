@@ -8,13 +8,14 @@ namespace {
 
 using Vec3 = WorldPoint;
 
-constexpr auto kEngageDuration = std::chrono::milliseconds{180};
+constexpr auto kEngageDuration = std::chrono::milliseconds{100};
 constexpr auto kClearHoldDuration = std::chrono::milliseconds{250};
-constexpr auto kRepeatCooldown = std::chrono::seconds{8};
 constexpr double kMaximumDistance = 20.0;
 constexpr double kMaximumHeightDifference = 1.5;
 constexpr double kWidthMargin = 0.20;
 constexpr double kLengthMargin = 0.65;
+constexpr double kLongitudinalWarningExpansion = 0.50;
+constexpr double kExitHysteresis = 0.25;
 constexpr double kMinimumHalfWidth = 0.50;
 constexpr double kMaximumHalfWidth = 1.20;
 constexpr double kMinimumHalfLength = 1.20;
@@ -113,7 +114,9 @@ bool makeCarShape(const Vec3& position, const WheelContactPoints& points, CarSha
     return true;
 }
 
-bool overlapsAlongside(const CarShape& player, const CarShape& opponent, bool& isRight)
+bool overlapsAlongside(const CarShape& player, const CarShape& opponent,
+    const double lateralWarningGap, const bool leftEngaged, const bool rightEngaged,
+    bool& isRight)
 {
     const Vec3 relative = subtract(opponent.position, player.position);
     if (dot(relative, relative) > kMaximumDistance * kMaximumDistance
@@ -122,10 +125,13 @@ bool overlapsAlongside(const CarShape& player, const CarShape& opponent, bool& i
 
     const double lateral = dot(relative, player.right);
     if (std::abs(lateral) < 0.25) return false;
+    const double lateralExpansion = lateralWarningGap
+        + ((lateral > 0.0 ? rightEngaged : leftEngaged) ? kExitHysteresis : 0.0);
 
     const auto overlapsOnAxis = [&](const Vec3& axis) {
-        const double playerRadius = player.halfLength * std::abs(dot(player.forward, axis))
-            + player.halfWidth * std::abs(dot(player.right, axis));
+        const double playerRadius = (player.halfLength + kLongitudinalWarningExpansion)
+                * std::abs(dot(player.forward, axis))
+            + (player.halfWidth + lateralExpansion) * std::abs(dot(player.right, axis));
         const double opponentRadius = opponent.halfLength * std::abs(dot(opponent.forward, axis))
             + opponent.halfWidth * std::abs(dot(opponent.right, axis));
         return std::abs(dot(relative, axis)) <= playerRadius + opponentRadius;
@@ -149,13 +155,20 @@ void SpotterEngine::reset()
     rightActiveSince_ = {};
     leftClearSince_ = {};
     rightClearSince_ = {};
-    lastLeftCallout_ = {};
-    lastRightCallout_ = {};
+    usableOpponentCount_ = 0;
+    hasInvalidGeometry_ = false;
+}
+
+void SpotterEngine::setLateralWarningGap(const double meters) noexcept
+{
+    lateralWarningGapMeters_ = std::clamp(meters, 0.5, 2.5);
 }
 
 std::vector<RaceEvent> SpotterEngine::process(const RaceState& state,
     const std::chrono::steady_clock::time_point now)
 {
+    usableOpponentCount_ = 0;
+    hasInvalidGeometry_ = false;
     if (!state.connected || !state.spotterGeometryFresh || !state.spotterWorldPosition
         || !state.spotterWheelContactPoints
         || (state.pitState && *state.pitState != PitState::Track)) {
@@ -166,6 +179,7 @@ std::vector<RaceEvent> SpotterEngine::process(const RaceState& state,
     CarShape player;
     if (!makeCarShape(*state.spotterWorldPosition, *state.spotterWheelContactPoints, player)) {
         reset();
+        hasInvalidGeometry_ = true;
         return {};
     }
 
@@ -174,10 +188,15 @@ std::vector<RaceEvent> SpotterEngine::process(const RaceState& state,
     for (const auto& opponent : state.spotterOpponents) {
         if (opponent.inPitLane || !opponent.worldPosition || !opponent.spotterWheelContactPoints) continue;
         CarShape other;
-        if (!makeCarShape(*opponent.worldPosition, *opponent.spotterWheelContactPoints, other)) continue;
+        if (!makeCarShape(*opponent.worldPosition, *opponent.spotterWheelContactPoints, other)) {
+            hasInvalidGeometry_ = true;
+            continue;
+        }
+        ++usableOpponentCount_;
 
         bool isRight = false;
-        if (!overlapsAlongside(player, other, isRight)) continue;
+        if (!overlapsAlongside(player, other,
+                lateralWarningGapMeters_, leftEngaged_, rightEngaged_, isRight)) continue;
         if (isRight) activeRight = true;
         else activeLeft = true;
     }
@@ -209,15 +228,11 @@ std::vector<RaceEvent> SpotterEngine::process(const RaceState& state,
     }
 
     std::vector<RaceEvent> events;
-    if (leftEngaged_ && !previousLeft
-        && (lastLeftCallout_ == std::chrono::steady_clock::time_point{} || now - lastLeftCallout_ >= kRepeatCooldown)) {
+    if (leftEngaged_ && !previousLeft) {
         events.push_back({EventType::CarLeft, EventPriority::Spotter, "Có xe bên trái.", now});
-        lastLeftCallout_ = now;
     }
-    if (rightEngaged_ && !previousRight
-        && (lastRightCallout_ == std::chrono::steady_clock::time_point{} || now - lastRightCallout_ >= kRepeatCooldown)) {
+    if (rightEngaged_ && !previousRight) {
         events.push_back({EventType::CarRight, EventPriority::Spotter, "Có xe bên phải.", now});
-        lastRightCallout_ = now;
     }
     return events;
 }

@@ -199,18 +199,6 @@ std::vector<RaceEvent> EventEngine::process(const RaceState& state,
         }
     }
 
-    if (state.pitLimiter) {
-        if (!pitLimiter_) {
-            pitLimiter_ = state.pitLimiter;
-        } else if (*pitLimiter_ != *state.pitLimiter) {
-            emitIfReady(events, *state.pitLimiter ? EventType::PitLimiterOn : EventType::PitLimiterOff,
-                EventPriority::Important,
-                *state.pitLimiter ? "Đã bật giới hạn tốc độ pit."
-                                  : "Đã tắt giới hạn tốc độ pit.", now);
-            pitLimiter_ = state.pitLimiter;
-        }
-    }
-
     if (state.currentLap) {
         if (observedLap_ && *state.currentLap == *observedLap_ + 1 &&
             state.previousLapTimeSeconds && std::isfinite(*state.previousLapTimeSeconds) &&
@@ -243,7 +231,6 @@ void EventEngine::reset()
     fuelLevel_ = FuelLevel::Unknown;
     engineLevel_ = EngineLevel::Unknown;
     flag_.reset();
-    pitLimiter_.reset();
     connected_.reset();
     bestLap_.reset();
     tyresOverheating_ = false;

@@ -1,6 +1,7 @@
 #include "llm/providers/OpenAICompatibleProvider.h"
 
 #include "utils/Logging.h"
+#include "utils/ApiRetry.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -18,6 +19,12 @@ OpenAICompatibleProvider::OpenAICompatibleProvider(ProviderConfiguration configu
     , configuration_(std::move(configuration))
 {
     timeout_.setSingleShot(true);
+    recoveryTimer_.setSingleShot(true);
+    connect(&recoveryTimer_, &QTimer::timeout, this, [this] {
+        if (cancelled_ || reply_) return;
+        connectionTestRetryCount_ = 0;
+        startConnectionTest();
+    });
     connect(&timeout_, &QTimer::timeout, this, [this] {
         if (reply_) {
             timedOut_ = true;
@@ -163,12 +170,15 @@ void OpenAICompatibleProvider::startConnectionTest()
 
 void OpenAICompatibleProvider::cancelRequest()
 {
+    ++requestGeneration_;
     cancelled_ = true;
+    recoveryTimer_.stop();
     timeout_.stop();
     if (reply_) {
-        reply_->abort();
-        reply_->deleteLater();
+        const auto cancelledReply = reply_;
         reply_.clear();
+        cancelledReply->abort();
+        cancelledReply->deleteLater();
     }
     resetStreamState();
     testingConnection_ = false;
@@ -284,6 +294,7 @@ void OpenAICompatibleProvider::finishRequest(QNetworkReply* const source)
     const int status = finished->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const auto networkError = finished->error();
     const QString networkMessage = finished->errorString();
+    const QByteArray retryAfter = finished->rawHeader("Retry-After");
     QByteArray body;
     if (configuration_.streaming) {
         // Drain the final bytes before clearing the guarded reply pointer. Some
@@ -304,10 +315,16 @@ void OpenAICompatibleProvider::finishRequest(QNetworkReply* const source)
     }
     if (networkError != QNetworkReply::NoError || status >= 400) {
         if (body.isEmpty() && configuration_.streaming) body = rawStreamData_;
-        const bool temporary = timedOut_ || networkError == QNetworkReply::TimeoutError
-            || networkError == QNetworkReply::TemporaryNetworkFailureError || status >= 500;
-        if (temporary && retryCount_ < 1 && streamedContent_.isEmpty() && streamedTools_.isEmpty()) {
-            QTimer::singleShot(250, this, [this] { startRequest(activeRequest_, retryCount_ + 1); });
+        const bool temporary = transientApiFailure(status, networkError, timedOut_);
+        const int delay = apiRetryDelay(retryAfter, retryCount_);
+        if (temporary && retryCount_ < 2 && delay >= 0 && streamedContent_.isEmpty() && streamedTools_.isEmpty()) {
+            const auto generation = requestGeneration_;
+            const auto request = activeRequest_;
+            const auto attempt = retryCount_ + 1;
+            emit stateChanged(ApiState::Requesting, QStringLiteral("Retrying LLM %1/2 in %2 ms").arg(attempt).arg(delay));
+            QTimer::singleShot(delay, this, [this, generation, request, attempt] {
+                if (generation == requestGeneration_ && !cancelled_ && !reply_) startRequest(request, attempt);
+            });
             return;
         }
         const ApiState state = classifyError(status, networkError != QNetworkReply::NoError);
@@ -315,6 +332,7 @@ void OpenAICompatibleProvider::finishRequest(QNetworkReply* const source)
                                                .arg(configuration_.timeoutMilliseconds)
                                          : (body.isEmpty() ? networkMessage : parseErrorMessage(body));
         fail(state, status, detail);
+        if (temporary && status != 429) scheduleRecovery();
         return;
     }
 
@@ -346,6 +364,7 @@ void OpenAICompatibleProvider::finishRequest(QNetworkReply* const source)
         }
     }
     emit stateChanged(ApiState::Connected, QStringLiteral("Connected"));
+    recoveryAttempts_ = 0;
     emit responseReceived(response, latency_.elapsed(), firstTokenMilliseconds_);
 }
 
@@ -363,21 +382,28 @@ void OpenAICompatibleProvider::finishConnectionTest(QNetworkReply* const source)
     const int status = finished->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const auto networkError = finished->error();
     const QString networkMessage = finished->errorString();
+    const QByteArray retryAfter = finished->rawHeader("Retry-After");
     finished->deleteLater();
     if (cancelled_) return;
 
     // Some lightweight HTTP servers close the socket without a clean keep-alive
     // shutdown. A complete HTTP 200 model list is still a valid success.
     if (status == 200 && modelListContains(body, configuration_.model)) {
+        recoveryAttempts_ = 0;
         emit stateChanged(ApiState::Connected, QStringLiteral("Model available"));
         emit connectionTested(true, QStringLiteral("Connected — model available"));
         return;
     }
 
     if (networkError != QNetworkReply::NoError || status != 200) {
-        if (connectionTestRetryCount_ < 1) {
+        const bool temporary = transientApiFailure(status, networkError, timedOut_);
+        const int delay = apiRetryDelay(retryAfter, connectionTestRetryCount_);
+        if (temporary && connectionTestRetryCount_ < 2 && delay >= 0) {
             ++connectionTestRetryCount_;
-            QTimer::singleShot(250, this, &OpenAICompatibleProvider::startConnectionTest);
+            const auto generation = requestGeneration_;
+            QTimer::singleShot(delay, this, [this, generation] {
+                if (generation == requestGeneration_ && !cancelled_ && !reply_) startConnectionTest();
+            });
             return;
         }
         const ApiState state = classifyError(status, networkError != QNetworkReply::NoError);
@@ -390,6 +416,7 @@ void OpenAICompatibleProvider::finishConnectionTest(QNetworkReply* const source)
                       body.isEmpty() ? networkMessage : parseErrorMessage(body));
         emit stateChanged(state, detail);
         emit connectionTested(false, detail);
+        if (temporary && status != 429) scheduleRecovery();
         return;
     }
     if (!modelListContains(body, configuration_.model)) {
@@ -398,6 +425,15 @@ void OpenAICompatibleProvider::finishConnectionTest(QNetworkReply* const source)
         emit connectionTested(false, detail);
         return;
     }
+}
+
+void OpenAICompatibleProvider::scheduleRecovery()
+{
+    if (cancelled_ || reply_ || !configuration_.baseUrl.isValid() || configuration_.model.isEmpty()) return;
+    const int delay = 15000 << std::min(recoveryAttempts_, 2);
+    recoveryAttempts_ = std::min(recoveryAttempts_ + 1, 2);
+    recoveryTimer_.start(delay);
+    qCInfo(logApi) << "LLM connection will be checked again in" << delay << "ms";
 }
 
 void OpenAICompatibleProvider::fail(const ApiState state, const int status, const QString& message)

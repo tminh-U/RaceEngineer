@@ -14,6 +14,11 @@ public:
 
     [[nodiscard]] virtual bool isAvailable() const = 0;
     [[nodiscard]] virtual QString backendName() const = 0;
+    [[nodiscard]] virtual bool canSpeakCached(const QString&) const { return false; }
+    // Backends and dispatcher own GUI-thread playback; tokens retain unfinished audio.
+    virtual quint64 pauseSpeech() { return 0; }
+    virtual bool resumeSpeech(quint64) { return false; }
+    virtual void discardSpeech(quint64) {}
 
 public slots:
     virtual void warmUp() = 0;

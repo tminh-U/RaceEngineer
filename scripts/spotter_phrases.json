@@ -62,5 +62,17 @@
   {
     "id": "car_right",
     "text": "Có xe bên phải."
+  },
+  {
+    "id": "tyre_hot",
+    "text": "Lốp quá nóng."
+  },
+  {
+    "id": "damage_detected",
+    "text": "Phát hiện hư hại xe."
+  },
+  {
+    "id": "tts_api_unavailable",
+    "text": "Google TTS hiện không khả dụng."
   }
 ]

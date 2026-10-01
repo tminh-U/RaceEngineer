@@ -27,6 +27,7 @@ public:
 
     [[nodiscard]] bool hasData() const noexcept;
     [[nodiscard]] bool hasSpotterGeometry() const noexcept;
+    [[nodiscard]] bool spotterGeometryStale() const noexcept;
     [[nodiscard]] const std::optional<WorldPoint>& playerSpotterWorldPosition() const noexcept
     {
         return playerSpotterWorldPosition_;
