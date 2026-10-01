@@ -45,7 +45,7 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 
 #### Features
 
-- Read and analyze telemetry from Assetto Corsa and Assetto Corsa Competizone.
+- Read and analyze telemetry from Assetto Corsa and Assetto Corsa Competizione.
 - Predict fuel usage, lap times, the distance between cars, and more.
 - Communicate with the driver in real time in Vietnamese using `Phowhisper` and `VieNeu-TTS`.
 - Important spotter messages remain available even without an LLM or network connection.
@@ -70,7 +70,7 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 ## Supported games
 
 - Assetto Corsa
-- Assetto Corsa Competizone
+- Assetto Corsa Competizione
 
 ## Getting Started
 
@@ -101,6 +101,10 @@ This is an optional addon for getting additional data from Assetto Corsa. The in
 
 Copy the `RaceEngineer` folder into Assetto Corsa's `apps\python` folder, or drag it into Content Manager.
 
+Update this companion when updating RaceEngineer. Left/right proximity warnings
+require the new companion's wheel-contact geometry; older companions still
+provide legacy telemetry but cannot enable the current Spotter.
+
 ### ACC Broadcasting
 
 To use additional data such as opponent positions or the leaderboard, configure the ACC Broadcasting listener at:
@@ -117,11 +121,20 @@ Then set it to a port that is not being used by another application, for example
 }
 ```
 
+ACC Broadcasting adds optional opponent data. It does not provide the
+wheel-contact geometry required by the current proximity Spotter.
+
 ## Documentation
 
-- [Architecture](docs/architect.md) — application components and data flow.
-- [Build Guide](docs/build.md) — development and release build instructions.
-- [Voice Training Guide](docs/training.md) — training a custom VieNeu-TTS voice.
+- [Architecture](docs/architect.md): overview and subsystem chapters.
+- [Runtime and UI](docs/architecture/runtime-ui-storage.md): lifecycle, threads, settings and release.
+- [Telemetry and Spotter](docs/architecture/telemetry-radar-spotter.md): AC/ACC sources and radar geometry.
+- [STT and TTS](docs/architecture/voice-stt-tts.md): local voice and radio pipeline.
+- [LLM prompts and tools](docs/architecture/llm-prompts-tools.md): conversation and feature controls.
+- [XGBoost and strategy](docs/architecture/strategy-xgboost.md): runtime approval gates, recording and research training.
+- [Build Guide](docs/build.md): development and release build instructions.
+- [Voice Training Guide](docs/training.md): training a custom VieNeu-TTS voice.
+- [Logging Guide](docs/logging-guide.md): preparing confirmed Race recordings for local training.
 - [Vietnamese README](docs/readme_vie.md)
 
 ## Contributing
@@ -138,7 +151,7 @@ Please keep simulator-specific telemetry inside its provider and preserve determ
 
 ## Contact
 
-Le Dinh Tue Minh — [@tminh-U](https://github.com/tminh-U)
+Le Dinh Tue Minh - [@tminh-U](https://github.com/tminh-U)
 
 ## Acknowledgments
 

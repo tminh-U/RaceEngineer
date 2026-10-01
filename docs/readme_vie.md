@@ -45,7 +45,7 @@
 RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, xử lý dữ liệu telemetry từ game, tính toán logic đua xe và đầu vào / đầu ra bằng giọng nói.
 
 #### Tính năng
-- Đọc và phân tích telemetry từ Assetto Corsa và Assetto Corsa Competizone.
+- Đọc và phân tích telemetry từ Assetto Corsa và Assetto Corsa Competizione.
 - Dự đoán lượng xăng, thời gian vòng lap, khoảng cách giữa các xe,...
 - Giao tiếp thời gian thực với người lái bằng tiếng Việt sử dụng `Phowhisper` và `VieNeu-TTS`.
 - Các spotter quan trọng vẫn có thể sử dụng kể cả khi không có LLM hay mạng.
@@ -70,7 +70,7 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 
 ## Game hỗ trợ
 - Assetto Corsa
-- Assetto Corsa Competizone
+- Assetto Corsa Competizione
 
 
 
@@ -104,6 +104,10 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 
 Copy thư mục `RaceEngineer` vào thư mục `apps\python` của Assetto Corsa, hoặc kéo nó vào Content Manager.
 
+Cập nhật companion khi cập nhật RaceEngineer. Cảnh báo xe bên trái/phải cần dữ
+liệu điểm tiếp xúc bánh xe từ companion mới; bản cũ vẫn cung cấp telemetry
+legacy nhưng không bật được Spotter hiện tại.
+
 
 ### ACC Broadcasting
 
@@ -120,11 +124,20 @@ Sau đó set với một cổng không được app nào sử dụng (ví dụ):
 }
 ```
 
+ACC Broadcasting bổ sung dữ liệu đối thủ, nhưng không cung cấp hình học bánh xe
+mà Spotter hiện tại cần để phát cảnh báo xe kế bên.
+
 ## Tài liệu
 
-- [Kiến trúc ứng dụng](architect.md) — các thành phần và luồng dữ liệu trong app.
-- [Hướng dẫn build](build.md) — hướng dẫn build bản development và release.
-- [Hướng dẫn train giọng](training.md) — train giọng VieNeu-TTS tuỳ chỉnh.
+- [Kiến trúc ứng dụng](architect.md): tổng quan và các chương theo hệ thống.
+- [Runtime và UI](architecture/runtime-ui-storage.md): vòng đời, threads, settings và đóng gói.
+- [Telemetry và Spotter](architecture/telemetry-radar-spotter.md): nguồn AC/ACC và hình học radar.
+- [STT và TTS](architecture/voice-stt-tts.md): nhận diện giọng nói, tổng hợp tiếng nói và radio.
+- [Prompt và tools LLM](architecture/llm-prompts-tools.md): hội thoại và điều khiển tính năng.
+- [XGBoost và chiến thuật](architecture/strategy-xgboost.md): điều kiện duyệt model, ghi log và train nghiên cứu.
+- [Hướng dẫn build](build.md): build bản development và release.
+- [Hướng dẫn train giọng](training.md): train giọng VieNeu-TTS tuỳ chỉnh.
+- [Hướng dẫn ghi log](logging-guide.md): chuẩn bị phiên Race đủ điều kiện cho train local.
 - [README tiếng Anh](../README.md)
 
 ## Đóng góp
@@ -142,7 +155,7 @@ Please keep simulator-specific telemetry inside its provider and preserve determ
 
 ## Liên hệ
 
-Le Dinh Tue Minh — [@tminh-U](https://github.com/tminh-U)
+Le Dinh Tue Minh - [@tminh-U](https://github.com/tminh-U)
 
 ## Acknowledgments
 

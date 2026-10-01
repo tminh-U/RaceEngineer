@@ -1,6 +1,19 @@
 # RaceEngineer AC Companion App
 
-Ứng dụng Python mở rộng telemetry cho **Assetto Corsa (AC)** chạy ngầm trong game, tự động truyền dữ liệu đối thủ (tên tay đua, xe, thứ hạng, tọa độ 3D để bật tính năng **Spotter / Radar**, sector splits) về RaceEngineer qua Windows Shared Memory (`Local\race_engineer_ac_ext`) tốc độ cao và cổng UDP nội bộ `127.0.0.1:9996`.
+Ứng dụng Python mở rộng telemetry cho **Assetto Corsa (AC)** chạy ngầm trong game,
+truyền dữ liệu đối thủ, thứ hạng, tọa độ 3D, gaps và sector splits về RaceEngineer
+ở khoảng 30 Hz. Telemetry legacy dùng Windows Shared Memory
+`Local\race_engineer_ac_ext` và UDP fallback `127.0.0.1:9996`.
+
+Hình học Spotter dùng mapping riêng `Local\race_engineer_ac_spotter`, gồm vị trí
+và bốn điểm tiếp xúc bánh xe của từng xe. UDP legacy không mang dữ liệu hình học
+này. Companion cũ vẫn tương thích với telemetry legacy nhưng không bật được
+Spotter mới; hãy cập nhật app Python trong AC khi cập nhật RaceEngineer.
+
+RaceEngineer dùng footprint bánh xe để xác định xe bên trái/phải; chưa có radar
+vẽ vị trí đối thủ trên dashboard. Hướng và thời điểm overlap còn cần kiểm chứng
+trên track AC thực tế. Xem
+[kiến trúc telemetry và Spotter](../../../docs/architecture/telemetry-radar-spotter.md).
 
 ---
 

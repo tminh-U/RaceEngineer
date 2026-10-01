@@ -22,6 +22,13 @@ Runtime assets:
 - `voices/vieneu/`
 - native files under `third_party/vieneu-bin/`
 
+The main CMake build imports the separately staged VieNeu DLL and import
+library; it does not compile `third_party/vieneu.cpp` itself. If those files
+are missing or the native backend changed, inspect
+[`scripts/build_vieneu.ps1`](../scripts/build_vieneu.ps1) and its MSVC, Vulkan
+and ONNX Runtime paths before running it. `setup_runtime.ps1` prepares models,
+not this native library. See the [voice architecture](architecture/voice-stt-tts.md).
+
 Run commands from an x64 Visual Studio Developer Command Prompt. A normal
 PowerShell window may find CMake but still fail to find `cl.exe` or the MSVC
 runtime.
@@ -71,6 +78,17 @@ Run the offline tests:
 ```powershell
 ctest --test-dir build --output-on-failure
 ```
+
+The local race-data pipeline has a separate Python suite, not registered by
+CTest:
+
+```powershell
+python tests/test_local_training.py
+```
+
+Model-fitting cases use small synthetic inputs and require installed numpy and
+xgboost; they skip when those packages are absent. No package download runs from
+this test command.
 
 Run the application:
 
@@ -172,7 +190,7 @@ Verification checks:
 - optional AC Python companion;
 - every manifest file exists and matches its SHA-256 hash;
 - no `.pdb`, `.ilk`, or user `settings.json` is included;
-- the packaged executable accepts `--version`.
+- the packaged executable's `--version` output matches the release manifest.
 
 ## Clean reconfigure
 
@@ -215,7 +233,8 @@ C:\Qt\6.8.3\msvc2022_64
 
 ### Vulkan is unavailable
 
-The project still builds with the CPU backend when `VULKAN_SDK` is not set.
+The main project's whisper.cpp build uses CPU when `VULKAN_SDK` is not set.
+VieNeu's native DLL is staged separately and has its own backend build settings.
 Install the Vulkan SDK and reopen the Developer Command Prompt to enable its
 environment variables.
 

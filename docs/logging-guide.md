@@ -1,5 +1,8 @@
 # Thiết lập phiên đua để ghi log cho RaceEngineer
 
+Kiến trúc recorder, dữ liệu train XGBoost và điều kiện duyệt chiến thuật được
+mô tả trong [chương chiến thuật và huấn luyện](architecture/strategy-xgboost.md).
+
 RaceEngineer lưu một dòng dữ liệu cho mỗi vòng hoàn thành và mỗi sự kiện vào/ra pit trong **phiên Race** của Assetto Corsa (AC) hoặc Assetto Corsa Competizione (ACC). Log gốc luôn ở trên máy. Chỉ phiên được người chơi xác nhận cài đặt thực tế trước khi đua mới được dùng khi bấm **Xử lý dữ liệu / Train model pace** hoặc tự gửi nếu đã bật chia sẻ.
 
 ## Trước khi vào phiên Race

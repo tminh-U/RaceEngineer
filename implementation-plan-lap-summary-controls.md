@@ -4,6 +4,14 @@ Ngày lập: 29/09/2026
 
 Trạng thái: **Đã triển khai; Release build thành công. Chưa kiểm tra trong AC/ACC thật.**
 
+Đối chiếu mã ngày 30/09/2026: tổng kết được tạo trong
+`Application::updateLapSummary()`, không có lớp `LapSummary` riêng và không gọi
+LLM mỗi vòng. Settings hiện là schema 13, có thêm `fuel_alerts`, `tyre_alerts`,
+`lap_delta`, `flag_alerts`, `damage_alerts`; Spotter chỉ còn `CarLeft`/`CarRight`.
+Các mục bên dưới giữ phạm vi kế hoạch ban đầu.
+Xem [kiến trúc prompt/tools/tổng kết](docs/architecture/llm-prompts-tools.md) và
+[radio STT/TTS](docs/architecture/voice-stt-tts.md) để biết hành vi hiện tại.
+
 ## 1. Kết quả cần đạt
 
 - Khi bật **Tổng kết sau mỗi vòng**, kỹ sư tự thông báo ngắn về vòng vừa hoàn thành, hiển thị trên UI và đọc bằng VieNeu-TTS.
@@ -80,7 +88,7 @@ Ví dụ UI: `Vòng 12: 1:48.320, nhanh hơn vòng trước 0.400 s. P5, nhiên 
 
 | Feature ID | Công tắc/tính năng | Hành vi |
 | --- | --- | --- |
-| `spotter` | Kích hoạt Spotter | Mặc định bật; chỉ điều khiển cảnh báo xe kế bên `CarLeft`, `CarRight`, `ThreeWide` |
+| `spotter` | Kích hoạt Spotter | Mặc định bật; hiện chỉ điều khiển cảnh báo xe kế bên `CarLeft`, `CarRight` |
 | `lap_summary` | Tổng kết sau mỗi vòng | Mặc định tắt; theo mục 3 |
 | `audio_ducking` | Tự động hạ âm game | Gọi `setAudioDuckingEnabled()` hiện có |
 | `pit_strategy` | Tự động tính lại chiến thuật Pit | Gọi setter hiện có; bật cần `strategyAvailable()` như UI. Profile/telemetry chưa đủ thì báo đã bật nhưng đang chờ, không tuyên bố predictor ready |

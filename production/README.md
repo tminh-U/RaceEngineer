@@ -2,6 +2,12 @@
 
 This folder contains the repeatable Windows x64 Release build and package flow.
 
+See the [architecture index](../docs/architect.md),
+[runtime/release chapter](../docs/architecture/runtime-ui-storage.md) and
+[strategy/XGBoost chapter](../docs/architecture/strategy-xgboost.md) for component
+ownership, artifact gates and the distinction between local research and
+approved runtime strategy.
+
 ## Build
 
 Run from an x64 MSVC environment with Qt and Ninja available:

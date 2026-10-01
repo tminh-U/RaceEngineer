@@ -1,5 +1,11 @@
 # Voice Training Guide
 
+This guide covers voice customization. Local XGBoost pace/tyre training and
+runtime pit-strategy approval are documented in
+[Strategy, XGBoost and local training](architecture/strategy-xgboost.md).
+For runtime model loading, presets and speech playback, see
+[STT/TTS architecture](architecture/voice-stt-tts.md).
+
 This guide explains how to use
 [`training/vieneu/train_vieneu_colab.ipynb`](../training/vieneu/train_vieneu_colab.ipynb)
 to create a Vietnamese voice for RaceEngineer with VieNeu-TTS v3 Turbo.

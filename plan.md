@@ -65,8 +65,8 @@ Các lựa chọn hiển thị:
 
 - `Tự động`
 - `CPU`
-- `Vulkan — <tên GPU 1>`
-- `Vulkan — <tên GPU 2>`
+- `Vulkan - <tên GPU 1>`
+- `Vulkan - <tên GPU 2>`
 
 Nếu không có Vulkan GPU:
 
@@ -78,7 +78,7 @@ Status bên dưới selector:
 
 - `Đang dùng: Tự động`
 - `Đang dùng: CPU`
-- `Đang dùng: Vulkan — Radeon ...`
+- `Đang dùng: Vulkan - Radeon ...`
 - `GPU không khả dụng · sẽ fallback CPU`
 - `Thay đổi sẽ áp dụng sau khi khởi động lại`
 
@@ -147,7 +147,7 @@ Ví dụ GPU:
 ```json
 {
   "id": "vulkan:0",
-  "label": "Vulkan — AMD Radeon 680M",
+  "label": "Vulkan - AMD Radeon 680M",
   "backend": "vulkan",
   "index": 0,
   "available": true,
@@ -159,7 +159,7 @@ Ví dụ GPU:
 
 ## 4. UI-first implementation
 
-### Bước U1 — Chỉnh `qml/Main.qml`
+### Bước U1 - Chỉnh `qml/Main.qml`
 
 Phần trang Kỹ sư:
 
@@ -182,7 +182,7 @@ Phần trang Cài đặt:
 - Hiển thị device label và `backend.aiComputeStatus`.
 - Hiển thị cảnh báo restart nếu `backend.aiComputeRestartRequired`.
 
-### Bước U2 — Không gây nhầm với GPU renderer của Qt Quick
+### Bước U2 - Không gây nhầm với GPU renderer của Qt Quick
 
 Row hiện tại:
 
@@ -201,7 +201,7 @@ Trong UI-first pass:
 
 Nếu sau này row Qt Quick không còn tác dụng, mới xem xét xóa trong một task riêng.
 
-### Bước U3 — Prototype không có core
+### Bước U3 - Prototype không có core
 
 Nếu cần chạy thử QML trước khi core được tích hợp, dùng dữ liệu stub nội bộ ở mức UI:
 
@@ -241,7 +241,7 @@ GPU runtime cho PhoWhisper/VieNeu-TTS ở mục 6.1–6.3 đã tích hợp. Stra
 
 Phần 6.4 về StrategyPredictor vẫn chờ triển khai; các mục GPU phía trên đã hoàn tất.
 
-### 6.1. GPU runtime resolver — đã tích hợp
+### 6.1. GPU runtime resolver - đã tích hợp
 
 Tạo helper dùng chung, ví dụ:
 
@@ -261,7 +261,7 @@ Nhiệm vụ:
 
 Không để QML hoặc `main.cpp` tự đặt `GGML_VK_VISIBLE_DEVICES`.
 
-### 6.2. PhoWhisper — đã tích hợp
+### 6.2. PhoWhisper - đã tích hợp
 
 Tích hợp runtime selection vào `WhisperRecognizer`:
 
@@ -270,7 +270,7 @@ Tích hợp runtime selection vào `WhisperRecognizer`:
 - CPU retry sau lỗi GPU.
 - Status thật sau warm-up.
 
-### 6.3. VieNeu-TTS — đã tích hợp
+### 6.3. VieNeu-TTS - đã tích hợp
 
 Tích hợp selection vào `VieNeuTtsBackend/VieNeuWorker`:
 
@@ -316,7 +316,7 @@ AI chiến thuật chỉ đưa recommendation. Không được điều khiển s
 Ví dụ hiển thị:
 
 ```text
-PhoWhisper: Vulkan — AMD Radeon 680M
+PhoWhisper: Vulkan - AMD Radeon 680M
 VieNeu-TTS: Vulkan backbone · CPU codec
 Strategy AI: Ready
 ```
@@ -401,45 +401,45 @@ Strategy AI: Ready
 
 ## 12. Thứ tự commit đề xuất
 
-### Commit A — UI contract/prototype (đã triển khai)
+### Commit A - UI contract/prototype (đã triển khai)
 
 - `qml/Main.qml`
 - UI state/stub tối thiểu nếu cần.
 - Không model/runtime change.
 
-### Commit B — Settings/Application contract (đã triển khai)
+### Commit B - Settings/Application contract (đã triển khai)
 
 - `SettingsManager`.
 - `Application` properties/signals/invokables.
 - Settings migration.
 
-### Commit C — GPU resolver và fallback (đã triển khai)
+### Commit C - GPU resolver và fallback (đã triển khai)
 
 - Vulkan enumeration.
 - STT/TTS backend selection.
 - CPU fallback.
 
-### Commit D — Dashboard UX và wording Spotter (đã triển khai)
+### Commit D - Dashboard UX và wording Spotter (đã triển khai)
 - Thẻ mô hình suy luận hiển thị model rõ ràng cùng trạng thái API/runtime đã Việt hóa.
 - Header dùng trạng thái kết nối AC/ACC thật; DirectInput không còn badge xanh giả và trạng thái cài đặt được diễn giải rõ.
 - Thay thẻ liên kết hệ thống bằng khu vực “Analysis & Strategy”; trạng thái StrategyPredictor hiện “Chưa tích hợp”.
 - Gỡ pill trạng thái Kỹ sư AI khỏi Dashboard; chuyển công tắc pit từ trang Kỹ sư sang tab riêng và nêu rõ đây mới là trạng thái giao diện.
 - Đổi “Thông báo cơ học khẩn cấp” thành “Cảnh báo hư hại”; Spotter nêu vùng và mức độ khi telemetry có, dùng câu tổng quát khi chỉ tăng kênh damage tổng hợp.
 
-### Commit E — Strategy core
+### Commit E - Strategy core
 
 - Feature history.
 - XGBoost Ranker chọn vòng pit (chi tiết và dataset gates ở mục 13).
 - Deterministic legality/freshness guards và tự động gọi pit.
 - Tool/UI status integration.
 
-### Commit F — Model assets, tests và package verification
+### Commit F - Model assets, tests và package verification
 
 - Model artifacts.
 - Offline tests.
 - Production package/runtime verification.
 
-Commit D đã đáp ứng acceptance criteria ở mục 11; thứ tự tiếp theo là **Commit E — Strategy core**.
+Commit D đã đáp ứng acceptance criteria ở mục 11; thứ tự tiếp theo là **Commit E - Strategy core**.
 
 ## 13. Kế hoạch triển khai Pit Strategy bằng XGBoost Ranker
 
@@ -589,15 +589,15 @@ Notebook là schema v1 tham chiếu; không thêm feature chỉ có offline mà 
 
 ### 13.8. Các bước thực hiện còn lại (Commit E/F)
 
-- [ ] E1 — Recorder, profile rules và feature availability audit; xuất schema CSV.
-- [ ] E2 — Thu sim logs, calibrated candidate labeler offline, dataset có provenance;
+- [ ] E1 - Recorder, profile rules và feature availability audit; xuất schema CSV.
+- [ ] E2 - Thu sim logs, calibrated candidate labeler offline, dataset có provenance;
       dùng notebook train/đánh giá. Không dùng toy model để vượt qua E2.
-- [ ] E3 — Candidate builder, native ranker worker, validation artifact, state lifecycle.
-- [ ] E4 — Pit callout state machine + cancel queued stale messages + settings thật;
+- [ ] E3 - Candidate builder, native ranker worker, validation artifact, state lifecycle.
+- [ ] E4 - Pit callout state machine + cancel queued stale messages + settings thật;
       nối Dashboard/Analysis & Strategy với disabled/waiting/unsupported/missing model/
       insufficient data/ready/error và vòng pit được chọn. Giữ fuel tools đang hoạt động.
-- [ ] E5 — Shadow mode, đo CPU/frametime, kiểm tra hành vi radio và chọn model đạt gate.
-- [ ] F — Đóng gói đúng app RaceEngineer: XGBoost DLL/license, model đã duyệt,
+- [ ] E5 - Shadow mode, đo CPU/frametime, kiểm tra hành vi radio và chọn model đạt gate.
+- [ ] F - Đóng gói đúng app RaceEngineer: XGBoost DLL/license, model đã duyệt,
       feature schema/hash/runtime dependencies; build và package verification.
 
 Kiểm tra khi triển khai (theo yêu cầu kiểm chứng từng mốc): Python/C++ parity; lap off-by-one;

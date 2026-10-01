@@ -2,6 +2,12 @@
 
 Ngày: 2026-09-29. Trạng thái: phần lõi đã build thành công; còn xác nhận hướng và overlap trên track AC thực tế.
 
+Đối chiếu mã ngày 30/09/2026: phần truyền hình học qua mapping riêng và loại bỏ
+ThreeWide đã được triển khai. Các mục hiện trạng/bước triển khai bên dưới giữ
+ngữ cảnh của kế hoạch ban đầu; bước nghiệm thu trên track AC vẫn còn thiếu.
+Xem [kiến trúc telemetry và Spotter](docs/architecture/telemetry-radar-spotter.md)
+để biết luồng hiện tại, freshness và giới hạn riêng của AC/ACC.
+
 ## 1. Kết quả cần đạt
 
 - Spotter chỉ nói **“Có xe bên trái.”** và **“Có xe bên phải.”** khi có xe thật sự chạy cạnh trong dữ liệu còn mới.
@@ -102,7 +108,7 @@ Chạy build và `ctest --test-dir build-production --output-on-failure`. Dùng 
 
 ## 8. Nguồn tham khảo
 
-- [Car Radar — code lấy WorldPosition và TyreContactPoint để xác định hướng xe](https://github.com/itsjustdel/Car-Radar/blob/master/assettocorsa/apps/python/carRadar/carRadar.py).
-- [CSP Radar — code dùng vị trí, hướng và kích thước/shape của xe để vẽ radar](https://github.com/ac-custom-shaders-patch/app-csp-defaults/blob/main/Radar/Radar.lua).
+- [Car Radar - code lấy WorldPosition và TyreContactPoint để xác định hướng xe](https://github.com/itsjustdel/Car-Radar/blob/master/assettocorsa/apps/python/carRadar/carRadar.py).
+- [CSP Radar - code dùng vị trí, hướng và kích thước/shape của xe để vẽ radar](https://github.com/ac-custom-shaders-patch/app-csp-defaults/blob/main/Radar/Radar.lua).
 
 Các source trên là tham khảo cách lấy/biểu diễn dữ liệu, không chứng minh thuật toán mới của RaceEngineer đã đúng. Kết quả phải được kiểm chứng bằng implementation và dữ liệu game của app.
