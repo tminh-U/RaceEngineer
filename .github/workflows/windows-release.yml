@@ -68,9 +68,26 @@ jobs:
           QT_FORCE_STDERR_LOGGING: 1
         run: |
           New-Item build -ItemType Directory -Force | Out-Null
+          & .\build-production\RaceEngineer.exe --version
+          if ($LASTEXITCODE -ne 0) { throw 'Built executable version check failed.' }
           $check = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\native-setup-stdout.txt -RedirectStandardError build\native-setup-stderr.txt
           Get-Content build\native-setup-stdout.txt, build\native-setup-stderr.txt
-          if ($check.ExitCode -ne 0) { throw "Built QML/setup verification failed: $($check.ExitCode)" }
+          if ($check.ExitCode -ne 0) {
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-5); Id = 1000, 1001 } -ErrorAction SilentlyContinue |
+              Format-List TimeCreated, Id, Message | Out-File build\native-setup-events.txt
+            Get-Content build\native-setup-events.txt
+            $cdb = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
+            if (-not (Test-Path $cdb)) {
+              $sdkSetup = Join-Path $env:RUNNER_TEMP 'winsdksetup.exe'
+              Invoke-WebRequest 'https://go.microsoft.com/fwlink/?linkid=2311805' -OutFile $sdkSetup
+              $install = Start-Process $sdkSetup -ArgumentList '/quiet', '/norestart', '/features', 'OptionId.WindowsDesktopDebuggers' -Wait -PassThru
+              if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
+            }
+            $env:QT_DEBUG_PLUGINS = '1'
+            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
+            Get-Content build\native-setup-debugger.txt -Tail 160
+            throw "Built QML/setup verification failed: $($check.ExitCode)"
+          }
       - name: Package and verify
         shell: pwsh
         run: |
