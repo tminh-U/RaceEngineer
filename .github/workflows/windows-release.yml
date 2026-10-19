@@ -1,0 +1,99 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          modules: qtmultimedia
+          cache: true
+      - name: Install Vulkan SDK and Inno Setup
+        shell: pwsh
+        run: |
+          choco install vulkan-sdk innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Build-tool installation failed.' }
+          $sdk = Get-ChildItem C:\VulkanSDK -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw 'Vulkan SDK not found.' }
+          "VULKAN_SDK=$($sdk.FullName)" >> $env:GITHUB_ENV
+          "$($sdk.FullName)\Bin" >> $env:GITHUB_PATH
+      - name: Restore unchanged runtime models and voices
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.0.5 --repo $env:GITHUB_REPOSITORY --pattern RaceEngineer-1.0.5-windows-x64.zip --dir $env:RUNNER_TEMP
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime download failed.' }
+          $archive = Join-Path $env:RUNNER_TEMP 'RaceEngineer-1.0.5-windows-x64.zip'
+          $expected = '127d729719ac8aeb1cb7950b76d3eb82c7df0941dcb85ad7b4eee5225bb2847e'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Runtime archive checksum mismatch.'
+          }
+          $runtime = Join-Path $env:RUNNER_TEMP 'runtime-1.0.5'
+          Expand-Archive $archive -DestinationPath $runtime
+          Copy-Item "$runtime\bin\models" .\models -Recurse
+          Copy-Item "$runtime\bin\voices" .\voices -Recurse
+          "VC_REDIST_X64=$runtime\vc_redist.x64.exe" >> $env:GITHUB_ENV
+      - name: Build and test Windows x64
+        shell: pwsh
+        run: |
+          .\production\scripts\build-release.ps1 -QtPrefix $env:QT_ROOT_DIR -EnableLtcg
+      - name: Package and verify
+        shell: pwsh
+        run: |
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -notmatch 'project\(RaceEngineer VERSION (\d+\.\d+\.\d+)') { throw 'Project version missing.' }
+          $version = $Matches[1]
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Tag and application version differ.'
+          }
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          .\production\scripts\package-portable.ps1 -Version $version -QtPrefix $env:QT_ROOT_DIR
+          .\production\scripts\verify-release.ps1 -PackageDirectory ".\production\dist\RaceEngineer-$version"
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $check = Start-Process ".\production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" -ArgumentList '--verify-setup-ui' -Wait -PassThru
+          if ($check.ExitCode -ne 0) { throw 'Packaged QML/setup verification failed.' }
+          Get-ChildItem production\dist -File | Where-Object { $_.Extension -in '.exe', '.zip' } |
+            ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } |
+            Set-Content production\dist\SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RaceEngineer-${{ env.RELEASE_VERSION }}-windows-x64
+          path: |
+            production/dist/*.exe
+            production/dist/*.zip
+            production/dist/SHA256SUMS.txt
+            production/dist/RaceEngineer-*/release-manifest.json
+            build/setup-ui-check/*.png
+          if-no-files-found: error
+          retention-days: 14
+      - name: Prepare verified draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = Get-Content "docs/releases/$env:GITHUB_REF_NAME.md" -Raw
+          $short = $env:GITHUB_SHA.Substring(0, 7)
+          $source = "Source for these binaries: [commit $short](https://github.com/$env:GITHUB_REPOSITORY/commit/$env:GITHUB_SHA)."
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          ($notes + "`n" + $source + "`n") | Set-Content $notesPath
+          gh release create $env:GITHUB_REF_NAME --verify-tag --draft --title "RaceEngineer $env:GITHUB_REF_NAME" --notes-file $notesPath "production/dist/RaceEngineer-$env:RELEASE_VERSION-Setup.exe" "production/dist/RaceEngineer-$env:RELEASE_VERSION-windows-x64.zip" production/dist/SHA256SUMS.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }

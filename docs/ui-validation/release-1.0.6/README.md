@@ -6,6 +6,7 @@
 - [Focused fixes](focused-fix/focused-fix-regressions.json): 3/3 groups pass, including startup error scrolling/actions, API diagnostics and voice navigation with draft preservation.
 - [Edge cases](edge-audit/edge_surface_audit.json): 25/25 pass across six window sizes.
 - [Branding audit](logo-asset-audit.json): ten PNG sizes and seven ICO frames are grayscale, README/CMake/Windows resource references resolve, and the header logo loads in Qt.
+- [Legacy native dialog contract](native-legacy-dialog-smoke.json): Qt meta-object dispatch and the dialog alias remain valid, visible and centered at 880×576. This uses the fake facade; it is not a Windows binary test.
 - Root reviewed the new Cockpit screenshot used in both READMEs, the header logo, and the generated monochrome identity. [Cockpit 1280×800](screenshots/page-0-1280x800.png).
 
 UI captures use sample telemetry and a fake application facade. They verify presentation and UI calls, not a real simulator or audio device.
