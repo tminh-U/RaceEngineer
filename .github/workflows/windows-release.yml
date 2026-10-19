@@ -68,8 +68,9 @@ jobs:
           QT_FORCE_STDERR_LOGGING: 1
         run: |
           New-Item build -ItemType Directory -Force | Out-Null
-          & .\build-production\RaceEngineer.exe --version
-          if ($LASTEXITCODE -ne 0) { throw 'Built executable version check failed.' }
+          $versionCheck = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--version' -Wait -PassThru -RedirectStandardOutput build\native-setup-version.txt
+          Get-Content build\native-setup-version.txt
+          if ($versionCheck.ExitCode -ne 0) { throw "Built executable version check failed: $($versionCheck.ExitCode)" }
           $check = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\native-setup-stdout.txt -RedirectStandardError build\native-setup-stderr.txt
           Get-Content build\native-setup-stdout.txt, build\native-setup-stderr.txt
           if ($check.ExitCode -ne 0) {
@@ -129,6 +130,21 @@ jobs:
             build/setup-ui-check/*.png
           if-no-files-found: ignore
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Windows-native-smoke
+          path: |
+            build-production/*.exe
+            build-production/*.dll
+            build-production/qml/
+            build-production/platforms/
+            build-production/imageformats/
+            build-production/multimedia/
+            build-production/tls/
+            build-production/networkinformation/
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Prepare verified draft release
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
