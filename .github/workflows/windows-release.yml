@@ -88,6 +88,10 @@ jobs:
           $definition = Get-Content $icd.FullName -Raw | ConvertFrom-Json
           $driver = Join-Path $icd.DirectoryName $definition.ICD.library_path
           if (-not (Test-Path $driver)) { throw 'SwiftShader Vulkan DLL is missing.' }
+          # Elevated Vulkan processes can ignore driver environment overrides.
+          $registry = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
+          New-Item $registry -Force | Out-Null
+          New-ItemProperty $registry -Name $icd.FullName -PropertyType DWord -Value 0 -Force | Out-Null
           $env:VK_DRIVER_FILES = $icd.FullName
           $env:VK_ICD_FILENAMES = $icd.FullName
           "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
@@ -117,7 +121,7 @@ jobs:
               if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
             }
             $env:VK_LOADER_DEBUG = 'error,warn'
-            & $cdb -G -logo build\native-setup-debugger.txt -c 'bu VCRUNTIME140!_CxxThrowException ".echo Native C++ exception message:; da poi(@rcx+8); kv; q"; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
+            & $cdb -G -logo build\native-setup-debugger.txt -c 'bu VCRUNTIME140!_CxxThrowException ".echo Native C++ exception payload:; da poi(@rcx+8); da poi(@rcx+16); kv; q"; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
             Get-Content build\native-setup-debugger.txt -Tail 160
             throw "Built QML/setup verification failed: $($check.ExitCode)"
           }
