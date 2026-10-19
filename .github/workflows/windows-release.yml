@@ -28,12 +28,18 @@ jobs:
       - name: Install Vulkan SDK and Inno Setup
         shell: pwsh
         run: |
-          choco install vulkan-sdk innosetup --yes --no-progress
-          if ($LASTEXITCODE -ne 0) { throw 'Build-tool installation failed.' }
-          $sdk = Get-ChildItem C:\VulkanSDK -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          if (-not $sdk) { throw 'Vulkan SDK not found.' }
-          "VULKAN_SDK=$($sdk.FullName)" >> $env:GITHUB_ENV
-          "$($sdk.FullName)\Bin" >> $env:GITHUB_PATH
+          $installer = Join-Path $env:RUNNER_TEMP 'vulkan-sdk.exe'
+          Invoke-WebRequest 'https://sdk.lunarg.com/sdk/download/1.4.363.0/windows/vulkansdk-windows-X64-1.4.363.0.exe' -OutFile $installer
+          $install = Start-Process $installer -ArgumentList '--accept-licenses', '--default-answer', '--confirm-command', 'install' -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Vulkan SDK installation failed: $($install.ExitCode)" }
+          $sdk = 'C:\VulkanSDK\1.4.363.0'
+          if (-not (Test-Path "$sdk\Bin\glslc.exe")) { throw 'Vulkan SDK not found.' }
+          "VULKAN_SDK=$sdk" >> $env:GITHUB_ENV
+          "$sdk\Bin" >> $env:GITHUB_PATH
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed.' }
+          }
       - name: Restore unchanged runtime models and voices
         shell: pwsh
         env:
