@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "audit": "PE RT_ICON payloads contain every source ICO frame payload",
+  "icon": {
+    "path": "assets/final_icon.ico",
+    "sha256": "6131d17af63a19701b14adaa25f0b4a97bac8f7903c6077ab3962b0c1dcc2096",
+    "frame_count": 7,
+    "frames": [
+      {
+        "index": 0,
+        "size": [
+          256,
+          256
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 27780,
+        "payload_sha256": "be00bd297e514873b995688b96cdf57095664c5629308fd244cb61cb57801423"
+      },
+      {
+        "index": 1,
+        "size": [
+          128,
+          128
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 67624,
+        "payload_sha256": "02385fb223815b350a1a7bb46036cc34124dc142fe1ad48583fe502602d7b6e6"
+      },
+      {
+        "index": 2,
+        "size": [
+          64,
+          64
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 16936,
+        "payload_sha256": "fd1801bbdca94d0bf1b52dc577c2baa562d2effe970fef022bbbcca1b82ec55d"
+      },
+      {
+        "index": 3,
+        "size": [
+          48,
+          48
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 9640,
+        "payload_sha256": "3e4b90e1f05baf88de2d11c82434c87404673ba834ed31c325d77e38d0cd6c64"
+      },
+      {
+        "index": 4,
+        "size": [
+          32,
+          32
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 4264,
+        "payload_sha256": "21b49f24eaee4a5fe78f680d88e6f15e6c6b413f4314b2ccee6a8a929c4b0a14"
+      },
+      {
+        "index": 5,
+        "size": [
+          24,
+          24
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 2440,
+        "payload_sha256": "c1eaeb1c2e7ee5243dec48a5f3d0f78445b912f6052372c01651a63e75c434f5"
+      },
+      {
+        "index": 6,
+        "size": [
+          16,
+          16
+        ],
+        "color_count": 0,
+        "planes": 1,
+        "bit_count": 32,
+        "payload_size": 1128,
+        "payload_sha256": "6863f39e82172e0fedfa434e5140b70aed0e19c7897b7d2209b9f5ae3b08619f"
+      }
+    ]
+  },
+  "executables": [
+    {
+      "path": "production/dist/RaceEngineer-1.0.6/bin/RaceEngineer.exe",
+      "sha256": "8bef573b1047bff05bc9e9295120ef3ff39de58cd645cfc325cb2777af2f58bf",
+      "pe_kind": "PE32+",
+      "rt_icon_resource_count": 7,
+      "rt_icon_resources": [
+        {
+          "resource_path": [
+            3,
+            1,
+            1033
+          ],
+          "payload_size": 27780,
+          "payload_sha256": "be00bd297e514873b995688b96cdf57095664c5629308fd244cb61cb57801423"
+        },
+        {
+          "resource_path": [
+            3,
+            2,
+            1033
+          ],
+          "payload_size": 67624,
+          "payload_sha256": "02385fb223815b350a1a7bb46036cc34124dc142fe1ad48583fe502602d7b6e6"
+        },
+        {
+          "resource_path": [
+            3,
+            3,
+            1033
+          ],
+          "payload_size": 16936,
+          "payload_sha256": "fd1801bbdca94d0bf1b52dc577c2baa562d2effe970fef022bbbcca1b82ec55d"
+        },
+        {
+          "resource_path": [
+            3,
+            4,
+            1033
+          ],
+          "payload_size": 9640,
+          "payload_sha256": "3e4b90e1f05baf88de2d11c82434c87404673ba834ed31c325d77e38d0cd6c64"
+        },
+        {
+          "resource_path": [
+            3,
+            5,
+            1033
+          ],
+          "payload_size": 4264,
+          "payload_sha256": "21b49f24eaee4a5fe78f680d88e6f15e6c6b413f4314b2ccee6a8a929c4b0a14"
+        },
+        {
+          "resource_path": [
+            3,
+            6,
+            1033
+          ],
+          "payload_size": 2440,
+          "payload_sha256": "c1eaeb1c2e7ee5243dec48a5f3d0f78445b912f6052372c01651a63e75c434f5"
+        },
+        {
+          "resource_path": [
+            3,
+            7,
+            1033
+          ],
+          "payload_size": 1128,
+          "payload_sha256": "6863f39e82172e0fedfa434e5140b70aed0e19c7897b7d2209b9f5ae3b08619f"
+        }
+      ],
+      "source_frame_count": 7,
+      "matched_source_frame_count": 7,
+      "missing_source_frames": [],
+      "all_source_frames_embedded": true
+    },
+    {
+      "path": "production/dist/RaceEngineer-1.0.6-Setup.exe",
+      "sha256": "9e4d0c253cbec8608750eab04fd75f049048f654a07d61283c418590415aae89",
+      "pe_kind": "PE32",
+      "rt_icon_resource_count": 7,
+      "rt_icon_resources": [
+        {
+          "resource_path": [
+            3,
+            100,
+            1033
+          ],
+          "payload_size": 27780,
+          "payload_sha256": "be00bd297e514873b995688b96cdf57095664c5629308fd244cb61cb57801423"
+        },
+        {
+          "resource_path": [
+            3,
+            101,
+            1033
+          ],
+          "payload_size": 67624,
+          "payload_sha256": "02385fb223815b350a1a7bb46036cc34124dc142fe1ad48583fe502602d7b6e6"
+        },
+        {
+          "resource_path": [
+            3,
+            102,
+            1033
+          ],
+          "payload_size": 16936,
+          "payload_sha256": "fd1801bbdca94d0bf1b52dc577c2baa562d2effe970fef022bbbcca1b82ec55d"
+        },
+        {
+          "resource_path": [
+            3,
+            103,
+            1033
+          ],
+          "payload_size": 9640,
+          "payload_sha256": "3e4b90e1f05baf88de2d11c82434c87404673ba834ed31c325d77e38d0cd6c64"
+        },
+        {
+          "resource_path": [
+            3,
+            104,
+            1033
+          ],
+          "payload_size": 4264,
+          "payload_sha256": "21b49f24eaee4a5fe78f680d88e6f15e6c6b413f4314b2ccee6a8a929c4b0a14"
+        },
+        {
+          "resource_path": [
+            3,
+            105,
+            1033
+          ],
+          "payload_size": 2440,
+          "payload_sha256": "c1eaeb1c2e7ee5243dec48a5f3d0f78445b912f6052372c01651a63e75c434f5"
+        },
+        {
+          "resource_path": [
+            3,
+            106,
+            1033
+          ],
+          "payload_size": 1128,
+          "payload_sha256": "6863f39e82172e0fedfa434e5140b70aed0e19c7897b7d2209b9f5ae3b08619f"
+        }
+      ],
+      "source_frame_count": 7,
+      "matched_source_frame_count": 7,
+      "missing_source_frames": [],
+      "all_source_frames_embedded": true
+    }
+  ],
+  "passed": true,
+  "errors": []
+}

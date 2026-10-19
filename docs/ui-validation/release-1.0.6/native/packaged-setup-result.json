@@ -1,0 +1,7 @@
+{
+  "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\production\\dist\\RaceEngineer-1.0.6\\bin\\RaceEngineer.exe",
+  "sha256": "8bef573b1047bff05bc9e9295120ef3ff39de58cd645cfc325cb2777af2f58bf",
+  "ui_assertions_passed": true,
+  "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+  "exit_code": null
+}

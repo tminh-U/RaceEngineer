@@ -1,0 +1,67 @@
+{
+  "version": "1.0.6",
+  "source_commit": "a5a5fca8e3758b393243c93a7748cbfed07c60fe",
+  "workflow_url": "https://github.com/tminh-U/RaceEngineer/actions/runs/39297911475",
+  "workflow_conclusion": "success",
+  "release_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6",
+  "native_ctest": {
+    "passed": 6,
+    "failed": 0,
+    "tests": [
+      "TtsBenchmarkTests",
+      "VieNeuThreadOwnershipTests",
+      "VieNeuExternalOverrideTests",
+      "StrategyRecorderTests",
+      "RaceStateTests",
+      "GoogleTtsBackendTests"
+    ]
+  },
+  "app_exe_sha256": "8bef573b1047bff05bc9e9295120ef3ff39de58cd645cfc325cb2777af2f58bf",
+  "release_manifest_sha256": "f215a54bed76d0efe51e9bf29c1bc44ad3b73396926da2c64b10d8d184395673",
+  "manifest_commit": "a5a5fca",
+  "manifest_files": 1762,
+  "assets": [
+    {
+      "name": "RaceEngineer-1.0.6-Setup.exe",
+      "bytes": 621860424,
+      "github_digest": "sha256:9e4d0c253cbec8608750eab04fd75f049048f654a07d61283c418590415aae89"
+    },
+    {
+      "name": "RaceEngineer-1.0.6-windows-x64.zip",
+      "bytes": 746633138,
+      "github_digest": "sha256:84f11904c5497c2736bb4a44fb348748f40d8994ba7c9d55c5abbefec6a8acd2"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 198,
+      "github_digest": "sha256:e8c4d2ee915f8feb3102a6ca8fceec07def44b1f3a1819ac8a401216eb54a68e"
+    }
+  ],
+  "checks": {
+    "release_asset_digests_match_sha256sums": true,
+    "app_exe_matches_manifest_and_both_ui_reports": true,
+    "all_11_packaged_logo_files_match_source": true,
+    "app_and_installer_embed_all_7_source_ico_frames": true,
+    "frontend_report_source_hashes_match": true,
+    "qml_warning_count": 0,
+    "src_and_third_party_unchanged_from_v1_0_5": true
+  },
+  "root_review": {
+    "packaged_ui_captures_reviewed": 7,
+    "windows_exe_icon_audit_repeated_locally": true
+  },
+  "capture_sha256": {
+    "step-0.png": "d147653945f309028f03e99645102780e2c98a7a3410b0bbf8ec7bbd525eb6fb",
+    "step-1.png": "a9d40f477b921f5fe0e8a4aef27e8dafd92b13bc2a220d85166d476b287adc98",
+    "step-2.png": "1bdf74cb949f75e72a0cac8a7d8296f25cedf6c5e1999a83a146f3bbac965210",
+    "step-3.png": "0d29b80bbff2d11685649935bd9a181f88afe5a061b58b6baf26654b6517b51f",
+    "step-4.png": "473dd7f611d661491438423af614fadaaad668923c5330a64b2ceff8b35373e6",
+    "step-5.png": "6d8200c308d677b5cdfa140966c3f9667d12c8ce4d80d26fca0839dd51a9aa21",
+    "step-6.png": "7fbdfda6378838a452fb8ef83f7a5f40aa8320f10d7266ce2b9307d6480b6bdb"
+  },
+  "limits": [
+    "UI gate is the native passed-assertion marker, not orderly model-warmup shutdown; both test processes were terminated after the exit grace period.",
+    "Windows runner uses Chrome SwiftShader only for Vulkan enumeration/CPU fallback; no real GPU or simulator/audio/input hardware session was verified.",
+    "Release CPU target is AVX2; the Vulkan-enabled package requires a working Vulkan driver/runtime."
+  ]
+}

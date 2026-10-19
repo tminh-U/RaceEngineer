@@ -6,8 +6,8 @@
 - [x] Thay ảnh README bằng Cockpit Qt mới với dữ liệu minh họa, giữ wordmark/font/header typography hiện có.
 - [x] Tăng CMake/project và ví dụ packaging lên 1.0.6; viết changes theo cấu trúc release trước tại `docs/releases/v1.0.6.md`.
 - [x] Kiểm tra frontend/branding: 15 QML, 51/51 facade methods, 12 breakpoints, 25/25 edge, 3/3 regression, 0 warning. Xem [bằng chứng](ui-validation/release-1.0.6/README.md).
-- [ ] Commit/push nguồn đã kiểm tra; kiểm tra lại trên GitHub.
-- [ ] Build/CTest/package/verify bản Windows mới, sau đó publish release với installer/ZIP và source commit chính xác.
+- [x] Commit/push nguồn và kiểm tra lại trên GitHub; source binary/tag `v1.0.6` là `a5a5fca8e3758b393243c93a7748cbfed07c60fe`.
+- [x] Build Windows/6 CTests, manifest/version, icon app/installer, UI assertions của EXE build và đóng gói đều đạt; root đối chiếu checksum và 7 ảnh Qt Windows. Đã publish [v1.0.6](https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6) làm latest với installer/ZIP/SHA256SUMS. [Bằng chứng và giới hạn](ui-validation/release-1.0.6/README.md): UI gate không xác minh đóng app khi model đang warmup; simulator/thiết bị thật chưa thử.
 
 Yêu cầu commit/push/release mới thay giới hạn không publish trong phần lịch sử. Backend/thuật toán/settings defaults không đổi; không phát hành binary cũ dưới tên phiên bản mới. `.agents/` và `skills-lock.json` không đưa vào commit ứng dụng.
 

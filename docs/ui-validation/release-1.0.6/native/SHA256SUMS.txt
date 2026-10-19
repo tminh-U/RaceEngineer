@@ -1,0 +1,2 @@
+9e4d0c253cbec8608750eab04fd75f049048f654a07d61283c418590415aae89  RaceEngineer-1.0.6-Setup.exe
+84f11904c5497c2736bb4a44fb348748f40d8994ba7c9d55c5abbefec6a8acd2  RaceEngineer-1.0.6-windows-x64.zip

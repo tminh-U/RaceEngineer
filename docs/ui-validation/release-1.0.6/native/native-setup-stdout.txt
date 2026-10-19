@@ -1,0 +1,1 @@
+Setup UI 880x576: passed
