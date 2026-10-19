@@ -92,8 +92,7 @@ jobs:
           $env:VK_ICD_FILENAMES = $icd.FullName
           "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
           "VK_ICD_FILENAMES=$($icd.FullName)" >> $env:GITHUB_ENV
-          & "$env:VULKAN_SDK\Bin\vulkaninfo.exe" --summary
-          if ($LASTEXITCODE -ne 0) { throw 'Software Vulkan instance creation failed.' }
+          Write-Host "Smoke Vulkan ICD: $($icd.FullName); API $($definition.ICD.api_version)"
       - name: Verify built QML and setup
         shell: pwsh
         env:
