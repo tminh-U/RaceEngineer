@@ -116,8 +116,8 @@ jobs:
               $install = Start-Process $sdkSetup -ArgumentList '/quiet', '/norestart', '/features', 'OptionId.WindowsDesktopDebuggers' -Wait -PassThru
               if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
             }
-            $env:QT_DEBUG_PLUGINS = '1'
-            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxe -c ".exr -1; !cppexr -1; kv; lm; q" eh; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
+            $env:VK_LOADER_DEBUG = 'error,warn'
+            & $cdb -G -logo build\native-setup-debugger.txt -c 'bu VCRUNTIME140!_CxxThrowException ".echo Native C++ exception message:; da poi(@rcx+8); kv; q"; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
             Get-Content build\native-setup-debugger.txt -Tail 160
             throw "Built QML/setup verification failed: $($check.ExitCode)"
           }
