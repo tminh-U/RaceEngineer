@@ -28,6 +28,10 @@ $configureArgs = @(
     '-B', $buildPath,
     '-G', 'Ninja',
     '-DCMAKE_BUILD_TYPE=Release',
+    # Release packages must not inherit the CI host's CPU extensions.
+    '-DGGML_NATIVE=OFF',
+    '-DGGML_AVX2=ON',
+    '-DGGML_AVX512=OFF',
     "-DRACEENGINEER_ENABLE_LTCG=$ltcg"
 )
 

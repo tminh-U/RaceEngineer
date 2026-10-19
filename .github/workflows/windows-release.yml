@@ -121,7 +121,7 @@ jobs:
               if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
             }
             $env:VK_LOADER_DEBUG = 'error,warn'
-            & $cdb -G -logo build\native-setup-debugger.txt -c 'bu VCRUNTIME140!_CxxThrowException ".echo Native C++ exception payload:; da poi(@rcx+8); da poi(@rcx+16); kv; q"; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
+            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxd -c2 ".exr -1; kv; lm; q" eh; sxe -c ".exr -1; kv; lm; q" 0xc000001d; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
             Get-Content build\native-setup-debugger.txt -Tail 160
             throw "Built QML/setup verification failed: $($check.ExitCode)"
           }
@@ -138,6 +138,8 @@ jobs:
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
           .\production\scripts\package-portable.ps1 -Version $version -QtPrefix $env:QT_ROOT_DIR
           .\production\scripts\verify-release.ps1 -PackageDirectory ".\production\dist\RaceEngineer-$version"
+          python tests\ui\pe_icon_audit.py --icon assets\final_icon.ico --exe "production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" --exe "production\dist\RaceEngineer-$version-Setup.exe" --output build\native-setup-icons.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged executable or installer logo differs from the new ICO.' }
           $env:QT_QPA_PLATFORM = 'windows'
           $env:QT_FORCE_STDERR_LOGGING = '1'
           Remove-Item Env:QT_PLUGIN_PATH, Env:QML2_IMPORT_PATH -ErrorAction SilentlyContinue
@@ -165,7 +167,11 @@ jobs:
           name: Windows-QML-diagnostics
           path: |
             build/*setup-*.txt
+            build/*setup-*.json
             build/setup-ui-check/*.png
+            production/dist/RaceEngineer-*/release-manifest.json
+            production/dist/RaceEngineer-*/bin/RaceEngineer.exe
+            production/dist/SHA256SUMS.txt
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v4
@@ -175,6 +181,9 @@ jobs:
           path: |
             build-production/*.exe
             build-production/*.dll
+            build-production/*.bin
+            build-production/*.mp3
+            build-production/audio/
             build-production/qml/
             build-production/platforms/
             build-production/imageformats/
