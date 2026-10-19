@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RaceEngineer · Cockpit prototypes</title>
+<style>
+@font-face{font-family:Plex;src:url('../../assets/fonts/IBMPlexSans-VF.ttf') format('truetype');font-display:swap}
+@font-face{font-family:PlexMono;src:url('../../assets/fonts/IBMPlexMono-Regular.ttf') format('truetype');font-display:swap}
+*{box-sizing:border-box}html{color-scheme:dark;scroll-behavior:smooth}body{margin:0;background:#101010;color:#eee;font:16px/1.55 Plex,Arial,sans-serif}header,main,footer{max-width:1680px;margin:auto;padding:28px}header{border-bottom:1px solid #444}h1{margin:0 0 12px;font-size:clamp(28px,4vw,48px);font-weight:600;letter-spacing:-.03em}p{max-width:950px;color:#bbb;margin:10px 0}a{color:inherit;text-underline-offset:4px}a:focus-visible{outline:2px solid #fff;outline-offset:5px}nav{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px}h2{font-size:24px;font-weight:500;margin:36px 0 16px}section:first-child h2{margin-top:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}figure{margin:0;border:1px solid #444;background:#171717}figure a{display:block}figure img{display:block;width:100%;height:auto}figcaption{padding:14px 16px;border-top:1px solid #444}figcaption span{font:13px PlexMono,monospace;color:#aaa;margin-right:12px}footer{border-top:1px solid #444;color:#aaa}small{font-size:14px}@media(max-width:820px){.grid{grid-template-columns:1fr}header,main,footer{padding:20px}nav{gap:14px}}
+</style>
+<header>
+  <h1>RaceEngineer / Cockpit</h1>
+  <p>18 prototype theo hướng Cockpit monochrome đã chọn. Bấm vào ảnh để mở kích thước đầy đủ. Đây là ảnh tham chiếu tạo sinh, chưa phải giao diện app đã triển khai.</p>
+  <p>Phạm vi: thay layout và cách trình bày; giữ đầy đủ chức năng và backend hiện có. Trạng thái, số liệu và thiết bị trong ảnh chỉ để minh họa.</p>
+  <nav aria-label="Nhóm màn hình"><a href="#race">Đua</a><a href="#analysis">Phân tích</a><a href="#settings">Thiết lập</a><a href="#setup">Setup</a><a href="#dialogs">Trạng thái &amp; dialog</a><a href="README.md">Hướng dẫn triển khai</a></nav>
+</header>
+<main>
+  <section id="race"><h2>01 / Đua</h2><div class="grid">
+    <figure><a href="00-cockpit.png"><img src="00-cockpit.png" alt="Cockpit monochrome: số liệu, sơ đồ xe và radio dock"></a><figcaption><span>00</span>Cockpit — chuẩn chung</figcaption></figure>
+    <figure><a href="09-radio-history.png"><img loading="lazy" src="09-radio-history.png" alt="Drawer lịch sử radio"></a><figcaption><span>09</span>Lịch sử radio</figcaption></figure>
+    <figure><a href="17-cockpit-compact.png"><img loading="lazy" src="17-cockpit-compact.png" alt="Bố cục Cockpit trong cửa sổ nhỏ"></a><figcaption><span>17</span>Cockpit cửa sổ nhỏ — cần xác minh Qt thực tế</figcaption></figure>
+  </div></section>
+  <section id="analysis"><h2>02 / Phân tích</h2><div class="grid">
+    <figure><a href="01-telemetry.png"><img loading="lazy" src="01-telemetry.png" alt="Telemetry động lực học, vòng và khoảng cách"></a><figcaption><span>01</span>Telemetry</figcaption></figure>
+    <figure><a href="02-fuel-strategy.png"><img loading="lazy" src="02-fuel-strategy.png" alt="Nhiên liệu và trạng thái chiến thuật"></a><figcaption><span>02</span>Nhiên liệu &amp; chiến thuật</figcaption></figure>
+    <figure><a href="03-record-training-sharing.png"><img loading="lazy" src="03-record-training-sharing.png" alt="Ghi dữ liệu, huấn luyện và consent chia sẻ"></a><figcaption><span>03</span>Ghi dữ liệu, huấn luyện &amp; chia sẻ</figcaption></figure>
+  </div></section>
+  <section id="settings"><h2>03 / Thiết lập</h2><div class="grid">
+    <figure><a href="04-engineer-spotter.png"><img loading="lazy" src="04-engineer-spotter.png" alt="Tên tay đua, phong cách kỹ sư, alert và Spotter"></a><figcaption><span>04</span>Kỹ sư &amp; Spotter</figcaption></figure>
+    <figure><a href="05-ai-connection.png"><img loading="lazy" src="05-ai-connection.png" alt="Cấu hình kết nối và tham số AI"></a><figcaption><span>05</span>Kết nối AI &amp; tham số</figcaption></figure>
+    <figure><a href="06-local-voice-benchmark.png"><img loading="lazy" src="06-local-voice-benchmark.png" alt="Giọng VieNeu, CPU threads và benchmark"></a><figcaption><span>06</span>Giọng cục bộ &amp; benchmark</figcaption></figure>
+    <figure><a href="07-google-tts.png"><img loading="lazy" src="07-google-tts.png" alt="Cấu hình Google TTS"></a><figcaption><span>07</span>Google TTS</figcaption></figure>
+    <figure><a href="08-system-devices.png"><img loading="lazy" src="08-system-devices.png" alt="Windows, tray, renderer, thiết bị AI, PTT và âm thanh"></a><figcaption><span>08</span>Hệ thống &amp; thiết bị</figcaption></figure>
+  </div></section>
+  <section id="setup"><h2>04 / Setup — đúng bốn bước</h2><div class="grid">
+    <figure><a href="10-setup-welcome.png"><img loading="lazy" src="10-setup-welcome.png" alt="Setup bước một: Chào mừng"></a><figcaption><span>10</span>1. Chào mừng</figcaption></figure>
+    <figure><a href="11-setup-voice.png"><img loading="lazy" src="11-setup-voice.png" alt="Setup bước hai: Giọng kỹ sư"></a><figcaption><span>11</span>2. Giọng kỹ sư</figcaption></figure>
+    <figure><a href="12-setup-llm.png"><img loading="lazy" src="12-setup-llm.png" alt="Setup bước ba: Kết nối LLM"></a><figcaption><span>12</span>3. Kết nối LLM</figcaption></figure>
+    <figure><a href="13-setup-optimization.png"><img loading="lazy" src="13-setup-optimization.png" alt="Setup bước bốn: Tối ưu máy"></a><figcaption><span>13</span>4. Tối ưu máy</figcaption></figure>
+  </div></section>
+  <section id="dialogs"><h2>05 / Trạng thái &amp; dialog</h2><div class="grid">
+    <figure><a href="14-startup-error.png"><img loading="lazy" src="14-startup-error.png" alt="Thông báo lỗi khởi tạo và retry trong Cockpit"></a><figcaption><span>14</span>Khởi tạo &amp; lỗi mô hình</figcaption></figure>
+    <figure><a href="15-google-voice-prompt.png"><img loading="lazy" src="15-google-voice-prompt.png" alt="Modal tạo giọng Google bằng prompt"></a><figcaption><span>15</span>Tạo giọng bằng prompt</figcaption></figure>
+    <figure><a href="16-google-voice-wav.png"><img loading="lazy" src="16-google-voice-wav.png" alt="Modal giọng Google từ WAV và file ghi âm đồng ý"></a><figcaption><span>16</span>Nhân bản giọng từ WAV</figcaption></figure>
+  </div></section>
+</main>
+<footer><small>Chi tiết trạng thái/điều kiện hiển thị: <a href="README.md">README</a> · Kế hoạch: <a href="../ui-redesign-plan.md">ui-redesign-plan.md</a> · Chỉ thay đổi UI; không thêm hoặc xóa tính năng.</small></footer>
+</html>

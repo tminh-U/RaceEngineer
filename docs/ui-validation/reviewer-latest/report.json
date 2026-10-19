@@ -1,0 +1,82 @@
+{
+  "created_utc": "2026-10-18T11:29:26Z",
+  "purpose": "Visual review only; no behavioral suite pass claimed",
+  "renderer": "Qt Quick software/offscreen with mock fixture",
+  "screenshots": [
+    {
+      "path": "docs/ui-validation/reviewer-latest/cockpit-1280x800.png",
+      "size": [
+        1280,
+        800
+      ],
+      "sampled_unique_colors": 126,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/cockpit-880x576.png",
+      "size": [
+        880,
+        576
+      ],
+      "sampled_unique_colors": 131,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/engineer-spotter-1280x800.png",
+      "size": [
+        1280,
+        800
+      ],
+      "sampled_unique_colors": 86,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/engineer-spotter-880x576.png",
+      "size": [
+        880,
+        576
+      ],
+      "sampled_unique_colors": 68,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/ai-connection-1280x800.png",
+      "size": [
+        1280,
+        800
+      ],
+      "sampled_unique_colors": 90,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/ai-connection-880x576.png",
+      "size": [
+        880,
+        576
+      ],
+      "sampled_unique_colors": 95,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/setup-step-2-1280x800.png",
+      "size": [
+        1280,
+        800
+      ],
+      "sampled_unique_colors": 86,
+      "sampled_chromatic_fraction": 0.0
+    },
+    {
+      "path": "docs/ui-validation/reviewer-latest/setup-step-2-880x576.png",
+      "size": [
+        880,
+        576
+      ],
+      "sampled_unique_colors": 109,
+      "sampled_chromatic_fraction": 0.0
+    }
+  ],
+  "qml_warnings": [
+    "Qt Quick Layouts: Detected recursive rearrange. Aborting after two iterations."
+  ]
+}

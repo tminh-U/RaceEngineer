@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(RaceEngineer VERSION 1.0.5 LANGUAGES CXX)
+project(RaceEngineer VERSION 1.0.6 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -142,7 +142,18 @@ if(WIN32)
     set_target_properties(RaceEngineer PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-set(RACEENGINEER_FONT_RESOURCES)
+# Static RaceEngineer Sans faces were instantiated locally from the IBM Plex Sans
+# variable face and renamed to respect the OFL reserved font name "Plex".
+set(RACEENGINEER_FONT_RESOURCES
+    assets/fonts/RaceEngineerSans-Regular.ttf
+    assets/fonts/RaceEngineerSans-Medium.ttf
+    assets/fonts/RaceEngineerSans-SemiBold.ttf
+    assets/fonts/IBMPlexMono-Regular.ttf
+    assets/fonts/BarlowCondensed-SemiBold.ttf
+    assets/fonts/raceengineer-sans-OFL.txt
+    assets/fonts/ibmplexmono-OFL.txt
+    assets/fonts/barlowcondensed-OFL.txt
+)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/MiSansLatinVF.ttf")
     list(APPEND RACEENGINEER_FONT_RESOURCES assets/fonts/MiSansLatinVF.ttf)
 endif()
@@ -150,7 +161,22 @@ endif()
 qt_add_qml_module(RaceEngineer
     URI RaceEngineer
     VERSION 1.0
-    QML_FILES qml/Main.qml
+    QML_FILES
+        qml/Main.qml
+        qml/UiTheme.qml
+        qml/DrivingData.qml
+        qml/TelemetryPage.qml
+        qml/Cockpit.qml
+        qml/FuelStrategyPage.qml
+        qml/EngineerSpotterPage.qml
+        qml/AiVoicePage.qml
+        qml/SystemDevicesPage.qml
+        qml/GoogleVoiceDialog.qml
+        qml/TtsVoiceSettings.qml
+        qml/TtsBenchmarkPanel.qml
+        qml/LlmConnectionForm.qml
+        qml/SetupWizard.qml
+        qml/StartupNotice.qml
     RESOURCES
         ${RACEENGINEER_ICON_RESOURCES}
         ${RACEENGINEER_FONT_RESOURCES}

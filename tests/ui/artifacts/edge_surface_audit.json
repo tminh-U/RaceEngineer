@@ -1,0 +1,3572 @@
+{
+  "created_utc": "2026-10-19T12:47:26Z",
+  "baseline_commit": "f01acc553c0d938af74f4ea6a026dbc6571eb06c",
+  "scope": "Focused independent UI edge audit; no whole-suite or gallery rerun.",
+  "renderer": {
+    "python": "3.12.14",
+    "pyside6": "6.8.3",
+    "qt": "6.8.3",
+    "platform": "offscreen",
+    "quick_backend": "software"
+  },
+  "requested_sizes": [
+    [
+      880,
+      576
+    ],
+    [
+      1100,
+      576
+    ],
+    [
+      1280,
+      576
+    ],
+    [
+      1280,
+      720
+    ],
+    [
+      1280,
+      800
+    ],
+    [
+      1600,
+      1000
+    ]
+  ],
+  "source_sha256": {
+    "qml/Main.qml": "b698981a45e35073dbb881f228992fa5d59c38e64738743ec9cc31c6f562b55d",
+    "qml/Cockpit.qml": "1aa4e8588a973f6490a5feed25a98113631303746b96a8c3f8852a5a43d2c755",
+    "qml/DrivingData.qml": "564b857b2292c88d0e135681f581972da8d34a753bdcab3af409237cc04875c0",
+    "qml/TelemetryPage.qml": "73f0ae7505651f953e9ea47b2d4a7a1cebf2c7bb44ce929906d9d88c6e9a5e7f",
+    "qml/EngineerSpotterPage.qml": "afcb9656508f909296a6d93e86ca30f2f016b8849e774195a26439b72cc3a7c9",
+    "qml/StartupNotice.qml": "bb89e453e7f83881837dccb93d6f0ff9338cc3e39dd9e8773085a8258c5664b0",
+    "qml/LlmConnectionForm.qml": "e299c7a855d77ad289f7567c5dae490ade656aec9d8064597f142984de7fac75",
+    "src/llm/providers/OpenAICompatibleProvider.cpp": "e561cafbf84323747d020312a41df9080449378d7ca2b237aab871de570de265",
+    "qml/AiVoicePage.qml": "64c09d77e1cd4e029c5a195ab7522e12b622c799241610f94fc811b65a343e3a",
+    "tests/ui/run_ui.py": "db87025d1092bae90329d6b0a91315cd3e645b4e6b7a60977f5e21fe5ccdeb3f",
+    "tests/ui/fake_application.py": "a27565f96c5fd5de043613a2176ed7174e34f4e7bfeb4f21245c5c451d657235",
+    "tests/ui/capture_review.py": "d363d5914a4927a0bc720ba48948d044bde7c4c85a78691547c53c59d2e20424",
+    "tests/ui/edge_surface_audit.py": "024a1882e86a7e8b7c7833f71e1919d6531b5fed6984c2977b9df93662cb2c43"
+  },
+  "source_evidence": {
+    "engineer_voice_shortcut": {
+      "onOpenAiVoiceRequested: root.openPage(4)": {
+        "line": 354,
+        "text": "Component { id: engineerSpotterWorkspace; EngineerSpotterPage { controller: backend; theme: root.designTheme; live: root.currentPage === 2 && root.liveWindow; onOpenAiVoiceRequested: root.openPage(4) } }"
+      },
+      "ai_voice_default_section": {
+        "property alias sectionIndex: sectionTabs.currentIndex": {
+          "line": 15,
+          "text": "property alias sectionIndex: sectionTabs.currentIndex"
+        },
+        "id: sectionTabs": {
+          "line": 86,
+          "text": "id: sectionTabs"
+        },
+        "TabButton { text: \"Kết nối AI\"": {
+          "line": 90,
+          "text": "TabButton { text: \"Kết nối AI\"; Accessible.name: text }"
+        },
+        "TabButton { text: \"Giọng cục bộ\"": {
+          "line": 91,
+          "text": "TabButton { text: \"Giọng cục bộ\"; Accessible.name: text }"
+        },
+        "TabButton { text: \"Google TTS\"": {
+          "line": 92,
+          "text": "TabButton { text: \"Google TTS\"; Accessible.name: text }"
+        }
+      }
+    },
+    "long_startup_notice": {
+      "implicitHeight: contents.implicitHeight + 28": {
+        "line": 17,
+        "text": "implicitHeight: contents.implicitHeight + 28"
+      },
+      "height: implicitHeight": {
+        "line": 19,
+        "text": "height: implicitHeight"
+      },
+      "text: String(root.controller.startupError)": {
+        "line": 104,
+        "text": "text: String(root.controller.startupError)"
+      },
+      "main_bottom_anchor": {
+        "objectName: \"startupNotice\"": {
+          "line": 383,
+          "text": "objectName: \"startupNotice\""
+        },
+        "anchors.bottom: parent.bottom": {
+          "line": 242,
+          "text": "Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: root.border }"
+        }
+      }
+    },
+    "api_error_detail": {
+      "readonly property string statusDetail": {
+        "line": 44,
+        "text": "readonly property string statusDetail: {"
+      },
+      "objectName: \"apiStatusStrip\"": {
+        "line": 215,
+        "text": "objectName: \"apiStatusStrip\""
+      },
+      "objectName: \"apiStatusDetailLabel\"": {
+        "line": 238,
+        "text": "HintText { objectName: \"apiStatusDetailLabel\"; text: form.statusDetail; Layout.fillWidth: true }"
+      },
+      "label_text_component": {
+        "component LabelText: Text": {
+          "line": 101,
+          "text": "component LabelText: Text {"
+        },
+        "wrapMode: Text.Wrap": {
+          "line": 106,
+          "text": "wrapMode: Text.Wrap"
+        }
+      }
+    },
+    "provider_unavailable_model": {
+      "Connected, but model": {
+        "line": 423,
+        "text": "const QString detail = QStringLiteral(\"Connected, but model '%1' is unavailable\").arg(configuration_.model);"
+      }
+    },
+    "engineer_binding_and_shortcut": {
+      "valueObjectName: \"engineerDirectInputBinding\"": {
+        "line": 433,
+        "text": "ReadonlyRow { width: parent.width; valueObjectName: \"engineerDirectInputBinding\"; title: \"Nút đang gán\"; subtitle: \"Nhấn giữ trên thiết bị DirectInput để nói.\"; value: page.controller.directInputBinding }"
+      },
+      "objectName: \"engineerMapDirectInputButton\"": {
+        "line": 435,
+        "text": "objectName: \"engineerMapDirectInputButton\""
+      },
+      "objectName: \"openAiVoicePageButton\"": {
+        "line": 445,
+        "text": "objectName: \"openAiVoicePageButton\""
+      },
+      "text: \"Cấu hình giọng nói\"": {
+        "line": 446,
+        "text": "text: \"Cấu hình giọng nói\""
+      }
+    }
+  },
+  "qml_engine_warnings": [],
+  "qt_log_warnings": [],
+  "cases": {
+    "long_telemetry_and_numeric_extremes_880x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          880,
+          576
+        ],
+        "actual_size": [
+          880,
+          576
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              12,
+              98,
+              339,
+              46
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1941.89,
+            "width": 339.2,
+            "implicit_height": 46.0,
+            "height": 46.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              364,
+              124,
+              380,
+              16
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1050.73,
+            "width": 380.0,
+            "implicit_height": 16.0,
+            "height": 16.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              18,
+              189,
+              75,
+              68
+            ],
+            "content_width": 74.33,
+            "width": 75.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                24,
+                1016,
+                832,
+                42
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                24,
+                1120,
+                832,
+                42
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                24,
+                1208,
+                832,
+                168
+              ],
+              "painted_height": 168.0,
+              "height": 168.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                132,
+                880,
+                444
+              ],
+              "item_height": 42.0,
+              "content_height": 1895.0,
+              "top_line_bounds": [
+                24,
+                132,
+                832,
+                8
+              ],
+              "bottom_line_bounds": [
+                24,
+                568,
+                832,
+                8
+              ],
+              "top_content_y": 884.0,
+              "bottom_content_y": 482.0,
+              "max_content_y": 1451.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                132,
+                880,
+                444
+              ],
+              "item_height": 42.0,
+              "content_height": 1895.0,
+              "top_line_bounds": [
+                24,
+                132,
+                832,
+                8
+              ],
+              "bottom_line_bounds": [
+                24,
+                568,
+                832,
+                8
+              ],
+              "top_content_y": 988.0,
+              "bottom_content_y": 586.0,
+              "max_content_y": 1451.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                132,
+                880,
+                444
+              ],
+              "item_height": 168.0,
+              "content_height": 1895.0,
+              "top_line_bounds": [
+                24,
+                132,
+                832,
+                8
+              ],
+              "bottom_line_bounds": [
+                24,
+                568,
+                832,
+                8
+              ],
+              "top_content_y": 1076.0,
+              "bottom_content_y": 800.0,
+              "max_content_y": 1451.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                -483,
+                184,
+                166
+              ],
+              "content_width": 183.25,
+              "width": 184.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                -450,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                24,
+                -20,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                443,
+                -20,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                704,
+                171,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                721,
+                275,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                660,
+                261,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 261.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                309,
+                660,
+                262,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 262.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                595,
+                660,
+                261,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 261.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  376,
+                  820,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  362,
+                  849,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  365,
+                  872,
+                  65,
+                  24
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  796,
+                  820,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  782,
+                  849,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  785,
+                  872,
+                  65,
+                  24
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  376,
+                  1004,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  362,
+                  1033,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  365,
+                  1056,
+                  65,
+                  24
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  796,
+                  1004,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  782,
+                  1033,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  785,
+                  1056,
+                  65,
+                  24
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 880.0,
+          "horizontal_view_width": 880.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_880x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          880,
+          576
+        ],
+        "actual_size": [
+          880,
+          576
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          526,
+          427,
+          314,
+          147
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            526,
+            427,
+            314,
+            147
+          ],
+          "painted_height": 147.0,
+          "height": 147.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            132,
+            880,
+            444
+          ],
+          "item_height": 147.0,
+          "content_height": 1680.0,
+          "top_line_bounds": [
+            526,
+            251,
+            314,
+            8
+          ],
+          "bottom_line_bounds": [
+            526,
+            568,
+            314,
+            8
+          ],
+          "top_content_y": 1236.0,
+          "bottom_content_y": 1058.0,
+          "max_content_y": 1236.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          40,
+          530,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_880x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          880,
+          576
+        ],
+        "actual_size": [
+          880,
+          576
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          244,
+          782,
+          240
+        ],
+        "strip_bounds": [
+          40,
+          210,
+          800,
+          283
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            132,
+            880,
+            444
+          ],
+          "item_height": 240.0,
+          "content_height": 1313.0,
+          "top_line_bounds": [
+            49,
+            132,
+            782,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            568,
+            782,
+            8
+          ],
+          "top_content_y": 272.0,
+          "bottom_content_y": 68.0,
+          "max_content_y": 869.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 880.0,
+        "viewport_width": 880.0
+      }
+    },
+    "long_telemetry_and_numeric_extremes_1100x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1100,
+          576
+        ],
+        "actual_size": [
+          1100,
+          576
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              12,
+              98,
+              427,
+              46
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1941.89,
+            "width": 427.2,
+            "implicit_height": 46.0,
+            "height": 46.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              452,
+              124,
+              512,
+              16
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1050.73,
+            "width": 512.0,
+            "implicit_height": 16.0,
+            "height": 16.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              18,
+              189,
+              75,
+              68
+            ],
+            "content_width": 74.33,
+            "width": 75.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                668,
+                -247,
+                408,
+                84
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                668,
+                -101,
+                408,
+                84
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                668,
+                29,
+                408,
+                336
+              ],
+              "painted_height": 336.0,
+              "height": 336.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                132,
+                1100,
+                444
+              ],
+              "item_height": 84.0,
+              "content_height": 1708.0,
+              "top_line_bounds": [
+                668,
+                132,
+                408,
+                8
+              ],
+              "bottom_line_bounds": [
+                668,
+                568,
+                408,
+                8
+              ],
+              "top_content_y": 421.0,
+              "bottom_content_y": 61.0,
+              "max_content_y": 1264.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                132,
+                1100,
+                444
+              ],
+              "item_height": 84.0,
+              "content_height": 1708.0,
+              "top_line_bounds": [
+                668,
+                132,
+                408,
+                8
+              ],
+              "bottom_line_bounds": [
+                668,
+                568,
+                408,
+                8
+              ],
+              "top_content_y": 567.0,
+              "bottom_content_y": 207.0,
+              "max_content_y": 1264.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                132,
+                1100,
+                444
+              ],
+              "item_height": 336.0,
+              "content_height": 1708.0,
+              "top_line_bounds": [
+                668,
+                132,
+                408,
+                8
+              ],
+              "bottom_line_bounds": [
+                668,
+                568,
+                408,
+                8
+              ],
+              "top_content_y": 697.0,
+              "bottom_content_y": 589.0,
+              "max_content_y": 1264.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                -49,
+                184,
+                166
+              ],
+              "content_width": 183.25,
+              "width": 184.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                -16,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                668,
+                -272,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                875,
+                -272,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                924,
+                -81,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                941,
+                65,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                660,
+                335,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 335.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                383,
+                660,
+                334,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 334.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                741,
+                660,
+                335,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 335.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  486,
+                  832,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  472,
+                  861,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  475,
+                  884,
+                  65,
+                  24
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  1016,
+                  832,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  1002,
+                  861,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  1005,
+                  884,
+                  65,
+                  24
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  486,
+                  1016,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  472,
+                  1045,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  475,
+                  1068,
+                  65,
+                  24
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  1016,
+                  1016,
+                  54,
+                  24
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  1002,
+                  1045,
+                  68,
+                  19
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  1005,
+                  1068,
+                  65,
+                  24
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 1100.0,
+          "horizontal_view_width": 1100.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_1100x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1100,
+          576
+        ],
+        "actual_size": [
+          1100,
+          576
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          658,
+          367,
+          402,
+          105
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            658,
+            367,
+            402,
+            105
+          ],
+          "painted_height": 105.0,
+          "height": 105.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            132,
+            1100,
+            444
+          ],
+          "item_height": 105.0,
+          "content_height": 1638.0,
+          "top_line_bounds": [
+            658,
+            293,
+            402,
+            8
+          ],
+          "bottom_line_bounds": [
+            658,
+            568,
+            402,
+            8
+          ],
+          "top_content_y": 1194.0,
+          "bottom_content_y": 1016.0,
+          "max_content_y": 1194.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          40,
+          530,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_1100x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1100,
+          576
+        ],
+        "actual_size": [
+          1100,
+          576
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          84,
+          480,
+          400
+        ],
+        "strip_bounds": [
+          40,
+          50,
+          498,
+          443
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            132,
+            1100,
+            444
+          ],
+          "item_height": 400.0,
+          "content_height": 1135.0,
+          "top_line_bounds": [
+            49,
+            132,
+            480,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            568,
+            480,
+            8
+          ],
+          "top_content_y": 299.0,
+          "bottom_content_y": 255.0,
+          "max_content_y": 691.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 1100.0,
+        "viewport_width": 1100.0
+      }
+    },
+    "long_telemetry_and_numeric_extremes_1280x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          576
+        ],
+        "actual_size": [
+          1280,
+          576
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              12,
+              78,
+              499,
+              46
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1941.89,
+            "width": 499.2,
+            "implicit_height": 46.0,
+            "height": 46.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              524,
+              104,
+              620,
+              16
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1050.73,
+            "width": 620.0,
+            "implicit_height": 16.0,
+            "height": 16.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              18,
+              169,
+              75,
+              68
+            ],
+            "content_width": 74.33,
+            "width": 75.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                776,
+                -77,
+                480,
+                84
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                776,
+                69,
+                480,
+                63
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                776,
+                178,
+                480,
+                273
+              ],
+              "painted_height": 273.0,
+              "height": 273.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                464
+              ],
+              "item_height": 84.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                568,
+                480,
+                8
+              ],
+              "top_content_y": 400.0,
+              "bottom_content_y": 20.0,
+              "max_content_y": 1139.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                464
+              ],
+              "item_height": 63.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                568,
+                480,
+                8
+              ],
+              "top_content_y": 546.0,
+              "bottom_content_y": 145.0,
+              "max_content_y": 1139.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                464
+              ],
+              "item_height": 273.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                568,
+                480,
+                8
+              ],
+              "top_content_y": 655.0,
+              "bottom_content_y": 464.0,
+              "max_content_y": 1139.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                -7,
+                184,
+                166
+              ],
+              "content_width": 183.25,
+              "width": 184.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                26,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                776,
+                -188,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                1019,
+                -188,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                1104,
+                3,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                1121,
+                149,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                660,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                443,
+                660,
+                394,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 394.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                861,
+                660,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  546,
+                  827,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  544,
+                  869,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  531,
+                  899,
+                  90,
+                  33
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  1169,
+                  827,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  1167,
+                  869,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  1154,
+                  899,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  546,
+                  1014,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  544,
+                  1056,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  531,
+                  1086,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  1169,
+                  1014,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  1167,
+                  1056,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  1154,
+                  1086,
+                  90,
+                  33
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 1280.0,
+          "horizontal_view_width": 1280.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_1280x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          576
+        ],
+        "actual_size": [
+          1280,
+          576
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          1016,
+          293,
+          224,
+          189
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            1016,
+            293,
+            224,
+            189
+          ],
+          "painted_height": 189.0,
+          "height": 189.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            464
+          ],
+          "item_height": 189.0,
+          "content_height": 1018.0,
+          "top_line_bounds": [
+            1016,
+            209,
+            224,
+            8
+          ],
+          "bottom_line_bounds": [
+            1016,
+            568,
+            224,
+            8
+          ],
+          "top_content_y": 554.0,
+          "bottom_content_y": 376.0,
+          "max_content_y": 554.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          665,
+          530,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_1280x576": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          576
+        ],
+        "actual_size": [
+          1280,
+          576
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          144,
+          570,
+          340
+        ],
+        "strip_bounds": [
+          40,
+          110,
+          588,
+          383
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            464
+          ],
+          "item_height": 340.0,
+          "content_height": 1075.0,
+          "top_line_bounds": [
+            49,
+            112,
+            570,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            568,
+            570,
+            8
+          ],
+          "top_content_y": 299.0,
+          "bottom_content_y": 175.0,
+          "max_content_y": 611.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 1280.0,
+        "viewport_width": 1280.0
+      }
+    },
+    "long_telemetry_and_numeric_extremes_1280x720": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          720
+        ],
+        "actual_size": [
+          1280,
+          720
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              12,
+              78,
+              499,
+              46
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1941.89,
+            "width": 499.2,
+            "implicit_height": 46.0,
+            "height": 46.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              524,
+              104,
+              620,
+              16
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1050.73,
+            "width": 620.0,
+            "implicit_height": 16.0,
+            "height": 16.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              22,
+              171,
+              197,
+              178
+            ],
+            "content_width": 196.53,
+            "width": 197.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                776,
+                48,
+                480,
+                84
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                776,
+                194,
+                480,
+                63
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                776,
+                303,
+                480,
+                273
+              ],
+              "painted_height": 273.0,
+              "height": 273.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                608
+              ],
+              "item_height": 84.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                588,
+                480,
+                8
+              ],
+              "top_content_y": 400.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 995.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                608
+              ],
+              "item_height": 63.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                712,
+                480,
+                8
+              ],
+              "top_content_y": 546.0,
+              "bottom_content_y": 1.0,
+              "max_content_y": 995.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                608
+              ],
+              "item_height": 273.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                712,
+                480,
+                8
+              ],
+              "top_content_y": 655.0,
+              "bottom_content_y": 320.0,
+              "max_content_y": 995.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                137,
+                184,
+                166
+              ],
+              "content_width": 183.25,
+              "width": 184.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                170,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                776,
+                -44,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                1019,
+                -44,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                1104,
+                147,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                1121,
+                293,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                804,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                443,
+                804,
+                394,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 394.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                861,
+                804,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  546,
+                  971,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  544,
+                  1013,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  531,
+                  1043,
+                  90,
+                  33
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  1169,
+                  971,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  1167,
+                  1013,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  1154,
+                  1043,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  546,
+                  1158,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  544,
+                  1200,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  531,
+                  1230,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  1169,
+                  1158,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  1167,
+                  1200,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  1154,
+                  1230,
+                  90,
+                  33
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 1280.0,
+          "horizontal_view_width": 1280.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_1280x720": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          720
+        ],
+        "actual_size": [
+          1280,
+          720
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          1016,
+          401,
+          224,
+          189
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            1016,
+            401,
+            224,
+            189
+          ],
+          "painted_height": 189.0,
+          "height": 189.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            608
+          ],
+          "item_height": 189.0,
+          "content_height": 1018.0,
+          "top_line_bounds": [
+            1016,
+            353,
+            224,
+            8
+          ],
+          "bottom_line_bounds": [
+            1016,
+            712,
+            224,
+            8
+          ],
+          "top_content_y": 410.0,
+          "bottom_content_y": 232.0,
+          "max_content_y": 410.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          665,
+          674,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_1280x720": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          720
+        ],
+        "actual_size": [
+          1280,
+          720
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          288,
+          570,
+          340
+        ],
+        "strip_bounds": [
+          40,
+          254,
+          588,
+          383
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            608
+          ],
+          "item_height": 340.0,
+          "content_height": 1075.0,
+          "top_line_bounds": [
+            49,
+            112,
+            570,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            712,
+            570,
+            8
+          ],
+          "top_content_y": 299.0,
+          "bottom_content_y": 31.0,
+          "max_content_y": 467.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 1280.0,
+        "viewport_width": 1280.0
+      }
+    },
+    "long_telemetry_and_numeric_extremes_1280x800": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          800
+        ],
+        "actual_size": [
+          1280,
+          800
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              24,
+              68,
+              491,
+              116
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 4907.05,
+            "width": 491.2,
+            "implicit_height": 116.0,
+            "height": 116.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              565,
+              130,
+              415,
+              19
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1226.14,
+            "width": 415.0,
+            "implicit_height": 19.0,
+            "height": 19.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              34,
+              243,
+              197,
+              178
+            ],
+            "content_width": 196.53,
+            "width": 197.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                776,
+                192,
+                480,
+                84
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                776,
+                338,
+                480,
+                63
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                776,
+                447,
+                480,
+                273
+              ],
+              "painted_height": 273.0,
+              "height": 273.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                688
+              ],
+              "item_height": 84.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                588,
+                480,
+                8
+              ],
+              "top_content_y": 400.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 915.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                688
+              ],
+              "item_height": 63.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                713,
+                480,
+                8
+              ],
+              "top_content_y": 546.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 915.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                112,
+                1280,
+                688
+              ],
+              "item_height": 273.0,
+              "content_height": 1603.0,
+              "top_line_bounds": [
+                776,
+                112,
+                480,
+                8
+              ],
+              "bottom_line_bounds": [
+                776,
+                792,
+                480,
+                8
+              ],
+              "top_content_y": 655.0,
+              "bottom_content_y": 240.0,
+              "max_content_y": 915.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                217,
+                184,
+                166
+              ],
+              "content_width": 183.25,
+              "width": 184.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                250,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                776,
+                36,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                1019,
+                36,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                1104,
+                227,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                1121,
+                373,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                884,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                443,
+                884,
+                394,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 394.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                861,
+                884,
+                395,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 395.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  546,
+                  1051,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  544,
+                  1093,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  531,
+                  1123,
+                  90,
+                  33
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  1169,
+                  1051,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  1167,
+                  1093,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  1154,
+                  1123,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  546,
+                  1238,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  544,
+                  1280,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  531,
+                  1310,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  1169,
+                  1238,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  1167,
+                  1280,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  1154,
+                  1310,
+                  90,
+                  33
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 1280.0,
+          "horizontal_view_width": 1280.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_1280x800": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          800
+        ],
+        "actual_size": [
+          1280,
+          800
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          1016,
+          481,
+          224,
+          189
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            1016,
+            481,
+            224,
+            189
+          ],
+          "painted_height": 189.0,
+          "height": 189.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            688
+          ],
+          "item_height": 189.0,
+          "content_height": 1018.0,
+          "top_line_bounds": [
+            1016,
+            433,
+            224,
+            8
+          ],
+          "bottom_line_bounds": [
+            1016,
+            792,
+            224,
+            8
+          ],
+          "top_content_y": 330.0,
+          "bottom_content_y": 152.0,
+          "max_content_y": 330.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          665,
+          754,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_1280x800": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          800
+        ],
+        "actual_size": [
+          1280,
+          800
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          368,
+          570,
+          340
+        ],
+        "strip_bounds": [
+          40,
+          334,
+          588,
+          383
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            112,
+            1280,
+            688
+          ],
+          "item_height": 340.0,
+          "content_height": 1075.0,
+          "top_line_bounds": [
+            49,
+            112,
+            570,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            743,
+            570,
+            8
+          ],
+          "top_content_y": 299.0,
+          "bottom_content_y": 0.0,
+          "max_content_y": 387.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 1280.0,
+        "viewport_width": 1280.0
+      }
+    },
+    "long_telemetry_and_numeric_extremes_1600x1000": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1600,
+          1000
+        ],
+        "actual_size": [
+          1600,
+          1000
+        ],
+        "cockpit_text_and_numeric": {
+          "track": {
+            "object_name": "trackValue",
+            "chars": 119,
+            "bounds": [
+              24,
+              68,
+              619,
+              135
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 5724.8,
+            "width": 619.2,
+            "implicit_height": 135.0,
+            "height": 135.0
+          },
+          "car": {
+            "object_name": "carValue",
+            "chars": 182,
+            "bounds": [
+              693,
+              139,
+              587,
+              19
+            ],
+            "text_full": true,
+            "accessible_name_full": true,
+            "implicit_width": 1226.14,
+            "width": 587.0,
+            "implicit_height": 19.0,
+            "height": 19.0
+          },
+          "speed": {
+            "text": "500",
+            "bounds": [
+              38,
+              270,
+              261,
+              236
+            ],
+            "content_width": 260.25,
+            "width": 261.0
+          }
+        },
+        "cockpit_masthead_nonoverlap": true,
+        "telemetry": {
+          "long_text": [
+            {
+              "object_name": "opponentAheadName",
+              "text_chars": 198,
+              "accessible_name": "Xe trước: Lexus RC F GT3 · #05 · Endurance team with a deliberately long display name — Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two Driver One / Driver Two ",
+              "bounds": [
+                968,
+                255,
+                608,
+                63
+              ]
+            },
+            {
+              "object_name": "opponentBehindName",
+              "text_chars": 182,
+              "accessible_name": "Xe sau: Porsche 911 GT3 R · #09 · Long running entry — Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four Driver Three / Driver Four ",
+              "bounds": [
+                968,
+                380,
+                608,
+                63
+              ]
+            },
+            {
+              "object_name": "telemetryLatestEvent",
+              "chars": 810,
+              "bounds": [
+                968,
+                489,
+                608,
+                231
+              ],
+              "painted_height": 231.0,
+              "height": 231.0,
+              "accessible_name": "",
+              "accessible_name_present": false
+            }
+          ],
+          "scroll_edges": {
+            "ahead": {
+              "viewport_bounds": [
+                0,
+                112,
+                1600,
+                888
+              ],
+              "item_height": 63.0,
+              "content_height": 1523.0,
+              "top_line_bounds": [
+                968,
+                112,
+                608,
+                8
+              ],
+              "bottom_line_bounds": [
+                968,
+                550,
+                608,
+                8
+              ],
+              "top_content_y": 383.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 635.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "behind": {
+              "viewport_bounds": [
+                0,
+                112,
+                1600,
+                888
+              ],
+              "item_height": 63.0,
+              "content_height": 1523.0,
+              "top_line_bounds": [
+                968,
+                112,
+                608,
+                8
+              ],
+              "bottom_line_bounds": [
+                968,
+                675,
+                608,
+                8
+              ],
+              "top_content_y": 508.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 635.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            },
+            "latest_event": {
+              "viewport_bounds": [
+                0,
+                112,
+                1600,
+                888
+              ],
+              "item_height": 231.0,
+              "content_height": 1523.0,
+              "top_line_bounds": [
+                968,
+                112,
+                608,
+                8
+              ],
+              "bottom_line_bounds": [
+                968,
+                952,
+                608,
+                8
+              ],
+              "top_content_y": 617.0,
+              "bottom_content_y": 0.0,
+              "max_content_y": 635.0,
+              "top_reachable": true,
+              "bottom_reachable": true
+            }
+          },
+          "numeric_values": {
+            "telemetrySpeedValue": {
+              "text": "500",
+              "bounds": [
+                134,
+                370,
+                269,
+                243
+              ],
+              "content_width": 268.23,
+              "width": 269.0
+            },
+            "telemetryGearValue": {
+              "text": "8",
+              "bounds": [
+                51,
+                442,
+                36,
+                100
+              ],
+              "content_width": 36.02,
+              "width": 36.02
+            },
+            "telemetryPositionValue": {
+              "text": "P99",
+              "bounds": [
+                968,
+                259,
+                109,
+                100
+              ],
+              "content_width": 108.11,
+              "width": 109.0
+            },
+            "telemetryCurrentLapValue": {
+              "text": "999",
+              "bounds": [
+                1275,
+                259,
+                106,
+                100
+              ],
+              "content_width": 105.28,
+              "width": 106.0
+            },
+            "opponentAheadGap": {
+              "text": "123,456 s",
+              "bounds": [
+                1424,
+                450,
+                152,
+                37
+              ],
+              "content_width": 151.17,
+              "width": 152.0
+            },
+            "opponentBehindGap": {
+              "text": "98,765 s",
+              "bounds": [
+                1441,
+                575,
+                135,
+                37
+              ],
+              "content_width": 134.38,
+              "width": 135.0
+            },
+            "telemetryCurrentLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                24,
+                1044,
+                501,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 501.0
+            },
+            "telemetryPreviousLapTime": {
+              "text": "16:39.999",
+              "bounds": [
+                549,
+                1044,
+                502,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 502.0
+            },
+            "telemetryBestLapTime": {
+              "text": "14:48.888",
+              "bounds": [
+                1075,
+                1044,
+                501,
+                49
+              ],
+              "content_width": 199.69,
+              "width": 501.0
+            }
+          },
+          "wheel_tile_values": {
+            "FL": {
+              "tyre": {
+                "text": "120°C",
+                "bounds": [
+                  706,
+                  1211,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "45,0 psi",
+                "bounds": [
+                  704,
+                  1253,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1100°C",
+                "bounds": [
+                  691,
+                  1283,
+                  90,
+                  33
+                ]
+              }
+            },
+            "FR": {
+              "tyre": {
+                "text": "119°C",
+                "bounds": [
+                  1489,
+                  1211,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "44,0 psi",
+                "bounds": [
+                  1487,
+                  1253,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1090°C",
+                "bounds": [
+                  1474,
+                  1283,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RL": {
+              "tyre": {
+                "text": "118°C",
+                "bounds": [
+                  706,
+                  1398,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "43,0 psi",
+                "bounds": [
+                  704,
+                  1440,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1080°C",
+                "bounds": [
+                  691,
+                  1470,
+                  90,
+                  33
+                ]
+              }
+            },
+            "RR": {
+              "tyre": {
+                "text": "117°C",
+                "bounds": [
+                  1489,
+                  1398,
+                  75,
+                  33
+                ]
+              },
+              "pressure": {
+                "text": "42,0 psi",
+                "bounds": [
+                  1487,
+                  1440,
+                  77,
+                  21
+                ]
+              },
+              "brake": {
+                "text": "1070°C",
+                "bounds": [
+                  1474,
+                  1470,
+                  90,
+                  33
+                ]
+              }
+            }
+          },
+          "horizontal_content_width": 1600.0,
+          "horizontal_view_width": 1600.0
+        }
+      }
+    },
+    "long_engineer_binding_row_and_remap_action_1600x1000": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1600,
+          1000
+        ],
+        "actual_size": [
+          1600,
+          1000
+        ],
+        "value_text_chars": 254,
+        "value_bounds": [
+          1272,
+          723,
+          288,
+          147
+        ],
+        "value_text": "Mock Fanatec ClubSport Formula V2.5 wheel — Steering input / Button 3 — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — Long device description — ",
+        "value_accessibility": {
+          "object_name": "engineerDirectInputBinding",
+          "chars": 254,
+          "bounds": [
+            1272,
+            723,
+            288,
+            147
+          ],
+          "painted_height": 147.0,
+          "height": 147.0,
+          "accessible_name": "",
+          "accessible_name_present": false
+        },
+        "value_scroll": {
+          "viewport_bounds": [
+            0,
+            112,
+            1600,
+            888
+          ],
+          "item_height": 147.0,
+          "content_height": 976.0,
+          "top_line_bounds": [
+            1272,
+            675,
+            288,
+            8
+          ],
+          "bottom_line_bounds": [
+            1272,
+            902,
+            288,
+            8
+          ],
+          "top_content_y": 88.0,
+          "bottom_content_y": 0.0,
+          "max_content_y": 88.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "remap_button_bounds": [
+          825,
+          926,
+          120,
+          44
+        ],
+        "remap_invocations": 1
+      }
+    },
+    "long_api_error_detail_1600x1000": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1600,
+          1000
+        ],
+        "actual_size": [
+          1600,
+          1000
+        ],
+        "chars": 1285,
+        "detail_bounds": [
+          49,
+          411,
+          730,
+          260
+        ],
+        "strip_bounds": [
+          40,
+          377,
+          748,
+          303
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": false,
+        "html_like_text_retained_verbatim_in_qml_property": null,
+        "scroll_edges": {
+          "viewport_bounds": [
+            0,
+            112,
+            1600,
+            888
+          ],
+          "item_height": 260.0,
+          "content_height": 995.0,
+          "top_line_bounds": [
+            49,
+            304,
+            730,
+            8
+          ],
+          "bottom_line_bounds": [
+            49,
+            663,
+            730,
+            8
+          ],
+          "top_content_y": 107.0,
+          "bottom_content_y": 0.0,
+          "max_content_y": 107.0,
+          "top_reachable": true,
+          "bottom_reachable": true
+        },
+        "endpoint_reachable_after_status": true,
+        "content_width": 1600.0,
+        "viewport_width": 1600.0
+      }
+    },
+    "long_startup_error_880x576": {
+      "status": "FAIL",
+      "error": "AssertionError: Startup notice escapes the visible window at (880, 576): notice=(476.0, -97.0, 390.0, 659.0) window=(0.0, 0.0, 880.0, 576.0)",
+      "traceback": [
+        "    value = body()",
+        "            ^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 635, in <lambda>",
+        "    lambda requested=requested: _test_startup_error(root, fake, requested))",
+        "                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 376, in _test_startup_error",
+        "    raise AssertionError(f\"Startup notice escapes the visible window at {requested}: notice={notice_rect} window={window_rect}\")",
+        "AssertionError: Startup notice escapes the visible window at (880, 576): notice=(476.0, -97.0, 390.0, 659.0) window=(0.0, 0.0, 880.0, 576.0)"
+      ],
+      "screenshot": "tests/ui/artifacts/edge-failures/long_startup_error_880x576.png"
+    },
+    "long_startup_error_1280x720": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          720
+        ],
+        "actual_size": [
+          1280,
+          720
+        ],
+        "chars": 1356,
+        "notice_bounds": [
+          876,
+          47,
+          390,
+          659
+        ],
+        "error_bounds": [
+          890,
+          90,
+          362,
+          540
+        ],
+        "title_bounds": [
+          918,
+          61,
+          334,
+          21
+        ],
+        "retry_bounds": [
+          890,
+          654,
+          58,
+          38
+        ],
+        "error_text_full": true
+      }
+    },
+    "long_startup_error_1600x1000": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1600,
+          1000
+        ],
+        "actual_size": [
+          1600,
+          1000
+        ],
+        "chars": 1356,
+        "notice_bounds": [
+          1196,
+          327,
+          390,
+          659
+        ],
+        "error_bounds": [
+          1210,
+          370,
+          362,
+          540
+        ],
+        "title_bounds": [
+          1238,
+          341,
+          334,
+          21
+        ],
+        "retry_bounds": [
+          1210,
+          934,
+          58,
+          38
+        ],
+        "error_text_full": true
+      }
+    },
+    "html_like_api_error_detail": {
+      "status": "PASS",
+      "evidence": {
+        "requested_size": [
+          1280,
+          800
+        ],
+        "actual_size": [
+          1280,
+          800
+        ],
+        "chars": 125,
+        "detail_bounds": [
+          49,
+          411,
+          570,
+          40
+        ],
+        "strip_bounds": [
+          40,
+          377,
+          588,
+          83
+        ],
+        "summary": "API: Lỗi API   ·   race-engineer-model",
+        "detail_text_full": true,
+        "detail_accessible_name": "",
+        "text_format_enum_value": 2,
+        "text_format": "AutoText",
+        "html_like_provider_error": true,
+        "html_like_text_retained_verbatim_in_qml_property": true,
+        "scroll_edges": null,
+        "endpoint_reachable_after_status": true,
+        "content_width": 1280.0,
+        "viewport_width": 1280.0
+      }
+    },
+    "unavailable_model_error_text": {
+      "status": "FAIL",
+      "error": "AssertionError: Provider says the model is unavailable, but UI claims it is available: provider=\"Connected, but model 'missing-model' is unavailable\", displayed='Máy chủ đã phản hồi; mô hình khả dụng.'",
+      "traceback": [
+        "    value = body()",
+        "            ^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 639, in <lambda>",
+        "    lambda: _test_unavailable_model_detail(engine, root, fake))",
+        "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 459, in _test_unavailable_model_detail",
+        "    raise AssertionError(f\"Provider says the model is unavailable, but UI claims it is available: provider={detail_text!r}, displayed={displayed!r}\")",
+        "AssertionError: Provider says the model is unavailable, but UI claims it is available: provider=\"Connected, but model 'missing-model' is unavailable\", displayed='Máy chủ đã phản hồi; mô hình khả dụng.'"
+      ],
+      "screenshot": "tests/ui/artifacts/edge-failures/unavailable_model_error_text.png"
+    },
+    "keyboard_and_inactive_minimized_refresh": {
+      "status": "PASS",
+      "evidence": {
+        "enter_sends_text_once": [
+          [
+            "keyboard Enter audit"
+          ],
+          [
+            "keyboard Tab Space audit"
+          ]
+        ],
+        "tab_focus_target": "radioSend",
+        "space_sends_once": true,
+        "space_ptt_route_cancel_begin_end": [
+          1,
+          1
+        ],
+        "space_release_after_cancel_extra_end_calls": 0,
+        "cockpit_inactive_route": {
+          "live": false,
+          "hidden_text": "CHỜ PHIÊN",
+          "restored_text": "AFTER-HIDDEN"
+        },
+        "cockpit_minimize": {
+          "visibility": "Visibility.Minimized",
+          "live_while_minimized": false,
+          "text_while_minimized": "CHỜ PHIÊN",
+          "restored_text": "AFTER-MINIMIZE"
+        },
+        "telemetry_inactive_minimize": {
+          "restored_after_route_lap": "21",
+          "live_while_minimized": false,
+          "text_while_minimized": "—",
+          "restored_after_minimize_lap": "22"
+        },
+        "native_ctrl_space_verified": false
+      }
+    },
+    "engineer_voice_shortcut_selected_backend": {
+      "status": "FAIL",
+      "error": "AssertionError: 'Cấu hình giọng nói' opened the wrong AI section: [{'backend': 'VieNeu-TTS', 'actual_section': 0, 'expected_section': 1}, {'backend': 'Google Gemini API', 'actual_section': 0, 'expected_section': 2}]; evidence={'VieNeu-TTS': {'current_page': 4, 'section_index': 0, 'selected_backend': 'VieNeu-TTS', 'expected_voice_section': 1, 'shortcut_bounds': [649, 754, 172, 44]}, 'Google Gemini API': {'current_page': 4, 'section_index': 0, 'selected_backend': 'Google Gemini API', 'expected_voice_section': 2, 'shortcut_bounds': [649, 754, 172, 44]}}",
+      "traceback": [
+        "    value = body()",
+        "            ^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 643, in <lambda>",
+        "    lambda: _test_voice_shortcut(engine, root, fake))",
+        "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"/workspace/RaceEngineer/tests/ui/edge_surface_audit.py\", line 610, in _test_voice_shortcut",
+        "    raise AssertionError(f\"'Cấu hình giọng nói' opened the wrong AI section: {mismatches}; evidence={result}\")",
+        "AssertionError: 'Cấu hình giọng nói' opened the wrong AI section: [{'backend': 'VieNeu-TTS', 'actual_section': 0, 'expected_section': 1}, {'backend': 'Google Gemini API', 'actual_section': 0, 'expected_section': 2}]; evidence={'VieNeu-TTS': {'current_page': 4, 'section_index': 0, 'selected_backend': 'VieNeu-TTS', 'expected_voice_section': 1, 'shortcut_bounds': [649, 754, 172, 44]}, 'Google Gemini API': {'current_page': 4, 'section_index': 0, 'selected_backend': 'Google Gemini API', 'expected_voice_section': 2, 'shortcut_bounds': [649, 754, 172, 44]}}"
+      ],
+      "screenshot": "tests/ui/artifacts/edge-failures/engineer_voice_shortcut_selected_backend.png"
+    }
+  },
+  "failure_count": 3,
+  "native_limits": [
+    "Native C++ Ctrl+Space event-filter dispatch is not loaded into this QML fake; standard Qt Quick Space key activation is exercised.",
+    "No real simulator, Windows minimize/tray, file dialog, audio device, provider, or DirectInput device is invoked."
+  ]
+}

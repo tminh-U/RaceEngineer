@@ -1,0 +1,421 @@
+{
+  "created_utc": "2026-10-18T13:01:50Z",
+  "source_gallery_report": "docs/ui-validation/review-gallery/gallery-report.json",
+  "source_qml_sha256": {
+    "qml/AiVoicePage.qml": "20e04dfacb0759f4cf5186c89885200ff8d1594239293a0ef4bf34359b0b25e1",
+    "qml/Cockpit.qml": "951129de58dd77dac8bee38665462264743e0741aad505ba24d90b1680b5d0ec",
+    "qml/DrivingData.qml": "625e0940175c512792911bbdf3b4f04d2840bef902a50ffcb60fff8517186903",
+    "qml/EngineerSpotterPage.qml": "e326f54a3975cf2b8891a45dfcade0ebcc11b1e591909d76d897fad70ee24064",
+    "qml/FuelStrategyPage.qml": "f16a7b5bc8c188a2a8e4e5127c3f822a61d82b0be02a23f10a86726a619f2c4f",
+    "qml/GoogleVoiceDialog.qml": "d243502de9b21c189d34c79c2dc85f9cf016b5ff58d0fbb12161ca2f60d1a74c",
+    "qml/LlmConnectionForm.qml": "729b0b12c4a7b603ff8481600f7d2edc451c09a282c7512f0da571c9a283d4fb",
+    "qml/Main.qml": "aaa88ec20c93176846ec52dd358fc746a2dd2fd56ef74bbe886d9ba47dd812a2",
+    "qml/SetupWizard.qml": "178fe15682db759288234dbe0c4f0379c7616e72d596b7dca084577722ad5260",
+    "qml/StartupNotice.qml": "ae44ed0f54a317d44403917bc18cdaa0414cdf5cf43d2da0517a75f54c634b63",
+    "qml/SystemDevicesPage.qml": "6987398e13d8fb18553aaea22121fad36c95e67899f0df6a72f87844008b4594",
+    "qml/TtsBenchmarkPanel.qml": "eb4d7b46b4c1b251ebad62bbf735c1cc04c0b9b7c704e7617bea9c0f02f43df8",
+    "qml/TtsVoiceSettings.qml": "9a95f33ac46e65d17c0469c6c94ff2b313254c377c2ecc726cac3ea0ec853622",
+    "qml/UiTheme.qml": "6361bc5267878f1455a037a0b5b79edd38138d67405377705aee612487a5e5ed"
+  },
+  "purpose": "Before image crops preserved before wheel-layout correction; images were captured by Qt Quick software renderer.",
+  "crops": [
+    {
+      "size": [
+        880,
+        576
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-880x576.png",
+      "source_sha256": "5e6c022b2098be6fe2fa09743cce5fbef3b4b1362c939b825a2bb85276529b73",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/before/cockpit-vehicle-880x576.png",
+      "crop_box": [
+        175,
+        154,
+        531,
+        330
+      ],
+      "crop_sha256": "84f1743427e17c6ca4a2ccbeffe885c18a58578ba628e2d38dc734d1c3122498",
+      "viewport": [
+        12,
+        166,
+        856,
+        306
+      ]
+    },
+    {
+      "size": [
+        1280,
+        800
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-1280x800.png",
+      "source_sha256": "a56959c21020f49dcee3e6ef510cefe0f7afb45b2e679ea8b1bf828e8b64efec",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/before/cockpit-vehicle-1280x800.png",
+      "crop_box": [
+        260,
+        212,
+        761,
+        425
+      ],
+      "crop_sha256": "633bbe72130b2ffe642984245ce99621f93f561781c6297ba72ed3d97cf91583",
+      "viewport": [
+        26,
+        224,
+        1228,
+        401
+      ]
+    },
+    {
+      "size": [
+        1600,
+        1000
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-1600x1000.png",
+      "source_sha256": "f6b0f21eee4a08d137f45dbbfc3d316ea4cde97086b2ff12a802daddd20a3ff0",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/before/cockpit-vehicle-1600x1000.png",
+      "crop_box": [
+        320,
+        231,
+        960,
+        606
+      ],
+      "crop_sha256": "1eb25d29301c11e71155ac38d0f7408e13ce1a38254184fb1bc65b51c329d2a0",
+      "viewport": [
+        26,
+        243,
+        1548,
+        582
+      ]
+    }
+  ],
+  "after_created_utc": "2026-10-19T03:04:10Z",
+  "after_source_gallery_report": "docs/ui-validation/review-gallery/gallery-report.json",
+  "after_source_qml_sha256": {
+    "qml/AiVoicePage.qml": "8c09d943bfe2561c1cab135f98a3aef50e62fb7904a4993165f58b160d6062aa",
+    "qml/Cockpit.qml": "951129de58dd77dac8bee38665462264743e0741aad505ba24d90b1680b5d0ec",
+    "qml/DrivingData.qml": "16602decc5ac64a84b75ef79b9a37a160977a0a2c3ae23cc27d075b4bfa62d21",
+    "qml/EngineerSpotterPage.qml": "b4c7716103ca0dd458265a2d905adf3b5e4d5191d06220e8269b88117f1ad3d3",
+    "qml/FuelStrategyPage.qml": "7e29e5e9a73e1d72552ea35b483c7dfb984decb3686b199f4e6e03509644be6d",
+    "qml/GoogleVoiceDialog.qml": "dde58c8abdd2459ef910e74e07fde449e7cac9b59a438bd9c27a3b20699dd0b7",
+    "qml/LlmConnectionForm.qml": "1f4ea478b91e82f6c186991782ed7bda62659af3de52ffbfe79e96f7bc016a10",
+    "qml/Main.qml": "febaba1d0f73c617f8d85328adbd5df7073772121fff4519bc5374ea962fc622",
+    "qml/SetupWizard.qml": "b75874cb7f6d5ee1777ff045e2a73987a72c6ea4ae24e2b76d47a99de8e20ef7",
+    "qml/StartupNotice.qml": "bb89e453e7f83881837dccb93d6f0ff9338cc3e39dd9e8773085a8258c5664b0",
+    "qml/SystemDevicesPage.qml": "c8eb8cead8bbf8dcbfc139d4bb1b3c1c99c9a2379e790ed25fb8e5edd9c1b20f",
+    "qml/TtsBenchmarkPanel.qml": "d8654407ebdab8b9e03c05065cbe1a078ac7a8e8c52bd94f48b4d46583935428",
+    "qml/TtsVoiceSettings.qml": "0b4a92d9b4b0a65507ffec168ea0d064bca49c33942543a0465a922e6e74a0e2",
+    "qml/UiTheme.qml": "93973a5fb9023a133ace04ac9e12c2340391a607b3feb24829ee9d6b6e1e0934"
+  },
+  "after_crops": [
+    {
+      "size": [
+        880,
+        576
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-880x576.png",
+      "source_sha256": "631bd70394f9546db221de1d5460e73bdd5c59c9600a90ceef387efbbb3b0434",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/after/cockpit-vehicle-880x576.png",
+      "crop_box": [
+        175,
+        154,
+        531,
+        330
+      ],
+      "crop_sha256": "d88ace64aa551e3da4828f5f0c1961fcc9e49c01136d035ce0ae99a418125387",
+      "viewport": [
+        12,
+        166,
+        856,
+        306
+      ],
+      "vehicle_diagram_geometry": {
+        "canvas_bounds": [
+          371,
+          166,
+          138,
+          306
+        ],
+        "canvas_aspect": 0.45,
+        "canvas_panel_center_delta": [
+          0,
+          0
+        ],
+        "expected_inner_gap": 8.0,
+        "wheel_readings": {
+          "FL": {
+            "group_bounds": [
+              302,
+              217,
+              68,
+              58
+            ],
+            "mapped_wheel_center": [
+              384.95,
+              245.56
+            ],
+            "group_center_y": 245.56,
+            "center_error": 0.0,
+            "gap": 8.0,
+            "horizontal_alignment": "right"
+          },
+          "FR": {
+            "group_bounds": [
+              510,
+              217,
+              68,
+              58
+            ],
+            "mapped_wheel_center": [
+              495.11,
+              245.56
+            ],
+            "group_center_y": 245.56,
+            "center_error": 0.0,
+            "gap": 8.0,
+            "horizontal_alignment": "left"
+          },
+          "RL": {
+            "group_bounds": [
+              302,
+              379,
+              68,
+              58
+            ],
+            "mapped_wheel_center": [
+              384.95,
+              407.74
+            ],
+            "group_center_y": 407.74,
+            "center_error": 0.0,
+            "gap": 8.0,
+            "horizontal_alignment": "right"
+          },
+          "RR": {
+            "group_bounds": [
+              510,
+              379,
+              68,
+              58
+            ],
+            "mapped_wheel_center": [
+              495.11,
+              407.74
+            ],
+            "group_center_y": 407.74,
+            "center_error": 0.0,
+            "gap": 8.0,
+            "horizontal_alignment": "left"
+          }
+        },
+        "mirrored_gaps": true,
+        "wheel_center_alignment": true
+      }
+    },
+    {
+      "size": [
+        1280,
+        800
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-1280x800.png",
+      "source_sha256": "a5b610f7b3d30dc608354e094f008a9cf2b817c319b2a6901d1514710be2b58b",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/after/cockpit-vehicle-1280x800.png",
+      "crop_box": [
+        260,
+        212,
+        761,
+        425
+      ],
+      "crop_sha256": "227a5f748737962f4bdb11c172e5dd62e2a9ea1491371961193c592cf37c5547",
+      "viewport": [
+        26,
+        224,
+        1228,
+        401
+      ],
+      "vehicle_diagram_geometry": {
+        "canvas_bounds": [
+          550,
+          224,
+          180,
+          401
+        ],
+        "canvas_aspect": 0.45,
+        "canvas_panel_center_delta": [
+          0,
+          0
+        ],
+        "expected_inner_gap": 12.0,
+        "wheel_readings": {
+          "FL": {
+            "group_bounds": [
+              463,
+              289,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              567.63,
+              328.26
+            ],
+            "group_center_y": 328.26,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "right"
+          },
+          "FR": {
+            "group_bounds": [
+              733,
+              289,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              711.99,
+              328.26
+            ],
+            "group_center_y": 328.26,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "left"
+          },
+          "RL": {
+            "group_bounds": [
+              463,
+              502,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              567.63,
+              540.79
+            ],
+            "group_center_y": 540.79,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "right"
+          },
+          "RR": {
+            "group_bounds": [
+              733,
+              502,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              711.99,
+              540.79
+            ],
+            "group_center_y": 540.79,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "left"
+          }
+        },
+        "mirrored_gaps": true,
+        "wheel_center_alignment": true
+      }
+    },
+    {
+      "size": [
+        1600,
+        1000
+      ],
+      "source": "docs/ui-validation/review-gallery/cockpit-1600x1000.png",
+      "source_sha256": "ac819001e32513cf8a5ba5d1781ae43809f163cb6f9fe61be75b4ad9e73fd453",
+      "crop_path": "docs/ui-validation/vehicle-alignment-crops/after/cockpit-vehicle-1600x1000.png",
+      "crop_box": [
+        320,
+        231,
+        960,
+        606
+      ],
+      "crop_sha256": "a43ce0fdcd89e1f4e0f36cc2e853ae54bc1e053cae78b8343a89d231fee3e8ca",
+      "viewport": [
+        26,
+        243,
+        1548,
+        582
+      ],
+      "vehicle_diagram_geometry": {
+        "canvas_bounds": [
+          669,
+          243,
+          262,
+          582
+        ],
+        "canvas_aspect": 0.45,
+        "canvas_panel_center_delta": [
+          0,
+          0
+        ],
+        "expected_inner_gap": 12.0,
+        "wheel_readings": {
+          "FL": {
+            "group_bounds": [
+              586,
+              355,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              694.9,
+              394.32
+            ],
+            "group_center_y": 394.32,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "right"
+          },
+          "FR": {
+            "group_bounds": [
+              930,
+              355,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              904.42,
+              394.32
+            ],
+            "group_center_y": 394.32,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "left"
+          },
+          "RL": {
+            "group_bounds": [
+              586,
+              664,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              694.9,
+              702.78
+            ],
+            "group_center_y": 702.78,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "right"
+          },
+          "RR": {
+            "group_bounds": [
+              930,
+              664,
+              84,
+              78
+            ],
+            "mapped_wheel_center": [
+              904.42,
+              702.78
+            ],
+            "group_center_y": 702.78,
+            "center_error": 0.0,
+            "gap": 12.0,
+            "horizontal_alignment": "left"
+          }
+        },
+        "mirrored_gaps": true,
+        "wheel_center_alignment": true
+      }
+    }
+  ]
+}

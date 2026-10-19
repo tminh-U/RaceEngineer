@@ -8,7 +8,7 @@
 
 <div align="center">
   <a href="https://github.com/tminh-U/RaceEngineer">
-    <img src="assets/final_icon_256.png" alt="RaceEngineer logo" width="160">
+    <img src="assets/final_icon_256.png" alt="RaceEngineer monochrome logo" width="160">
   </a>
 
   <h1 align="center">RaceEngineer</h1>
@@ -54,7 +54,7 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 - Compatible with OpenAI-style LLMs.
 
 <p align="center">
-  <img src="images/Screenshot.png" alt="RaceEngineer screenshot">
+  <img src="images/Screenshot.png" alt="RaceEngineer Cockpit preview with sample telemetry">
 </p>
 
 ## Built with

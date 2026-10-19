@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-10-19T14:40:31Z",
+  "status": "PASS",
+  "native_source_contract": "src/main.cpp --verify-setup-ui invokes openGoogleVoiceDialog and reads googleVoiceDialog as QObject*",
+  "qt_meta_object_invocation": true,
+  "dialog_property_alias_identity": true,
+  "dialog_alias_object_name": "googleVoiceDialog",
+  "dialog_alias_visible": true,
+  "dialog_visible": true,
+  "route": 4,
+  "ai_voice_section": 2,
+  "dialog_bounds": {
+    "x": 130.0,
+    "y": 62.0,
+    "width": 620.0,
+    "height": 452.0
+  },
+  "center_delta": [
+    0.0,
+    0.0
+  ],
+  "qml_warnings": [],
+  "qt_logs": [],
+  "scope_limit": "QML window and Qt meta-object probe with Python facade; native Windows executable was not run.",
+  "source_sha256": {
+    "src/main.cpp": "2fc8d14002adde95651c1e9a20c29f29324b499d31266f24195708c82e01f76f",
+    "qml/Main.qml": "76b6fcc87ddab21ce7aca8bb559c2765a5cf7aa4a8c5abaa0e56dad3a7971c13",
+    "qml/GoogleVoiceDialog.qml": "c1fa352f6c89a9be5684dd5f6754bacc25eee19db068fc45b53c1a96809df6e4",
+    "tests/ui/native_legacy_dialog_smoke.py": "9a40e54345267ebcc29f497ccf5b895720011127b716a7178dce35cbd397bf15"
+  }
+}

@@ -9,7 +9,7 @@
 
 <div align="center">
   <a href="https://github.com/tminh-U/RaceEngineer">
-    <img src="assets/final_icon_256.png" alt="RaceEngineer logo" width="160">
+    <img src="../assets/final_icon_256.png" alt="RaceEngineer monochrome logo" width="160">
   </a>
 
   <h1 align="center">RaceEngineer</h1>
@@ -54,7 +54,7 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 - Tương thích với LLM dạng OpenAI.
 
 <p align="center">
-  <img src="../images/Screenshot.png" alt="Ảnh chụp RaceEngineer">
+  <img src="../images/Screenshot.png" alt="Giao diện RaceEngineer Cockpit với dữ liệu minh họa">
 </p>
 
 

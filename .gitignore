@@ -25,7 +25,6 @@ voices/
 runtime/
 __pycache__/
 *.pyc
-/AGENTS.md
 /REQUIREMENTS.md
 /assets/fonts/MiSansLatinVF.ttf
 

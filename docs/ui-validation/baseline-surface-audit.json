@@ -1,0 +1,337 @@
+{
+  "date": "2026-10-19T04:13:38Z",
+  "baseline_commit": "f01acc553c0d938af74f4ea6a026dbc6571eb06c",
+  "audit_scope": "Baseline nested telemetry fields and active Telemetry route rendering; not a complete app-wide feature inventory.",
+  "overall_baseline_feature_parity": true,
+  "targeted_regression_status": "PASS",
+  "failed_regression_checks": [],
+  "regression_checks": {
+    "initial_gap_values_rendered": true,
+    "initial_opponent_names_rendered": true,
+    "opponent_name_and_gap_items_visible": true,
+    "fake_snapshot_received_opponent_names": true,
+    "updated_opponent_names_rendered": true,
+    "updated_gap_values_rendered": true,
+    "opponent_items_update_dynamically": true,
+    "stale_opponent_names_removed": true,
+    "empty_names_show_baseline_fallbacks": true,
+    "fallbacks_update_on_same_name_items": true,
+    "missing_names_show_baseline_fallbacks": true,
+    "position_visible_on_telemetry_route": true,
+    "current_lap_visible_on_telemetry_route": true,
+    "position_and_lap_visible_on_cockpit": true,
+    "direct_input_binding_visible_on_system_route": true,
+    "direct_input_binding_updates_dynamically": true,
+    "direct_input_binding_item_identity_retained": true,
+    "direct_input_binding_remains_reachable_on_engineer_route": true,
+    "no_qml_warnings": true
+  },
+  "current_source_sha256": {
+    "qml/Main.qml": "b698981a45e35073dbb881f228992fa5d59c38e64738743ec9cc31c6f562b55d",
+    "qml/DrivingData.qml": "564b857b2292c88d0e135681f581972da8d34a753bdcab3af409237cc04875c0",
+    "qml/SystemDevicesPage.qml": "017fc7ebcf2716696934a49e68272feec238e349f0dfa87c69f3a03eb4156c9c",
+    "qml/EngineerSpotterPage.qml": "afcb9656508f909296a6d93e86ca30f2f016b8849e774195a26439b72cc3a7c9",
+    "qml/TelemetryPage.qml": "73f0ae7505651f953e9ea47b2d4a7a1cebf2c7bb44ce929906d9d88c6e9a5e7f",
+    "tests/ui/baseline_surface_audit.py": "5fdbe7d816396b88b754a8bef50617e620dcbc832f7d8c41b8a4ac460344e910"
+  },
+  "baseline_nested_telemetry_fields": [
+    "brake",
+    "currentLap",
+    "estimatedFuelLaps",
+    "fuelLiters",
+    "fuelPerLapLiters",
+    "gapAheadSeconds",
+    "gapBehindSeconds",
+    "gear",
+    "lapProgress",
+    "opponentAhead",
+    "opponentBehind",
+    "position",
+    "rpm",
+    "speedKmh",
+    "throttle",
+    "track"
+  ],
+  "current_nested_telemetry_fields": [
+    "bestLapTimeSeconds",
+    "brake",
+    "brakeTemperatures",
+    "carModel",
+    "currentLap",
+    "currentLapTimeSeconds",
+    "estimatedFuelLaps",
+    "fuelLiters",
+    "fuelPerLapLiters",
+    "gapAheadSeconds",
+    "gapBehindSeconds",
+    "gear",
+    "lapProgress",
+    "opponentAhead",
+    "opponentBehind",
+    "position",
+    "previousLapTimeSeconds",
+    "rpm",
+    "speedKmh",
+    "throttle",
+    "track",
+    "tyrePressures",
+    "tyreTemperatures"
+  ],
+  "baseline_nested_fields_missing_from_all_current_qml": [],
+  "baseline_evidence": {
+    "source_file": "qml/Main.qml",
+    "telemetry_gap_rows": {
+      "ahead_name_and_gap": 1121,
+      "behind_name_and_gap": 1122
+    },
+    "expression": "subtitle = 'Xe: ' + opponent name, else 'Chưa có xe trước/sau'"
+  },
+  "current_source_evidence": {
+    "source_file": "qml/TelemetryPage.qml",
+    "gap_rows": {
+      "ahead_gap": 92,
+      "behind_gap": 92
+    },
+    "opponent_name_or_fallback_rows": {
+      "ahead_name": 97,
+      "behind_name": 97,
+      "fallback_expression": 98
+    },
+    "opponent_fields_referenced": [
+      "opponentAhead",
+      "opponentBehind"
+    ],
+    "opponent_fields_referenced_in_telemetry_page": true
+  },
+  "dynamic_qml_probe": {
+    "route": "Telemetry (route 3, via mode and subnavigation clicks)",
+    "window": [
+      1280,
+      800
+    ],
+    "active_page_object": "telemetryPage",
+    "driving_data_visible": true,
+    "fake_snapshot_opponent_names": [
+      "AUDIT-AHEAD-OPPONENT-47",
+      "AUDIT-BEHIND-OPPONENT-62"
+    ],
+    "rendered_gap_values": [
+      "1,234 s",
+      "2,345 s"
+    ],
+    "rendered_opponent_names": [
+      "AUDIT-AHEAD-OPPONENT-47",
+      "AUDIT-BEHIND-OPPONENT-62"
+    ],
+    "opponent_item_visibility": {
+      "opponentAheadName": true,
+      "opponentBehindName": true,
+      "opponentAheadGap": true,
+      "opponentBehindGap": true
+    },
+    "updated_opponent_item_texts": {
+      "opponentAheadName": "AUDIT-AHEAD-UPDATED-91",
+      "opponentBehindName": "AUDIT-BEHIND-UPDATED-38",
+      "opponentAheadGap": "3,456 s",
+      "opponentBehindGap": "4,567 s"
+    },
+    "rendered_no-opponent_fallback_labels": [],
+    "updated_fake_snapshot_opponent_names": [
+      "AUDIT-AHEAD-UPDATED-91",
+      "AUDIT-BEHIND-UPDATED-38"
+    ],
+    "updated_rendered_opponent_names": [
+      "AUDIT-AHEAD-UPDATED-91",
+      "AUDIT-BEHIND-UPDATED-38"
+    ],
+    "updated_rendered_gap_values": [
+      "3,456 s",
+      "4,567 s"
+    ],
+    "stale_opponent_names_after_update": [],
+    "no-opponent_state_rendered_fallback_labels": [
+      "Chưa có xe trước",
+      "Chưa có xe sau"
+    ],
+    "empty_name_item_texts": {
+      "opponentAheadName": "Chưa có xe trước",
+      "opponentBehindName": "Chưa có xe sau"
+    },
+    "missing_name_fallback_labels": [
+      "Chưa có xe trước",
+      "Chưa có xe sau"
+    ],
+    "missing_name_state_texts": [
+      "Telemetry",
+      "Monza · Chưa có dữ liệu xe",
+      "Đã kết nối AC / ACC",
+      "SỐ",
+      "5",
+      "TỐC ĐỘ",
+      "224",
+      "km/h",
+      "RPM",
+      "—",
+      "0",
+      "2.000",
+      "4.000",
+      "6.000",
+      "8.000",
+      "9.000+",
+      "GA (THROTTLE)",
+      "—",
+      "0%",
+      "50%",
+      "100%",
+      "PHANH (BRAKE)",
+      "—",
+      "0%",
+      "50%",
+      "100%",
+      "VỊ TRÍ HIỆN TẠI",
+      "P04",
+      "VÒNG",
+      "7",
+      "TIẾN ĐỘ VÒNG",
+      "62,5%",
+      "XE TRƯỚC",
+      "3,456 s",
+      "Chưa có xe trước",
+      "XE SAU",
+      "4,567 s",
+      "Chưa có xe sau",
+      "SỰ KIỆN MỚI NHẤT",
+      "Chưa có sự kiện trong phiên.",
+      "THỜI GIAN VÒNG ĐUA",
+      "Hiện tại",
+      "—:—.———",
+      "Vòng trước",
+      "—:—.———",
+      "Tốt nhất",
+      "—:—.———"
+    ],
+    "telemetry_position_value_texts": [
+      "P04"
+    ],
+    "telemetry_current_lap_value_texts": [
+      "7"
+    ],
+    "telemetry_position_items_visible": {
+      "telemetryPositionValue": true,
+      "telemetryCurrentLapValue": true
+    },
+    "telemetry_position_item_values": {
+      "telemetryPositionValue": "P04",
+      "telemetryCurrentLapValue": "7"
+    },
+    "all_telemetry_page_texts": [
+      "Telemetry",
+      "Monza · Chưa có dữ liệu xe",
+      "Đã kết nối AC / ACC",
+      "SỐ",
+      "5",
+      "TỐC ĐỘ",
+      "224",
+      "km/h",
+      "RPM",
+      "—",
+      "0",
+      "2.000",
+      "4.000",
+      "6.000",
+      "8.000",
+      "9.000+",
+      "GA (THROTTLE)",
+      "—",
+      "0%",
+      "50%",
+      "100%",
+      "PHANH (BRAKE)",
+      "—",
+      "0%",
+      "50%",
+      "100%",
+      "VỊ TRÍ HIỆN TẠI",
+      "P04",
+      "VÒNG",
+      "7",
+      "TIẾN ĐỘ VÒNG",
+      "62,5%",
+      "XE TRƯỚC",
+      "1,234 s",
+      "AUDIT-AHEAD-OPPONENT-47",
+      "XE SAU",
+      "2,345 s",
+      "AUDIT-BEHIND-OPPONENT-62",
+      "SỰ KIỆN MỚI NHẤT",
+      "Chưa có sự kiện trong phiên.",
+      "THỜI GIAN VÒNG ĐUA",
+      "Hiện tại",
+      "—:—.———",
+      "Vòng trước",
+      "—:—.———",
+      "Tốt nhất",
+      "—:—.———"
+    ],
+    "qml_warnings": [],
+    "snapshot_expression_errors": []
+  },
+  "direct_input_binding_locality_probe": {
+    "baseline_settings_route_showed_binding": true,
+    "baseline_source_line": 1249,
+    "current_system_source_line": 372,
+    "current_engineer_source_line": 433,
+    "synthetic_binding": "AUDIT-DIRECTINPUT-WHEEL-BUTTON-17",
+    "current_system_route_status_visible": true,
+    "current_system_route_shows_binding": true,
+    "current_system_binding_item_object_name": "systemDirectInputBinding",
+    "current_system_binding_label_visible_bounds": [
+      [
+        665,
+        430,
+        439,
+        21
+      ]
+    ],
+    "updated_synthetic_binding": "AUDIT-DIRECTINPUT-UPDATED-29",
+    "current_system_route_binding_updates_dynamically": true,
+    "stale_system_binding_after_update": false,
+    "current_engineer_route_shows_binding": true,
+    "current_engineer_route_shows_binding_after_reveal": true,
+    "current_engineer_binding_value_bounds": [
+      1016,
+      756,
+      224,
+      42
+    ],
+    "classification": "restored on System/devices and reachable on Engineer/Spotter"
+  },
+  "route_relocation_probe": {
+    "baseline_telemetry_page_showed_position_and_current_lap": true,
+    "current_telemetry_page_has_position_value_items": {
+      "telemetryPositionValue": true,
+      "telemetryCurrentLapValue": true
+    },
+    "current_cockpit_has_position_and_lap_items": {
+      "positionValue": true,
+      "currentLapValue": true
+    },
+    "current_cockpit_rendered_values": {
+      "position": "P04",
+      "current_lap": "7"
+    },
+    "classification": "restored on dedicated Telemetry route and retained on Cockpit"
+  },
+  "confirmed_gap": {
+    "fields": [
+      "opponentAhead",
+      "opponentBehind"
+    ],
+    "description": "Baseline Telemetry displays each opponent name with its numeric gap, or the matching no-opponent fallback. The active Telemetry route is dynamically checked for initial/update/empty-name states.",
+    "status": "restored and dynamically verified"
+  },
+  "limitations": [
+    "The runtime uses the strict Python QObject facade and synthetic telemetry; no AC/ACC provider or native C++ QML process is started.",
+    "Other native-only Windows, audio, provider, file-picker, renderer, and DirectInput effects are not assessed by this audit."
+  ]
+}

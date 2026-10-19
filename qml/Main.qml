@@ -2,21 +2,25 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    width: 1280
-    height: 800
-    minimumWidth: 880
-    minimumHeight: 576
+    objectName: "appWindow"
+    readonly property int availableScreenWidth: Math.max(1, Math.min(Screen.width, Screen.desktopAvailableWidth))
+    readonly property int availableScreenHeight: Math.max(1, Math.min(Screen.height, Screen.desktopAvailableHeight))
+    width: Math.min(1440, availableScreenWidth)
+    height: Math.min(900, availableScreenHeight)
+    minimumWidth: Math.min(880, availableScreenWidth)
+    minimumHeight: Math.min(576, availableScreenHeight)
     visible: true
     title: "RaceEngineer"
-    color: "#131315"
+    color: theme.canvas
     flags: Qt.Window | Qt.FramelessWindowHint
-    onVisibilityChanged: if (visibility === Window.Minimized && backend.minimizeToTray && backend.trayAvailable) root.hide()
+    onVisibilityChanged: function() {
+        if (root.visibility === Window.Minimized && backend.minimizeToTray && backend.trayAvailable) root.hide()
+    }
     onClosing: function(close) {
         if (backend.minimizeOnClose && backend.trayAvailable) {
             close.accepted = false
@@ -24,29 +28,77 @@ ApplicationWindow {
         }
     }
 
-    readonly property real ui: Math.max(0.75, Math.min(1.15, width / 1390))
-    readonly property string uiFontFamily: miSansLatinFont.status === FontLoader.Ready
-        ? miSansLatinFont.name : "Segoe UI"
-    readonly property real sideWidth: Math.max(210, Math.min(286, width * 0.18))
-    readonly property real headerHeight: width >= 1500 ? 70 : 56
-    readonly property color bg: "#131315"
-    readonly property color lowest: "#0e0e10"
-    readonly property color panel: "#1b1b1d"
-    readonly property color raised: "#2a2a2c"
-    readonly property color border: "#414754"
-    readonly property color textMain: "#e4e2e4"
-    readonly property color textMuted: "#8b91a0"
-    readonly property color primary: "#aac7ff"
-    readonly property color blue: "#3e90ff"
-    readonly property color green: "#47e266"
-    readonly property color amber: "#ffb868"
+    UiTheme { id: theme }
+    readonly property var designTheme: theme
+    readonly property bool liveWindow: root.visible && root.visibility !== Window.Minimized
+    readonly property real ui: 1
+    readonly property string uiFontFamily: theme.uiFont
+    // Fixed wordmark/navigation budgets avoid feeding compactHeader geometry back into itself.
+    readonly property real headerSingleRowMinimumWidth: 24 + 270 + 32 + 342 + 24
+        + statusRow.implicitWidth + 20 + 120
+    readonly property bool compactHeader: width < headerSingleRowMinimumWidth
+    readonly property real headerHeight: compactHeader ? 84 : 64
+    readonly property color bg: theme.canvas
+    readonly property color lowest: theme.chrome
+    readonly property color panel: theme.surface
+    readonly property color raised: theme.raised
+    readonly property color border: theme.divider
+    readonly property color textMain: theme.text
+    readonly property color textMuted: theme.muted
+    readonly property color primary: theme.accent
+    readonly property color green: theme.accent
+    readonly property color amber: theme.warning
     property int currentPage: 0
-    property bool startupNoticeDismissed: false
-
-    FontLoader {
-        id: miSansLatinFont
-        source: "qrc:/qt/qml/RaceEngineer/assets/fonts/MiSansLatinVF.ttf"
+    property int lastDataPage: 3
+    property int lastSettingsPage: 2
+    property var loadedPages: [true, false, false, false, false, false]
+    property string googleVoiceDialogSource: ""
+    property alias googleVoiceDialog: googleVoiceDialogHost.dialog
+    readonly property int currentMode: currentPage === 0 ? 0 : [1, 3].indexOf(currentPage) >= 0 ? 1 : 2
+    function openPage(page) {
+        if (page < 0 || page > 5) return
+        currentPage = page
+        if ([1, 3].indexOf(page) >= 0) lastDataPage = page
+        if ([2, 4, 5].indexOf(page) >= 0) lastSettingsPage = page
+        if (!loadedPages[page]) {
+            var nextLoaded = loadedPages.slice(0)
+            nextLoaded[page] = true
+            loadedPages = nextLoaded
+        }
     }
+    function openGoogleVoiceDialogFromAi() {
+        googleVoiceDialogSource = "ai"
+        googleVoiceDialogHost.open()
+    }
+    function openGoogleVoiceDialogFromSetup() {
+        googleVoiceDialogSource = "setup"
+        googleVoiceDialogHost.open()
+    }
+    function openGoogleVoiceDialog() {
+        openPage(4)
+        aiVoiceLoader.item.sectionIndex = 2
+        openGoogleVoiceDialogFromAi()
+    }
+    palette.window: theme.canvas
+    palette.windowText: theme.text
+    palette.base: theme.chrome
+    palette.text: theme.text
+    palette.button: theme.raised
+    palette.buttonText: theme.text
+    palette.highlight: theme.accent
+    palette.highlightedText: theme.accentText
+    palette.alternateBase: theme.surface
+    palette.brightText: theme.text
+    palette.dark: theme.chrome
+    palette.light: theme.raised
+    palette.mid: theme.outline
+    palette.midlight: theme.divider
+    palette.shadow: theme.chrome
+    palette.link: theme.text
+    palette.linkVisited: theme.muted
+    palette.placeholderText: theme.muted
+    palette.toolTipBase: theme.surface
+    palette.toolTipText: theme.text
 
     function formatTelemetryValue(value, suffix) {
         if (value === undefined || value === null || value === "") {
@@ -74,32 +126,8 @@ ApplicationWindow {
         if (backend.apiState === "Connected") return root.green
         if (backend.apiState === "Requesting") return root.primary
         if (["RateLimited", "AuthenticationError", "LLM Server Offline", "ProviderError"].indexOf(backend.apiState) >= 0)
-            return "#ff6b6b"
+            return theme.error
         return root.amber
-    }
-
-    function apiDetailText() {
-        var detail = backend.apiDetail
-        if (detail === "Configured; connection not tested yet") return "Chưa kiểm tra kết nối tới máy chủ."
-        if (detail === "Base URL and model are required" || detail === "Base URL model required")
-            return "Cần nhập địa chỉ máy chủ và tên mô hình."
-        if (detail.indexOf("Model available") === 0 || detail.indexOf("Connected") === 0)
-            return "Máy chủ đã phản hồi; mô hình khả dụng."
-        return detail
-    }
-
-    function directInputStatusText() {
-        var status = backend.directInputStatus
-        if (status === "DirectInput not initialized") return "DirectInput chưa khởi tạo."
-        if (status === "Waiting for a DirectInput button…") return "Chờ nút DirectInput để gán."
-        if (status === "No DirectInput controller found") return "Chưa tìm thấy tay lái / bộ điều khiển."
-        if (status === "DirectInput ready") return "Đã sẵn sàng."
-        if (status === "DirectInput unavailable") return "DirectInput không khả dụng."
-        if (status === "DirectInput is only available on Windows") return "DirectInput chỉ khả dụng trên Windows."
-        if (status === "Map a DirectInput button first") return "Hãy gán nút DirectInput trước."
-        if (status === "Mapping cancelled") return "Đã hủy gán nút."
-        if (status === "Press and release wheel button…") return "Nhấn rồi thả nút trên vô lăng để gán."
-        return status.replace(" — Button ", " — nút ")
     }
 
     function voiceStatusText() {
@@ -115,62 +143,78 @@ ApplicationWindow {
 
     font.family: root.uiFontFamily
     font.pixelSize: 14 * ui
+    font.weight: theme.uiWeight
 
     component BodyText: Text {
         color: root.textMain
         font.family: root.uiFontFamily
-        font.pixelSize: 14 * root.ui
+        font.pixelSize: theme.pageTextSize(14 * root.ui)
+        font.weight: theme.uiWeight
         renderType: Text.QtRendering
     }
-    component MutedText: BodyText { color: root.textMuted; font.pixelSize: 13 * root.ui }
-    component HeadingText: BodyText { font.family: root.uiFontFamily; font.pixelSize: 20 * root.ui; font.weight: Font.DemiBold }
-    component MonoText: BodyText { font.family: "Cascadia Mono"; font.pixelSize: 20 * root.ui }
+    component MutedText: BodyText { color: root.textMuted; font.pixelSize: theme.pageTextSize(13 * root.ui) }
+    component HeadingText: BodyText { font.family: root.uiFontFamily; font.pixelSize: theme.pageTextSize(20 * root.ui); font.weight: theme.sectionWeight }
 
     component AppButton: Button {
         id: control
         implicitHeight: 38 * root.ui
         leftPadding: 16 * root.ui; rightPadding: 16 * root.ui
-        font.family: root.uiFontFamily; font.weight: Font.DemiBold; font.pixelSize: 13 * root.ui
+        font.family: root.uiFontFamily; font.weight: theme.sectionWeight; font.pixelSize: 13 * root.ui
         opacity: control.enabled ? 1.0 : 0.45
-        contentItem: Text { text: control.text; color: control.highlighted ? "#002957" : root.textMain; font: control.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+        contentItem: Text { text: control.text; color: control.highlighted ? theme.accentText : root.textMain; font: control.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
         background: Rectangle {
-            radius: 8 * root.ui
+            radius: 4
             color: control.highlighted ? (control.down ? Qt.darker(root.primary, 1.15) : control.hovered ? Qt.lighter(root.primary, 1.08) : root.primary)
-                                       : (control.down ? "#353437" : control.hovered ? "#303033" : root.raised)
-            border.color: control.highlighted ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(1, 1, 1, .05)
-            border.width: control.highlighted ? 1.5 : 1
+                                       : (control.down || control.hovered ? root.raised : root.panel)
+            border.color: control.activeFocus ? root.primary : control.highlighted ? "transparent" : theme.outline
+            border.width: control.activeFocus ? 2 : 1
         }
     }
     component StatusPill: Rectangle {
+        id: pill
         property alias text: statusText.text
         property color statusColor: root.green
+        property bool solidMarker: true
         implicitWidth: statusRow.implicitWidth + 20 * root.ui
         implicitHeight: 28 * root.ui
-        radius: height / 2; color: root.panel
+        radius: 3; color: "transparent"
         Row { id: statusRow; anchors.centerIn: parent; spacing: 7 * root.ui
-            Rectangle { width: 8 * root.ui; height: width; radius: width/2; color: parent.parent.statusColor; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle {
+                width: 8 * root.ui
+                height: width
+                radius: pill.solidMarker ? width / 2 : 1
+                color: pill.solidMarker ? pill.statusColor : "transparent"
+                border.color: pill.statusColor
+                border.width: pill.solidMarker ? 0 : 1
+                anchors.verticalCenter: parent.verticalCenter
+            }
             BodyText { id: statusText; font.pixelSize: 12 * root.ui }
         }
     }
-    component SwitchControl: Item {
+    component SwitchControl: Switch {
         id: toggle
-        property bool checked: true
         signal userToggled(bool checked)
-        implicitWidth: 44 * root.ui; implicitHeight: 24 * root.ui
-        Rectangle { anchors.fill: parent; radius: height/2; color: toggle.checked ? root.green : "#3a3b3f"; Behavior on color { ColorAnimation { duration: 100 } }
-            Rectangle { width: 18*root.ui; height: width; radius: width/2; color: "white"; y: (parent.height-height)/2; x: toggle.checked ? parent.width-width-3*root.ui : 3*root.ui; Behavior on x { NumberAnimation { duration: 100 } } }
+        implicitWidth: 44; implicitHeight: 28
+        padding: 0
+        onToggled: userToggled(checked)
+        indicator: Rectangle {
+            width: 44; height: 24; y: 2; radius: 4
+            color: toggle.checked ? root.primary : root.raised
+            border.color: toggle.activeFocus ? root.textMain : theme.outline
+            border.width: toggle.activeFocus ? 2 : 1
+            Rectangle { width: 16; height: 16; radius: 2; color: toggle.checked ? theme.accentText : root.textMuted; y: 4; x: toggle.checked ? 24 : 4 }
         }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toggle.userToggled(!toggle.checked) }
     }
     component Card: Rectangle {
         id: card
         property string title: ""
         default property alias content: body.data
-        radius: 12 * root.ui; color: root.panel; border.width: 1; border.color: Qt.rgba(.25,.28,.33,.55)
+        radius: 4; color: root.panel
         implicitHeight: body.implicitHeight + 34 * root.ui
+        Layout.minimumHeight: implicitHeight
         Column { id: body; anchors.fill: parent; anchors.margins: 18 * root.ui; spacing: 10 * root.ui
-            BodyText { visible: card.title.length > 0; text: card.title; font.family: root.uiFontFamily; font.weight: Font.DemiBold; font.pixelSize: 15 * root.ui }
-            Rectangle { visible: card.title.length > 0; width: parent.width; height: 1; color: Qt.rgba(.25,.28,.33,.45) }
+            BodyText { visible: card.title.length > 0; text: card.title; font.family: root.uiFontFamily; font.weight: Font.DemiBold; font.pixelSize: theme.pageTextSize(15 * root.ui) }
+            Rectangle { visible: card.title.length > 0; width: parent.width; height: 1; color: root.border }
         }
     }
     component SettingRow: Item {
@@ -201,454 +245,143 @@ ApplicationWindow {
             onClicked: row.valueClicked()
         }
         SwitchControl { visible: row.showSwitch; checked: row.checked; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; onUserToggled: v => row.toggled(v) }
-        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25,.28,.33,.35) }
+        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: root.border }
     }
-    component ProgressLine: Rectangle {
-        property real value: 0
-        property color fillColor: root.primary
-        implicitHeight: 8 * root.ui; radius: height/2; color: root.lowest
-        Rectangle { width: parent.width * Math.max(0, Math.min(1, parent.value)); height: parent.height; radius: height/2; color: parent.fillColor }
-    }
-    component AppSlider: Slider {
-        id: slider
-        implicitHeight: 24 * root.ui
-        background: Rectangle {
-            x: slider.leftPadding; y: slider.topPadding + slider.availableHeight/2-height/2
-            width: slider.availableWidth; height: 5*root.ui; radius: height/2; color: "#353437"
-            Rectangle { width: slider.visualPosition*parent.width; height: parent.height; radius: parent.radius; color: root.primary }
-        }
-        handle: Rectangle {
-            x: slider.leftPadding + slider.visualPosition*(slider.availableWidth-width)
-            y: slider.topPadding + slider.availableHeight/2-height/2
-            width: 18*root.ui; height: width; radius: width/2; color: root.primary
-        }
-    }
-    component AppComboBox: ComboBox {
-        id: combo
-        implicitHeight: 36 * root.ui
-        leftPadding: 12 * root.ui
-        rightPadding: 36 * root.ui
-        font.family: root.uiFontFamily
-        font.pixelSize: 13 * root.ui
-        contentItem: Text {
-            text: combo.displayText
-            color: root.textMain
-            font: combo.font
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
-        }
-        indicator: Text {
-            text: "⌄"
-            color: root.textMuted
-            font.family: root.uiFontFamily
-            font.pixelSize: 18 * root.ui
-            anchors.right: parent.right
-            anchors.rightMargin: 12 * root.ui
-            anchors.verticalCenter: parent.verticalCenter
-        }
-        background: Rectangle {
-            radius: 7 * root.ui
-            color: combo.pressed ? "#303136" : root.raised
-            border.width: 1
-            border.color: combo.activeFocus ? root.primary : root.border
-        }
-        delegate: ItemDelegate {
-            required property var modelData
-            width: combo.width
-            height: 36 * root.ui
-            contentItem: Text {
-                text: combo.textRole.length > 0 ? modelData[combo.textRole] : modelData
-                color: root.textMain
-                font: combo.font
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
-            background: Rectangle {
-                radius: 5 * root.ui
-                color: highlighted ? Qt.rgba(.04, .52, 1, .22) : "transparent"
-            }
-        }
-        popup: Popup {
-            y: combo.height + 4 * root.ui
-            width: combo.width
-            implicitHeight: Math.min(contentItem.implicitHeight + 10 * root.ui, 260 * root.ui)
-            padding: 5 * root.ui
-            contentItem: ListView {
-                clip: true
-                implicitHeight: contentHeight
-                model: combo.popup.visible ? combo.delegateModel : null
-                currentIndex: combo.highlightedIndex
-                ScrollIndicator.vertical: ScrollIndicator { }
-            }
-            background: Rectangle {
-                radius: 8 * root.ui
-                color: root.panel
-                border.width: 1
-                border.color: root.border
-            }
-        }
-    }
-
-    component AppTextField: TextField {
-        id: field
-        implicitHeight: 38 * root.ui
-        leftPadding: 12 * root.ui
-        rightPadding: 12 * root.ui
-        color: root.textMain
-        font.family: root.uiFontFamily
-        font.pixelSize: 13 * root.ui
-        background: Rectangle {
-            radius: 8 * root.ui
-            color: root.bg
-            border.color: field.activeFocus ? root.primary : root.border
-        }
-    }
-
-    component TtsVoiceSettings: Column {
-        enabled: !backend.ttsBenchmarkRunning && !backend.ttsBenchmarkRestoring
-        width: parent ? parent.width : 0
-        spacing: 8 * root.ui
-
-        Item {
-            width: parent.width
-            height: 56 * root.ui
-            BodyText {
-                text: "Backend giọng kỹ sư"
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                font.weight: Font.DemiBold
-            }
-            AppComboBox {
-                width: 250 * root.ui
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                model: ["VieNeu local", "Google Gemini API"]
-                currentIndex: backend.ttsBackend === "Google Gemini API" ? 1 : 0
-                onActivated: backend.setTtsBackend(index === 1 ? "Google Gemini API" : "VieNeu-TTS")
-            }
-        }
-        ColumnLayout {
-            width: parent.width
-            spacing: 8 * root.ui
-            visible: backend.ttsBackend === "Google Gemini API"
-            RowLayout {
-                Layout.fillWidth: true
-                BodyText { text: "Mô hình"; Layout.fillWidth: true; font.weight: Font.DemiBold }
-                AppComboBox {
-                    Layout.preferredWidth: 270 * root.ui
-                    model: ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts"]
-                    currentIndex: backend.googleTtsModel === "gemini-3.8-flash-tts" ? 1 : 0
-                    onActivated: backend.setGoogleTtsModel(currentText)
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                BodyText { text: "Giọng Google"; Layout.fillWidth: true; font.weight: Font.DemiBold }
-                AppComboBox {
-                    Layout.preferredWidth: 270 * root.ui
-                    model: backend.googleTtsVoices
-                    currentIndex: Math.max(0, backend.googleTtsVoices.indexOf(backend.googleTtsVoice))
-                    onActivated: backend.setGoogleTtsVoice(currentText)
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                AppTextField {
-                    id: googleTtsApiKeyInput
-                    Layout.fillWidth: true
-                    placeholderText: backend.googleTtsApiKeyConfigured ? "Đã lưu key; nhập để thay thế" : "Google AI Studio API key"
-                    echoMode: TextInput.Password
-                    onAccepted: { backend.setGoogleTtsApiKey(text); clear() }
-                }
-                AppButton {
-                    text: "Lưu key"
-                    onClicked: { backend.setGoogleTtsApiKey(googleTtsApiKeyInput.text); googleTtsApiKeyInput.clear() }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                AppButton { text: "Nghe thử"; onClicked: backend.previewTtsVoice() }
-                AppButton { text: "Thêm voice"; onClicked: root.openGoogleVoiceDialog() }
-                Item { Layout.fillWidth: true }
-            }
-            MutedText {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                color: root.amber
-                text: "Google Gemini TTS có thể phát sinh phí API. Chỉ nghe thử khi bạn bấm nút."
-            }
-            MutedText { Layout.fillWidth: true; text: backend.ttsStatus; wrapMode: Text.Wrap }
-            MutedText {
-                Layout.fillWidth: true
-                visible: backend.googleTtsFirstAudioMs >= 0
-                text: "Lượt gần nhất — audio đầu tiên: " + (backend.googleTtsFirstAudioMs / 1000).toFixed(2) + " giây"
-            }
-        }
-        Column {
-            width: parent.width
-            spacing: 6 * root.ui
-            visible: backend.ttsBackend === "VieNeu-TTS"
-            Item {
-                width: parent.width
-                height: 54 * root.ui
-                Column {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2 * root.ui
-                    BodyText { text: "Giọng Kỹ sư AI (VieNeu)"; font.weight: Font.DemiBold }
-                    MutedText { text: "Lựa chọn chất giọng và phong cách đàm thoại của kỹ sư" }
-                }
-                AppComboBox {
-                    width: 340 * root.ui
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    textRole: "name"
-                    model: backend.availableTtsVoices
-                    currentIndex: {
-                        for (var i = 0; i < backend.availableTtsVoices.length; ++i) {
-                            if (backend.availableTtsVoices[i].id === backend.selectedTtsVoice)
-                                return i
-                        }
-                        return 0
-                    }
-                    onActivated: backend.setTtsVoice(backend.availableTtsVoices[index].id)
-                }
-            }
-            RowLayout {
-                width: parent.width
-                AppButton { text: "Nghe thử"; onClicked: backend.previewTtsVoice() }
-                MutedText { text: "Phát câu kiểm tra khi bạn bấm nút."; Layout.fillWidth: true }
-            }
-        }
-    }
-
-    component LlmConnectionForm: Column {
-        id: llmForm
-        function saveConfiguration() {
-            backend.saveAiSettings("OpenAI Compatible", endpoint.text, key.text, modelName.text,
-                llmForm.streaming, llmForm.timeoutMilliseconds, llmForm.maximumTokens,
-                llmForm.temperature, llmForm.reasoning)
-        }
-        property bool streaming: backend.apiStreaming
-        property bool reasoning: backend.apiReasoning
-        property int timeoutMilliseconds: backend.apiTimeoutMilliseconds
-        property int maximumTokens: backend.apiMaximumTokens
-        property real temperature: backend.apiTemperature
-        readonly property bool isModified: endpoint.text.trim() !== backend.apiBaseUrl.trim()
-            || modelName.text.trim() !== backend.apiModel.trim()
-            || key.text !== backend.apiKey
-            || streaming !== backend.apiStreaming
-            || reasoning !== backend.apiReasoning
-            || Math.abs(temperature - backend.apiTemperature) > 0.01
-            || maximumTokens !== backend.apiMaximumTokens
-        width: parent ? parent.width : 0
-        spacing: 8 * root.ui
-
-        MutedText { text: "Cổng Endpoint API" }
-        AppTextField { id: endpoint; width: parent.width; text: backend.apiBaseUrl }
-        MutedText { text: "Mô hình suy luận" }
-        AppTextField { id: modelName; width: parent.width; text: backend.apiModel }
-        MutedText { text: "Khóa API" }
-        AppTextField { id: key; width: parent.width; text: backend.apiKey; echoMode: TextInput.Password }
-        Row {
-            width: parent.width
-            spacing: 10 * root.ui
-            AppButton {
-                text: backend.apiState === "Requesting" ? "Đang kết nối..." : "Kiểm tra kết nối"
-                enabled: llmForm.isModified && backend.apiState !== "Requesting"
-                highlighted: llmForm.isModified
-                SequentialAnimation on scale {
-                    running: llmForm.isModified
-                    loops: Animation.Infinite
-                    PropertyAnimation { to: 1.03; duration: 600; easing.type: Easing.InOutQuad }
-                    PropertyAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
-                }
-                onClicked: backend.testApiConnection(endpoint.text, key.text, modelName.text)
-            }
-            AppButton {
-                text: "Lưu cấu hình"
-                highlighted: !llmForm.isModified
-                onClicked: llmForm.saveConfiguration()
-            }
-        }
-    }
-
-    component TtsBenchmarkPanel: Card {
-        id: benchmarkCard
-        property bool complete: backend.ttsBenchmarkResults.length === 3
-            && backend.ttsBenchmarkStatus.indexOf("Đã áp dụng") === 0
-        title: "Benchmark TTS local"
-        Column {
-            width: parent.width
-            spacing: 8 * root.ui
-
-            BodyText {
-                width: parent.width
-                text: backend.ttsBenchmarkStatus.length > 0 ? backend.ttsBenchmarkStatus : "Chưa chạy benchmark."
-                color: benchmarkCard.complete && !backend.ttsBenchmarkStale ? root.green : root.textMain
-                wrapMode: Text.Wrap
-            }
-            MutedText {
-                width: parent.width
-                text: "Kết quả chọn số luồng TTS local; không bảo đảm hết khựng trong game."
-                wrapMode: Text.Wrap
-            }
-            MutedText {
-                width: parent.width
-                text: "Mục tiêu p95 câu ngắn: không quá 1.000 ms. Nếu máy không đạt, ứng dụng chọn mức nhanh nhất đã đo thành công."
-                wrapMode: Text.Wrap
-            }
-            MutedText {
-                width: parent.width
-                visible: backend.ttsBenchmarkStale
-                text: "Cấu hình giọng, GPU hoặc runtime đã đổi. Hãy chạy lại để cập nhật kết quả."
-                color: root.amber
-                wrapMode: Text.Wrap
-            }
-            MutedText {
-                width: parent.width
-                visible: !backend.ttsBenchmarkAllowed && !backend.ttsBenchmarkRunning
-                text: backend.ttsBenchmarkUnavailableReason
-                color: root.amber
-                wrapMode: Text.Wrap
-            }
-            ProgressLine {
-                width: parent.width
-                visible: backend.ttsBenchmarkRunning
-                value: Math.max(0, Math.min(1, backend.ttsBenchmarkProgress))
-            }
-            Row {
-                spacing: 8 * root.ui
-                AppButton {
-                    text: backend.ttsBenchmarkRunning ? "Hủy benchmark" : "Chạy benchmark"
-                    enabled: backend.ttsBenchmarkRunning || backend.ttsBenchmarkAllowed
-                    highlighted: !backend.ttsBenchmarkRunning && backend.ttsBenchmarkAllowed
-                    onClicked: backend.ttsBenchmarkRunning ? backend.cancelTtsBenchmark() : backend.startTtsBenchmark()
-                }
-                MutedText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: backend.ttsBenchmarkTimestamp.length > 0
-                    text: backend.ttsBenchmarkTimestamp.length > 0 ? "Đo lúc " + backend.ttsBenchmarkTimestamp : ""
-                }
-            }
-            RowLayout {
-                width: parent.width
-                spacing: 10 * root.ui
-                BodyText { text: "Luồng"; Layout.preferredWidth: 54 * root.ui; font.weight: Font.DemiBold }
-                BodyText { text: "p95 tổng hợp (ms)"; Layout.preferredWidth: 132 * root.ui; font.weight: Font.DemiBold }
-                BodyText { text: "CPU TB (ms)"; Layout.preferredWidth: 104 * root.ui; font.weight: Font.DemiBold }
-                BodyText { text: "RAM đỉnh (WS / riêng), MB"; Layout.fillWidth: true; font.weight: Font.DemiBold; wrapMode: Text.Wrap }
-            }
-            Repeater {
-                model: backend.ttsBenchmarkResults
-                delegate: RowLayout {
-                    required property var modelData
-                    width: parent.width
-                    spacing: 10 * root.ui
-                    BodyText {
-                        text: String(modelData.threads) + (benchmarkCard.complete && !backend.ttsBenchmarkStale
-                              && modelData.threads === backend.ttsCpuThreads ? " ✓" : "")
-                        Layout.preferredWidth: 54 * root.ui
-                        color: benchmarkCard.complete && !backend.ttsBenchmarkStale
-                               && modelData.threads === backend.ttsCpuThreads ? root.green : root.textMain
-                    }
-                    BodyText { text: Number(modelData.p95_ms).toFixed(0) + " ms"; Layout.preferredWidth: 132 * root.ui }
-                    BodyText { text: Number(modelData.cpu_ms).toFixed(0) + " ms"; Layout.preferredWidth: 104 * root.ui }
-                    MutedText {
-                        text: (Number(modelData.peak_working_set) / 1048576).toFixed(0) + " / "
-                              + (Number(modelData.peak_private_bytes) / 1048576).toFixed(0)
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                    }
-                }
-            }
-            MutedText {
-                width: parent.width
-                visible: backend.ttsBenchmarkResults.length === 0
-                text: "Kết quả sẽ xuất hiện sau khi hoàn thành lượt đo 2, 3 và 4 luồng."
-                wrapMode: Text.Wrap
-            }
-        }
-    }
-
-    Rectangle {
-        id: sidebar
-        width: root.sideWidth; anchors.top: parent.top; anchors.bottom: parent.bottom
-        color: root.lowest
-        Column {
-            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-            anchors.margins: 15 * root.ui; spacing: 16 * root.ui
-            Row { spacing: 10 * root.ui; height: 46 * root.ui
-                Image {
-                    width: 40 * root.ui
-                    height: width
-                    source: "../assets/final_icon_128.png"
-                    fillMode: Image.PreserveAspectFit
-                    mipmap: true
-                    smooth: true
-                }
-                Column { anchors.verticalCenter: parent.verticalCenter; spacing: 2
-                    BodyText { text: "RaceEngineer"; font.family: root.uiFontFamily; font.weight: Font.DemiBold; font.pixelSize: 15*root.ui }
-                    MutedText { text: backend.simulatorName; width: root.sideWidth-80*root.ui; elide: Text.ElideRight; font.pixelSize: 11*root.ui }
-                }
-            }
-            Column { width: parent.width; spacing: 4 * root.ui
-                Repeater { model: [
-                        { label: "Bảng điều khiển", icon: "\uE80F" },
-                        { label: "Analysis & Strategy", icon: "\uE9D2" },
-                        { label: "Kỹ sư", icon: "\uE720" },
-                        { label: "Telemetry", icon: "\uE9D2" },
-                        { label: "Trí tuệ nhân tạo", icon: "\uE781" },
-                        { label: "Cài đặt", icon: "\uE713" }
-                    ]
-                    delegate: Rectangle {
-                        required property int index; required property var modelData
-                        width: parent.width; height: 46 * root.ui; radius: 8 * root.ui
-                        color: root.currentPage === index ? root.blue : navMouse.containsMouse ? root.panel : "transparent"
-                        Text { text: modelData.icon; x: 12*root.ui; anchors.verticalCenter: parent.verticalCenter; color: root.currentPage===index ? "#002957" : "#c0c6d6"; font.family: "Segoe Fluent Icons"; font.pixelSize: 18*root.ui }
-                        BodyText { text: modelData.label; x: 42*root.ui; anchors.verticalCenter: parent.verticalCenter; color: root.currentPage===index ? "#002957" : root.textMain; font.family: root.uiFontFamily; font.weight: root.currentPage===index ? Font.DemiBold : Font.Normal }
-                        MouseArea { id: navMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.currentPage=index }
-                    }
-                }
-            }
-        }
-        Column { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 20*root.ui; spacing: 8*root.ui
-            MutedText { anchors.horizontalCenter: parent.horizontalCenter; text: "v" + Qt.application.version + "  •  Sẵn sàng"; font.pixelSize: 11*root.ui }
-        }
-    }
-
     Rectangle {
         id: header
-        x: sidebar.width; width: root.width-sidebar.width; height: root.headerHeight; color: root.lowest
-        Row { anchors.left: parent.left; anchors.leftMargin: 30*root.ui; anchors.verticalCenter: parent.verticalCenter; spacing: 10*root.ui
-            BodyText { text: "Phiên trực tiếp"; font.family: root.uiFontFamily; font.weight: Font.DemiBold; font.pixelSize: 15*root.ui }
-            Rectangle { color: root.raised; radius: 4*root.ui; width: trackText.implicitWidth+12*root.ui; height: 26*root.ui
-                MutedText { id: trackText; anchors.centerIn: parent; text: backend.telemetry.track ? backend.telemetry.track.toUpperCase() : "CHỜ SIMULATOR"; font.family: "Cascadia Mono"; font.pixelSize: 11*root.ui }
-            }
+        width: root.width; height: root.headerHeight
+        color: root.lowest
+        Image {
+            id: appLogo
+            objectName: "raceEngineerLogo"
+            x: 24; y: root.compactHeader ? 8 : 12
+            width: root.compactHeader ? 32 : 40
+            height: width
+            source: "../assets/final_icon_64.png"
+            fillMode: Image.PreserveAspectFit
+            mipmap: true
         }
-        Row { anchors.right: windowButtons.left; anchors.rightMargin: 14*root.ui; anchors.verticalCenter: parent.verticalCenter; spacing: 8*root.ui
-            StatusPill { text: backend.connectionText; statusColor: backend.connected ? root.green : root.amber }
-            StatusPill {
-                text: root.voiceStatusText()
-                statusColor: backend.voiceStatus === "Listening" ? root.green :
-                             backend.voiceStatus === "Idle" && !backend.keyboardPttEnabled && !backend.directInputPttEnabled ? root.amber : root.primary
-            }
-            StatusPill { text: "AI: " + root.apiStatusText(); statusColor: root.apiStatusColor() }
+        Text {
+            id: wordmark
+            x: appLogo.x + appLogo.width + 10; y: root.compactHeader ? 7 : 12
+            text: "RaceEngineer"
+            font.family: theme.sansSemiBold.status === FontLoader.Ready ? theme.sansSemiBold.name : root.uiFontFamily
+            font.pixelSize: root.compactHeader ? 26 : 30; font.weight: theme.sectionWeight
+            color: root.textMain
         }
-        Row { id: windowButtons; anchors.right: parent.right; anchors.top: parent.top; height: parent.height
-            Repeater { model: ["—", "□", "×"]
-                delegate: Rectangle { required property int index; required property string modelData; width: 46*root.ui; height: header.height; color: winMouse.containsMouse ? (index===2 ? "#c42b1c" : root.panel) : "transparent"
-                    BodyText { anchors.centerIn: parent; text: modelData; font.pixelSize: index===1 ? 16*root.ui : 19*root.ui }
-                    MouseArea { id: winMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if(index===0) root.showMinimized(); else if(index===1) root.visibility===Window.Maximized ? root.showNormal() : root.showMaximized(); else root.close() } }
+        Row {
+            id: modeNavigation
+            x: root.compactHeader ? (root.width - implicitWidth) / 2
+                : Math.max(wordmark.x + wordmark.implicitWidth + 32,
+                           Math.min((root.width - implicitWidth) / 2, statusRow.x - implicitWidth - 24))
+            y: root.compactHeader ? 0 : 6
+            spacing: 6
+            Repeater {
+                model: [
+                    { name: "navRace", label: "Đua", mode: 0, page: 0 },
+                    { name: "navAnalysis", label: "Phân tích", mode: 1, page: -1 },
+                    { name: "navSettings", label: "Thiết lập", mode: 2, page: -1 }
+                ]
+                delegate: Button {
+                    id: modeButton
+                    required property int index
+                    required property var modelData
+                    objectName: modelData.name
+                    width: root.compactHeader ? 104 : 110; height: root.compactHeader ? 42 : 50
+                    text: modelData.label
+                    Accessible.name: modelData.label
+                    onClicked: root.openPage(modelData.mode === 0 ? 0 : modelData.mode === 1 ? root.lastDataPage : root.lastSettingsPage)
+                    contentItem: Text {
+                        text: modeButton.text; color: root.currentMode === modeButton.modelData.mode ? root.primary : root.textMuted
+                        font.family: root.uiFontFamily; font.pixelSize: root.compactHeader ? 14 : 15
+                        font.weight: root.currentMode === modeButton.modelData.mode ? theme.sectionWeight : theme.uiWeight
+                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: modeButton.hovered ? root.panel : "transparent"
+                        border.color: modeButton.activeFocus ? root.primary : "transparent"
+                        radius: 3
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; visible: root.currentMode === modeButton.modelData.mode; color: root.primary }
+                    }
                 }
             }
         }
-        DragHandler { target: null; onActiveChanged: if(active) root.startSystemMove() }
+        Row {
+            id: statusRow
+            anchors.right: root.compactHeader ? parent.right : windowButtons.left
+            anchors.rightMargin: 20
+            y: root.compactHeader ? 50 : 18
+            spacing: 8
+            StatusPill { objectName: "connectionStatus"; text: backend.connected ? "AC / ACC · Kết nối" : "Chờ AC / ACC"; statusColor: backend.connected ? root.green : root.amber; solidMarker: backend.connected; Accessible.name: text }
+            StatusPill { objectName: "voiceStatus"; text: root.voiceStatusText(); statusColor: backend.voiceStatus === "Listening" ? root.green : root.textMuted; Accessible.name: text }
+            StatusPill { objectName: "aiStatus"; text: "AI · " + root.apiStatusText(); statusColor: root.apiStatusColor(); Accessible.name: text }
+        }
+        Row {
+            id: windowButtons
+            anchors.right: parent.right; anchors.top: parent.top
+            width: 120; height: root.compactHeader ? 44 : 56
+            Repeater {
+                model: ["—", "□", "×"]
+                delegate: Button {
+                    id: windowButton
+                    required property int index
+                    required property string modelData
+                    width: 40; height: root.compactHeader ? 44 : 56
+                    text: modelData
+                    objectName: index === 0 ? "windowMinimize" : index === 1 ? "windowMaximize" : "windowClose"
+                    Accessible.name: index === 0 ? "Thu nhỏ" : index === 1 ? "Phóng to / khôi phục" : "Đóng cửa sổ"
+                    contentItem: Text { text: windowButton.text; color: root.textMain; font.family: root.uiFontFamily; font.pixelSize: 19; font.weight: theme.sectionWeight; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { color: windowButton.hovered ? root.panel : "transparent"; border.color: windowButton.activeFocus ? root.primary : "transparent" }
+                    onClicked: {
+                        if (index === 0) root.showMinimized()
+                        else if (index === 1) root.visibility === Window.Maximized ? root.showNormal() : root.showMaximized()
+                        else root.close()
+                    }
+                }
+            }
+        }
+        DragHandler { target: null; onActiveChanged: if (active) root.startSystemMove() }
     }
-
-    Loader { id: pageLoader; x: sidebar.width; y: header.height; width: root.width-sidebar.width; height: root.height-header.height
-        sourceComponent: [dashboardPage, pitStrategyPage, engineerPage, telemetryPage, aiPage, settingsPage][root.currentPage]
+    Rectangle {
+        id: subnavigation
+        x: 0; y: header.height; width: root.width; height: root.currentMode === 0 ? 0 : 48
+        visible: height > 0
+        color: root.lowest
+        Row {
+            x: 24; spacing: 10
+            Repeater {
+                model: root.currentMode === 1
+                    ? [{page:3,name:"pageTelemetry",label:"Telemetry"},{page:1,name:"pageFuelStrategy",label:"Nhiên liệu & chiến thuật"}]
+                    : [{page:2,name:"pageEngineerSpotter",label:"Kỹ sư & Spotter"},{page:4,name:"pageAiVoice",label:"AI & giọng nói"},{page:5,name:"pageSystemDevices",label:"Hệ thống & thiết bị"}]
+                delegate: AppButton {
+                    required property var modelData
+                    objectName: modelData.name
+                    text: modelData.label
+                    Accessible.name: modelData.label
+                    highlighted: root.currentPage === modelData.page
+                    onClicked: root.openPage(modelData.page)
+                }
+            }
+        }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: root.border }
     }
+    Component { id: cockpitPage; Cockpit { controller: backend; theme: root.designTheme; active: root.currentPage === 0 } }
+    Component { id: fuelStrategyWorkspace; FuelStrategyPage { controller: backend; theme: root.designTheme; live: root.currentPage === 1 && root.liveWindow } }
+    Component { id: engineerSpotterWorkspace; EngineerSpotterPage {
+        controller: backend; theme: root.designTheme; live: root.currentPage === 2 && root.liveWindow
+        onOpenAiVoiceRequested: {
+            root.openPage(4)
+            aiVoiceLoader.item.sectionIndex = backend.ttsBackend === "Google Gemini API" ? 2 : 1
+        }
+    } }
+    Component { id: aiVoiceWorkspace; AiVoicePage { controller: backend; theme: root.designTheme; live: root.currentPage === 4 && root.liveWindow; onOpenGoogleVoiceDialogRequested: root.openGoogleVoiceDialogFromAi() } }
+    Component { id: systemDevicesWorkspace; SystemDevicesPage { controller: backend; theme: root.designTheme; live: root.currentPage === 5 && root.liveWindow } }
+    Loader { objectName: "workspaceCockpit"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[0]; visible: root.currentPage === 0; sourceComponent: cockpitPage }
+    Loader { objectName: "workspaceFuelStrategy"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[1]; visible: root.currentPage === 1; sourceComponent: fuelStrategyWorkspace }
+    Loader { objectName: "workspaceEngineerSpotter"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[2]; visible: root.currentPage === 2; sourceComponent: engineerSpotterWorkspace }
+    Loader { objectName: "workspaceTelemetry"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[3]; visible: root.currentPage === 3; sourceComponent: telemetryPage }
+    Loader { id: aiVoiceLoader; objectName: "workspaceAiVoice"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[4]; visible: root.currentPage === 4; sourceComponent: aiVoiceWorkspace }
+    Loader { objectName: "workspaceSystemDevices"; x: 0; y: header.height + subnavigation.height; width: root.width; height: root.height - y; active: root.loadedPages[5]; visible: root.currentPage === 5; sourceComponent: systemDevicesWorkspace }
 
     component PageScroll: ScrollView {
         clip: true; ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -656,1004 +389,48 @@ ApplicationWindow {
         background: Rectangle { color: root.bg }
     }
 
-    Component { id: dashboardPage
-        PageScroll { Column { width: parent.width; padding: 28*root.ui; spacing: 16*root.ui
-            Card { width: parent.width-56*root.ui; height: 86*root.ui; title: ""
-                RowLayout { width: parent.width; height: parent.height; spacing: 35*root.ui
-                    Column { MutedText { text: "VỊ TRÍ" } BodyText { text: "P"+(backend.telemetry.position||"—"); font.pixelSize: 20*root.ui; font.family: "Cascadia Mono" } }
-                    Column { MutedText { text: "TIẾN ĐỘ CHẶNG" } BodyText { text: "Vòng "+(backend.telemetry.currentLap||"—"); font.pixelSize: 17*root.ui } }
-                    Column { MutedText { text: "NHIÊN LIỆU" } BodyText { text: (backend.telemetry.fuelLiters||"—")+" L"; color: root.green; font.pixelSize: 17*root.ui } }
-                    Item { Layout.fillWidth: true }
-                }
-            }
-            RowLayout { width: parent.width-56*root.ui; spacing: 16*root.ui
-                Card { Layout.fillWidth: true; Layout.preferredWidth: 720; Layout.preferredHeight: 620*root.ui; Layout.alignment: Qt.AlignTop; title: "Nhật ký đàm thoại vô tuyến"
-                    Row { spacing: 8*root.ui; StatusPill { text: "Kênh ACC Radio"; statusColor: root.primary } StatusPill { text: backend.voiceStatus; statusColor: backend.voiceStatus==="Listening"?root.green:root.primary } StatusPill { text: "HẠ ÂM GAME"; statusColor: root.amber; visible: backend.isAudioDucked } }
-                    Rectangle { width: parent.width; height: 72*root.ui; radius: 10*root.ui; color: root.bg; border.color: Qt.rgba(.25,.28,.33,.45)
-                        Row { anchors.left: parent.left; anchors.leftMargin: 15*root.ui; anchors.verticalCenter: parent.verticalCenter; spacing: 12*root.ui
-                            Rectangle { width: 38*root.ui; height: width; radius: width/2; color: "#123d26"; border.color: root.green; BodyText { anchors.centerIn: parent; text: "MIC"; color: root.green; font.pixelSize: 9*root.ui } }
-                            Column { BodyText { text: backend.voiceStatus==="Listening" ? "Micro đang mở • Đang nhận diện" : "Radio sẵn sàng • Giữ PTT để nói"; font.family: root.uiFontFamily; font.weight: Font.DemiBold } MutedText { text: backend.microphoneName } }
-                        }
-                    }
-                    Item { width: parent.width; height: 370*root.ui
-                        ListView {
-                            id: conversationList
-                            anchors.fill: parent
-                            clip: true
-                            spacing: 10*root.ui
-                            model: backend.conversationLog
-                            onCountChanged: Qt.callLater(function() { positionViewAtEnd() })
-                            delegate: Item {
-                                required property var modelData
-                                readonly property bool isDriver: modelData.role === "driver"
-                                width: conversationList.width
-                                height: speakerLabel.implicitHeight + bubble.height + 8*root.ui
-                                BodyText {
-                                    id: speakerLabel
-                                    text: isDriver ? "TAY ĐUA" : "KỸ SƯ AI"
-                                    color: isDriver ? root.textMuted : root.primary
-                                    font.pixelSize: 12*root.ui
-                                    font.weight: Font.DemiBold
-                                    anchors.top: parent.top
-                                    anchors.right: isDriver ? parent.right : undefined
-                                    anchors.left: isDriver ? undefined : parent.left
-                                }
-                                Rectangle {
-                                    id: bubble
-                                    width: parent.width * (isDriver ? .72 : .78)
-                                    height: bubbleText.implicitHeight + 24*root.ui
-                                    radius: 14*root.ui
-                                    color: isDriver ? root.raised : "#2b2d35"
-                                    border.color: isDriver ? "transparent" : "#596178"
-                                    anchors.top: speakerLabel.bottom
-                                    anchors.topMargin: 5*root.ui
-                                    anchors.right: isDriver ? parent.right : undefined
-                                    anchors.left: isDriver ? undefined : parent.left
-                                    BodyText {
-                                        id: bubbleText
-                                        text: modelData.text
-                                        width: parent.width - 28*root.ui
-                                        anchors.centerIn: parent
-                                        wrapMode: Text.Wrap
-                                    }
-                                }
-                            }
-                        }
-                        Column { visible: conversationList.count === 0; anchors.centerIn: parent; spacing: 8*root.ui
-                            HeadingText { text: "Sẵn sàng nhận lệnh radio"; anchors.horizontalCenter: parent.horizontalCenter }
-                            MutedText { text: "Giữ PTT hoặc nhập câu hỏi cho kỹ sư AI"; anchors.horizontalCenter: parent.horizontalCenter }
-                        }
-                    }
-                    RowLayout { width: parent.width; spacing: 10*root.ui
-                        TextField { id: command; Layout.fillWidth: true; placeholderText: "Nhập khẩu lệnh hoặc giữ nút vô lăng để nói..."; color: root.textMain; placeholderTextColor: root.textMuted; font.pixelSize: 14*root.ui; background: Rectangle { radius: 8*root.ui; color: root.bg; border.color: Qt.rgba(.25,.28,.33,.45) } onAccepted: { if(text.trim()) backend.askText(text.trim()); text="" } }
-                        AppButton { text: "Gửi"; highlighted: true; onClicked: { if(command.text.trim()) backend.askText(command.text.trim()); command.text="" } }
-                        AppButton { text: "GIỮ ĐỂ NÓI"; onPressed: backend.beginPushToTalk(); onReleased: backend.endPushToTalk() }
-                    }
-                }
-                ColumnLayout { Layout.preferredWidth: 490; Layout.fillHeight: true; spacing: 16*root.ui
-                    Card { Layout.fillWidth: true; Layout.preferredHeight: 246*root.ui; title: "Cài đặt nhanh buồng lái"
-                        SettingRow {
-                            id: dashboardEngineerMode
-                            width: parent.width
-                            title: "Chế độ Kỹ sư"
-                            subtitle: backend.responseStyle === "Tối giản"
-                                ? "Ngắn gọn, ưu tiên tốc độ đua"
-                                : backend.responseStyle === "Chi tiết"
-                                    ? "Phân tích đầy đủ cho từng tình huống"
-                                    : "Cân bằng giữa tốc độ và thông tin"
-                            value: backend.responseStyle === "Tối giản" ? "Ngắn" : backend.responseStyle
-                            valueInteractive: true
-                            onValueClicked: {
-                                var styles = ["Tối giản", "Tiêu chuẩn", "Chi tiết"]
-                                var current = styles.indexOf(backend.responseStyle)
-                                backend.setResponseStyle(styles[(current + 1 + styles.length) % styles.length])
-                            }
-                        }
-                        SettingRow { width: parent.width; title: "Tự động hạ âm game"; subtitle: "Giảm tiếng động cơ khi Radio nói (-12dB)"; showSwitch: true; checked: backend.audioDuckingEnabled; onToggled: checked => backend.setAudioDuckingEnabled(checked) }
-                        Item { width: parent.width; height: 42*root.ui
-                            RowLayout { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-                                BodyText { text: "Âm lượng Kỹ sư AI" }
-                                Item { Layout.fillWidth: true }
-                                MutedText { text: Math.round(backend.ttsVolume * 100) + "%" }
-                            }
-                            AppSlider {
-                                width: parent.width - 18*root.ui
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottom: parent.bottom
-                                from: 0
-                                to: 1
-                                value: backend.ttsVolume
-                                onMoved: backend.setTtsVolume(value)
-                            }
-                        }
-                    }
-        Card { Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredHeight: 145*root.ui; title: "ANALYSIS & STRATEGY"
-            Column { width: parent.width; spacing: 8*root.ui
-                StatusPill { text: backend.strategyAvailable ? backend.strategyStatus : "Tạm thời chưa khả dụng"; statusColor: backend.strategyAvailable ? (backend.strategyPitLap > 0 ? root.green : root.amber) : root.textMuted; opacity: backend.strategyAvailable ? 1 : 0.5 }
-            }
-        }
-                }
-            }
-        } }
-    }
-
-Component { id: pitStrategyPage
-    PageScroll {
-        Column {
-            width: parent.width
-            padding: 28 * root.ui
-            spacing: 14 * root.ui
-            HeadingText { text: "ANALYSIS & STRATEGY" }
-            MutedText { text: "Phân tích nhiên liệu và chiến thuật pit dựa trên telemetry cuộc đua."; wrapMode: Text.Wrap }
-            Card {
-                width: Math.min(1040 * root.ui, parent.width - 56 * root.ui)
-                height: 235 * root.ui
-                title: "Tính toán Nhiên liệu & Ma trận Chiến thuật"
-                RowLayout { width: parent.width; spacing: 10 * root.ui
-                    Repeater { model: [{t:"MỨC NHIÊN LIỆU",v:backend.telemetry.fuelLiters === undefined ? "— L" : Number(backend.telemetry.fuelLiters).toFixed(1)+" L"},{t:"TIÊU THỤ TRUNG BÌNH",v:backend.telemetry.fuelPerLapLiters === undefined ? "— L / vòng" : Number(backend.telemetry.fuelPerLapLiters).toFixed(2)+" L / vòng"},{t:"KHẢ NĂNG CHẠY",v:backend.telemetry.estimatedFuelLaps === undefined ? "— Vòng" : Number(backend.telemetry.estimatedFuelLaps).toFixed(1)+" vòng"},{t:"KHUYẾN NGHỊ VÀO PIT",v:backend.strategyAvailable && backend.strategyPitLap > 0 ? "Vòng " + backend.strategyPitLap : "—"}]
-                        delegate: Rectangle { required property var modelData; Layout.fillWidth: true; height: 140 * root.ui; radius: 8 * root.ui; color: root.raised; opacity: modelData.t === "KHUYẾN NGHỊ VÀO PIT" && !backend.strategyAvailable ? 0.45 : 1
-                            Column { anchors.fill: parent; anchors.margins: 14 * root.ui; spacing: 14 * root.ui
-                                MutedText { text: modelData.t }
-                                MonoText { text: modelData.v; color: modelData.t === "KHẢ NĂNG CHẠY" ? root.primary : root.textMain }
-                            }
-                        }
-                    }
-                }
-            }
-                Card {
-                    width: Math.min(1040 * root.ui, parent.width - 56 * root.ui)
-                    title: "TRẠNG THÁI DỰ ĐOÁN"
-                    opacity: backend.strategyAvailable ? 1 : 0.5
-                    StatusPill { text: backend.strategyAvailable ? backend.strategyStatus : "Tạm thời chưa khả dụng"; statusColor: backend.strategyAvailable ? (backend.strategyPitLap > 0 ? root.green : root.amber) : root.textMuted }
-                    MutedText { width: parent.width; visible: backend.strategyAvailable; text: backend.strategyDetail; wrapMode: Text.Wrap }
-                }
-                Card {
-                    width: Math.min(1040 * root.ui, parent.width - 56 * root.ui)
-                    title: "ĐIỀU KHIỂN"
-                    opacity: backend.strategyAvailable ? 1 : 0.5
-                    SettingRow {
-                        width: parent.width
-                        title: "Tự động tính lại chiến thuật Pit"
-                        subtitle: backend.strategyAvailable ? backend.strategyStatus : "Tạm thời chưa khả dụng"
-                        showSwitch: true
-                        checked: backend.strategyAvailable && backend.strategyEnabled
-                        enabled: backend.strategyAvailable
-                        onToggled: checked => backend.setStrategyEnabled(checked)
-                    }
-                }
-            Card {
-                width: Math.min(1040 * root.ui, parent.width - 56 * root.ui)
-                title: "DỮ LIỆU & HUẤN LUYỆN"
-                    MutedText {
-                        width: parent.width
-                        text: (backend.strategyData.enabled ? (backend.strategyData.simulatorConnected ? "Đã bật ghi — chờ vòng đua / sự kiện pit." : "Đã bật ghi — chờ AC / ACC.") : "Đã tắt ghi dữ liệu.")
-                        + " Đã lưu " + backend.strategyData.savedRecords + " bản ghi từ khi mở app."
-                    wrapMode: Text.Wrap
-                }
-                SettingRow {
-                    width: parent.width
-                    title: "Xác nhận cài đặt đua thực tế"
-                    subtitle: "Kiểm tra mức hao lốp, nhiên liệu và nhiệt độ trong game trước phiên Race. Cần xác nhận lại mỗi phiên."
-                    showSwitch: true
-                    checked: backend.strategyData.realisticSetupConfirmed
-                    enabled: !backend.strategyData.raceActive
-                    onToggled: checked => backend.strategyData.realisticSetupConfirmed = checked
-                }
-                    Flow {
-                        width: parent.width
-                        spacing: 10 * root.ui
-                        AppButton {
-                            text: backend.strategyData.enabled ? "Record: Đang bật" : "Record: Bật ghi"
-                            highlighted: backend.strategyData.enabled
-                            onClicked: backend.strategyData.enabled = !backend.strategyData.enabled
-                        }
-                        AppButton {
-                            text: "Xử lý dữ liệu đã ghi"
-                            enabled: !backend.strategyData.busy && !backend.strategyData.simulatorConnected
-                            onClicked: backend.strategyData.processData()
-                        }
-                        AppButton {
-                            text: "Train model pace"
-                            enabled: !backend.strategyData.busy && !backend.strategyData.simulatorConnected
-                            onClicked: backend.strategyData.trainModel()
-                    }
-                    AppButton {
-                        text: "Train model lốp"
-                        enabled: !backend.strategyData.busy && !backend.strategyData.simulatorConnected
-                        onClicked: backend.strategyData.trainTyreModels()
-                    }
-                    AppButton {
-                        text: "Dừng"
-                        visible: backend.strategyData.busy
-                        onClicked: backend.strategyData.cancelJob()
-                    }
-                    AppButton { text: "Mở thư mục dữ liệu"; onClicked: backend.strategyData.openStorage() }
-                    AppButton {
-                        text: "Hướng dẫn thiết lập log"
-                        onClicked: Qt.openUrlExternally("https://github.com/tminh-U/RaceEngineer/blob/main/docs/logging-guide.md")
-                    }
-                }
-                ProgressBar { width: parent.width; indeterminate: true; visible: backend.strategyData.busy }
-                BodyText { width: parent.width; text: backend.strategyData.status; wrapMode: Text.Wrap }
-                    MutedText {
-                        width: parent.width
-                        text: "Record lưu mỗi vòng và sự kiện pit khi AC / ACC kết nối. Process và train chỉ dùng phiên Race đã xác nhận cài đặt thực tế. Train pace dự đoán delta thời gian vòng kế tiếp; Train model lốp nghiên cứu thay đổi độ mòn và nhiệt độ lõi từ mẫu qua vạch hiện tại sang mẫu kế tiếp. Tầm hoạt động nhiên liệu vẫn tính tất định từ telemetry. Xử lý và train chạy khi ngắt kết nối, dùng một luồng CPU."
-                        wrapMode: Text.Wrap
-                    }
-                MutedText {
-                    width: parent.width
-                    text: "Train pace và từng mục tiêu lốp cần tối thiểu 3 phiên đua và 60 cặp vòng cho mỗi nhóm xe trong từng simulator. Cả hai model đều không chọn vòng pit; việc chọn pit cần Ranker riêng cùng dữ liệu chiến thuật có nhãn."
-                    wrapMode: Text.Wrap
-                }
-                    MutedText { width: parent.width; text: "Nơi lưu: " + backend.strategyData.storagePath; wrapMode: Text.WrapAnywhere }
-                }
-                Card {
-                    width: Math.min(1040 * root.ui, parent.width - 56 * root.ui)
-                    title: "CHIA SẺ DỮ LIỆU ĐUA (TÙY CHỌN)"
-                    SettingRow {
-                        width: parent.width
-                        title: "Đồng ý tự gửi dữ liệu sau phiên đua"
-                        subtitle: backend.strategyData.sharingConfigured
-                                  ? "Mặc định tắt. Có thể rút lại đồng ý bất cứ lúc nào."
-                                  : "Chưa có nơi nhận dữ liệu; tính năng tạm chưa sẵn sàng."
-                        showSwitch: true
-                        enabled: backend.strategyData.sharingConfigured || backend.strategyData.sharingEnabled
-                        checked: backend.strategyData.sharingEnabled
-                        onToggled: checked => backend.strategyData.sharingEnabled = checked
-                    }
-                    MutedText {
-                        width: parent.width
-                        text: "Chỉ tự gửi phiên Race đã xác nhận cài đặt thực tế: xe, đường đua, thời gian vòng, nhiên liệu, độ mòn và nhiệt độ lốp. Mã phiên được thay mới; mốc giờ được dời. Không gửi âm thanh, hội thoại hay khóa của dịch vụ AI. Dữ liệu đã gửi không tự thu hồi khi tắt chia sẻ."
-                        wrapMode: Text.Wrap
-                    }
-                    AppButton {
-                        text: "Gửi lại"
-                        visible: backend.strategyData.sharingConfigured && backend.strategyData.sharingEnabled
-                        onClicked: backend.strategyData.retrySharing()
-                    }
-                    BodyText { width: parent.width; text: backend.strategyData.sharingStatus; wrapMode: Text.Wrap }
-                }
-            }
-    }
-}
-
-Component { id: engineerPage
-        PageScroll { Column { width: parent.width; padding: 28*root.ui; spacing: 14*root.ui
-            HeadingText { text: "Thiết lập Kỹ sư & Spotter" }
-            MutedText { text: "Tùy chỉnh cá tính giọng nói, đề xuất chiến thuật chủ động và cảnh báo khoảng cách xe." }
-            RowLayout { width: parent.width-56*root.ui; spacing: 12*root.ui
-                Repeater { model: [{t:"Động cơ VieNeu v3 Turbo",s:backend.ttsStatus,c:root.green},{t:"Radar không gian",s:"Luồng ACC gốc",c:root.green},{t:"PhoWhisper ASR",s:"Q5 • Cục bộ",c:root.amber}]
-                    delegate: Card { required property var modelData; Layout.fillWidth: true; height: 78*root.ui; title: modelData.t; BodyText { text: modelData.s; color: modelData.c; font.pixelSize: 12*root.ui } }
-                }
-            }
-            MutedText { text: "KỸ SƯ ĐUA XE AI" }
-            Card { width: parent.width-56*root.ui; title: ""
-                TtsVoiceSettings { width: parent.width }
-                Item {
-                    width: parent.width
-                    height: 58 * root.ui
-                    visible: backend.ttsBackend === "VieNeu-TTS"
-                    BodyText {
-                        text: "Luồng CPU TTS"
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        font.family: root.uiFontFamily
-                        font.weight: Font.DemiBold
-                    }
-                    MutedText {
-                        text: "Áp dụng ngay; không cần khởi động lại ứng dụng."
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.topMargin: 23 * root.ui
-                    }
-                    AppComboBox {
-                        width: 140 * root.ui
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                    model: ["2", "3", "4"]
-                    enabled: !backend.connected && !backend.ttsBenchmarkRunning
-                        && !backend.ttsBenchmarkRestoring && !backend.ttsExternalThreadOverride
-                        && backend.voiceStatus === "Idle"
-                        currentIndex: model.indexOf(String(backend.ttsCpuThreads))
-                        onActivated: backend.setTtsCpuThreads(Number(currentText))
-                    }
-                }
-                Item {
-                    width: parent.width
-                    implicitHeight: 54 * root.ui
-                    BodyText { text: "Tên gọi của tay đua"; anchors.left: parent.left; anchors.top: parent.top; font.family: root.uiFontFamily; font.weight: Font.DemiBold }
-                    MutedText { text: "Cách Kỹ sư AI xưng hô với bạn qua radio"; anchors.left: parent.left; anchors.top: parent.top; anchors.topMargin: 23*root.ui; width: parent.width - 240*root.ui; elide: Text.ElideRight }
-                    TextField {
-                        id: driverNameInput
-                        width: 200 * root.ui
-                        height: 36 * root.ui
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: backend.driverName
-                        color: root.textMain
-                        horizontalAlignment: Text.AlignRight
-                        font.family: root.uiFontFamily
-                        font.pixelSize: 13 * root.ui
-                        placeholderText: "Nhập tên..."
-                        placeholderTextColor: root.textMuted
-                        background: Rectangle {
-                            color: root.bg
-                            radius: 8 * root.ui
-                            border.color: driverNameInput.activeFocus ? root.primary : root.border
-                            border.width: driverNameInput.activeFocus ? 1.5 : 1
-                        }
-                        onEditingFinished: {
-                            backend.setDriverName(driverNameInput.text)
-                        }
-                    }
-                    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25,.28,.33,.35) }
-                }
-                Item {
-                    width: parent.width
-                    implicitHeight: 54 * root.ui
-                    BodyText {
-                        text: "Phong cách phản hồi"
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        font.family: root.uiFontFamily
-                        font.weight: Font.DemiBold
-                    }
-                    MutedText {
-                        text: "Độ súc tích của thông tin vô tuyến"
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.topMargin: 23 * root.ui
-                        width: parent.width - 290 * root.ui
-                        elide: Text.ElideRight
-                    }
-                    Rectangle {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 34 * root.ui
-                        width: 246 * root.ui
-                        radius: 8 * root.ui
-                        color: root.lowest
-                        border.color: root.border
-                        border.width: 1
-
-                        Row {
-                            anchors.centerIn: parent
-                            spacing: 3 * root.ui
-                            Repeater {
-                                model: ["Tối giản", "Tiêu chuẩn", "Chi tiết"]
-                                delegate: Rectangle {
-                                    id: pillBtn
-                                    required property string modelData
-                                    property bool selected: backend.responseStyle === modelData
-                                    width: 78 * root.ui
-                                    height: 28 * root.ui
-                                    radius: 6 * root.ui
-                                    color: selected ? root.raised : (pillHover.containsMouse ? Qt.rgba(1, 1, 1, 0.06) : "transparent")
-                                    border.color: selected ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
-                                    border.width: selected ? 1 : 0
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: pillBtn.modelData
-                                        color: pillBtn.selected ? root.textMain : (pillHover.containsMouse ? root.textMain : root.textMuted)
-                                        font.family: root.uiFontFamily
-                                        font.pixelSize: 12 * root.ui
-                                        font.weight: pillBtn.selected ? Font.DemiBold : Font.Normal
-                                    }
-                                    MouseArea {
-                                        id: pillHover
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: backend.setResponseStyle(pillBtn.modelData)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(.25,.28,.33,.35) }
-                }
-                SettingRow { width: parent.width; title:"Cập nhật nhiên liệu"; subtitle:"Cảnh báo nhiên liệu thấp và mức nguy cấp"; showSwitch:true; checked:backend.fuelAlertsEnabled; onToggled:checked => backend.setFuelAlertsEnabled(checked) }
-                SettingRow { width: parent.width; title:"Cảnh báo Lốp & Độ bám"; subtitle:"Cảnh báo lốp quá nóng khi có telemetry nhiệt độ"; showSwitch:true; checked:backend.tyreAlertsEnabled; onToggled:checked => backend.setTyreAlertsEnabled(checked) }
-                SettingRow { width: parent.width; title:"Phân tích Delta vòng đua"; subtitle:"Vòng vừa hoàn thành so với vòng nhanh nhất"; showSwitch:true; checked:backend.lapDeltaEnabled; onToggled:checked => backend.setLapDeltaEnabled(checked) }
-            }
-            TtsBenchmarkPanel { width: parent.width; visible: backend.ttsBackend === "VieNeu-TTS" }
-            MutedText { text: "SPOTTER ÂM THANH" }
-            Card { width: parent.width-56*root.ui; title: ""
-        SettingRow { width: parent.width; title:"Xe Trái / Xe Phải"; subtitle:backend.spotterStatus; showSwitch:true; checked:backend.spotterEnabled; onToggled:checked => backend.setSpotterEnabled(checked) }
-                RowLayout { width: parent.width; spacing: 8 * root.ui
-                BodyText { text: "Khoảng cảnh báo ngang"; Layout.fillWidth: true }
-                    MonoText { text: backend.spotterWarningGapMeters.toFixed(1) + " m" }
-                }
-                AppSlider { width: parent.width; from: 0.5; to: 2.5; stepSize: 0.1
-                    value: backend.spotterWarningGapMeters
-                    onPressedChanged: if (!pressed) backend.setSpotterWarningGapMeters(value)
-                }
-                SettingRow { width: parent.width; title:"Cờ hiệu & Nguy hiểm chặng"; subtitle:"Cảnh báo cờ hiệu trên đường đua"; showSwitch:true; checked:backend.flagAlertsEnabled; onToggled:checked => backend.setFlagAlertsEnabled(checked) }
-                SettingRow { width: parent.width; title:"Cảnh báo hư hại"; subtitle:"Khi telemetry ghi nhận mức hư hại tăng; ưu tiên trước phản hồi AI"; showSwitch:true; checked:backend.damageAlertsEnabled; onToggled:checked => backend.setDamageAlertsEnabled(checked) }
-                SettingRow { width: parent.width; title:"Tổng kết sau mỗi vòng"; subtitle:backend.lapSummaryStatus; showSwitch:true; checked:backend.lapSummaryEnabled; onToggled:checked => backend.setLapSummaryEnabled(checked) }
-                BodyText { width: parent.width; visible:backend.latestLapSummary.length > 0; text:backend.latestLapSummary; wrapMode:Text.Wrap; font.pixelSize:12*root.ui; color:root.textMuted }
-            }
-            MutedText { text: "HÀNH VI TƯƠNG TÁC" }
-            Card { width: parent.width-56*root.ui; title: ""
-                SettingRow { width: parent.width; title:"Phím tắt Nói (PTT)"; subtitle:"Nhấn giữ để trò chuyện"; value:backend.directInputBinding }
-                SettingRow { width: parent.width; title:"PTT bàn phím"; subtitle:"Phím cách (Spacebar)"; showSwitch:true; checked:backend.keyboardPttEnabled; onToggled: backend.setPushToTalkOptions(checked,backend.directInputPttEnabled) }
-                SettingRow { width: parent.width; title:"PTT DirectInput"; subtitle:"Vô lăng hoặc tay cầm"; showSwitch:true; checked:backend.directInputPttEnabled; onToggled: backend.setPushToTalkOptions(backend.keyboardPttEnabled,checked) }
-                AppButton { width: 132 * root.ui; text:"Gán lại nút"; onClicked:backend.beginDirectInputMapping() }
-            }
-            Item { width:1; height:20*root.ui }
-        } }
-    }
-
     Component { id: telemetryPage
-        PageScroll { Column { width:parent.width; padding:28*root.ui; spacing:16*root.ui
-            Row { spacing:10*root.ui; StatusPill { text:backend.connectionText; statusColor:backend.connected?root.green:root.amber } BodyText { text:"Trường đua: "+(backend.telemetry.track||"—"); anchors.verticalCenter:parent.verticalCenter } }
-            RowLayout { width:parent.width-56*root.ui; spacing:16*root.ui
-                Card { Layout.fillWidth:true; Layout.preferredWidth:720; Layout.preferredHeight:505*root.ui; title:"Động lực học & Thao tác lái"
-                    RowLayout {
-                        width: parent.width
-                        spacing: 28 * root.ui
-                        ColumnLayout {
-                            Layout.preferredWidth: 150 * root.ui
-                            spacing: 4 * root.ui
-                            MutedText { text: "SỐ ĐANG GÀI"; Layout.fillWidth: true }
-                            MonoText { text: backend.telemetry.gear || "—"; color: root.primary; font.pixelSize: 44*root.ui }
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 4 * root.ui
-                            MutedText { text: "TỐC ĐỘ ĐỘNG CƠ"; Layout.fillWidth: true }
-                            MonoText { text: (backend.telemetry.rpm || "—") + " RPM"; font.pixelSize: 26*root.ui }
-                            ProgressLine { Layout.fillWidth: true; value: (backend.telemetry.rpm || 0)/8500; fillColor: root.amber }
-                        }
-                    }
-                        SettingRow { width:parent.width; title:"Vận tốc di chuyển"; value:root.formatTelemetryValue(backend.telemetry.speedKmh, " km/h") }
-                    ProgressLine { width:parent.width; value:(backend.telemetry.speedKmh||0)/330 }
-                    SettingRow { width:parent.width; title:"Bướm ga (Throttle)"; value:Math.round((backend.telemetry.throttle||0)*100)+"%" }
-                    ProgressLine { width:parent.width; value:backend.telemetry.throttle||0; fillColor:root.green }
-                    SettingRow { width:parent.width; title:"Áp lực phanh"; value:Math.round((backend.telemetry.brake||0)*100)+"%" }
-                    ProgressLine { width:parent.width; value:backend.telemetry.brake||0; fillColor:"#ff9a96" }
-                }
-                ColumnLayout { Layout.preferredWidth:490; spacing:16*root.ui
-                    Card { Layout.fillWidth:true; Layout.preferredHeight:400*root.ui; title:"Diễn biến chặng đua"
-                        RowLayout { width:parent.width; MonoText{text:"P"+(backend.telemetry.position||"—");color:root.primary;font.pixelSize:34*root.ui} BodyText{text:"+ Vị trí";color:root.green} Item{Layout.fillWidth:true} BodyText{text:"Vòng "+(backend.telemetry.currentLap||"—")} }
-                        ProgressLine { width:parent.width; value:backend.telemetry.lapProgress||0 }
-                    SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE TRƯỚC"; subtitle:backend.telemetry.opponentAhead ? "Xe: " + backend.telemetry.opponentAhead : "Chưa có xe trước"; value:root.formatTelemetryValue(backend.telemetry.gapAheadSeconds, " s") }
-                    SettingRow { width:parent.width; title:"KHOẢNG CÁCH XE SAU"; subtitle:backend.telemetry.opponentBehind ? "Xe: " + backend.telemetry.opponentBehind : "Chưa có xe sau"; value:root.formatTelemetryValue(backend.telemetry.gapBehindSeconds, " s") }
-                        MutedText { text:backend.latestEvent||"Khô ráo • Telemetry thời gian thực" }
-                    }
-                    Card { Layout.fillWidth:true; Layout.preferredHeight:90*root.ui; title:"Thời gian vòng mục tiêu"; MonoText { text:"--:--.---"; anchors.right:parent.right } }
-                }
-            }
+        TelemetryPage {
+            controller: backend
+            theme: root.designTheme
+            live: root.currentPage === 3 && root.liveWindow
         }
-        } }
-    Component { id: aiPage
-        PageScroll {
-            id: aiScroll
-            property bool streamingSelection: backend.apiStreaming
-            readonly property bool isModified: apiForm.isModified
-
-            Column { width:parent.width; padding:28*root.ui; spacing:14*root.ui
-                HeadingText { text:"Máy chủ AI & Mô hình Cục bộ" }
-                MutedText { text:"Cấu hình cổng dịch vụ, mô hình và tham số suy luận chiến thuật thời gian thực." }
-                RowLayout { width:parent.width-56*root.ui; spacing:16*root.ui
-                    ColumnLayout { Layout.fillWidth:true; Layout.preferredWidth:1; Layout.alignment:Qt.AlignTop; spacing:14*root.ui
-                        MutedText { text:"TRẠNG THÁI MÁY CHỦ & KẾT NỐI" }
-            Card { Layout.fillWidth:true; Layout.preferredHeight:215*root.ui; title:"OpenAI Compatible API"
-                Column { width:parent.width; spacing:8*root.ui
-                    StatusPill { text:"API: " + root.apiStatusText(); statusColor:root.apiStatusColor() }
-                    MutedText { text:"MÔ HÌNH ĐANG CHỌN" }
-                    HeadingText { width:parent.width; text:backend.apiModel.length > 0 ? backend.apiModel : "Chưa chọn mô hình"; wrapMode:Text.Wrap }
-                    MutedText { width:parent.width; text:root.apiDetailText(); elide:Text.ElideRight }
-                }
-                        }
-                        MutedText { text:"THÔNG SỐ MÁY CHỦ & GIAO THỨC" }
-                        Card { Layout.fillWidth:true; Layout.preferredHeight:410*root.ui; title:"Cấu hình kết nối"
-                            LlmConnectionForm {
-                                id: apiForm
-                                streaming: streamingSwitch.checked
-                                reasoning: reasoningSwitch.checked
-                                timeoutMilliseconds: backend.apiTimeoutMilliseconds
-                                maximumTokens: Math.round(tokenLimit.value)
-                                temperature: temperatureControl.value
-                            }
-                        }
-                    }
-                ColumnLayout { Layout.fillWidth:true; Layout.preferredWidth:1; Layout.alignment:Qt.AlignTop; spacing:14*root.ui
-                    MutedText { text:"KIẾN TRÚC SUY LUẬN & ĐƯỜNG TRUYỀN" }
-                    Card { Layout.fillWidth:true; Layout.preferredHeight:215*root.ui; title:""
-                        SettingRow { width:parent.width; title:"Hỗ trợ Gọi hàm (Tool Calling)"; subtitle:"Công cụ telemetry và chiến thuật"; value:"Luôn bật" }
-                        SettingRow { id:streamingSwitch; width:parent.width; title:"Truyền dữ liệu dạng luồng (Streaming)"; subtitle:"Luồng phản hồi SSE"; showSwitch:true; checked:aiScroll.streamingSelection; onToggled: checked => aiScroll.streamingSelection = checked }
-                        SettingRow { id:reasoningSwitch; width:parent.width; title:"Chế độ Suy luận Chuyên sâu"; subtitle:"Khóa tối ưu độ trễ thấp (Reasoning/Thinking)"; showSwitch:true; checked:backend.apiReasoning; onToggled:(checked) => backend.setApiReasoning(checked) }
-                    }
-                    MutedText { text:"THAM SỐ SUY LUẬN CHIẾN THUẬT" }
-                    Card { Layout.fillWidth:true; Layout.preferredHeight:410*root.ui; title:"Tham số Nâng cao"
-                        RowLayout { width:parent.width; BodyText{text:"Độ ngẫu nhiên (Temperature)"} Item{Layout.fillWidth:true} MutedText{text:temperatureControl.value.toFixed(2)} }
-                        AppSlider{id:temperatureControl; width:parent.width; from:0; to:1; value:backend.apiTemperature}
-                        RowLayout { width:parent.width; BodyText{text:"Số Token Xuất Tối đa"} Item{Layout.fillWidth:true} MutedText{text:Math.round(tokenLimit.value)} }
-                        AppSlider{id:tokenLimit; width:parent.width; from:16; to:128; stepSize:1; value:backend.apiMaximumTokens}
-                        SettingRow{width:parent.width; title:"Bộ nhớ Ngữ cảnh hội thoại"; value:"4 lượt"}
-                        SettingRow{width:parent.width; title:"Thời gian Chờ Phản hồi"; value:backend.apiTimeoutMilliseconds+" ms"}
-                    }
-                }
-            }
-            Item{width:1; height:20*root.ui}
-        } }
-    }
-
-    Component { id: settingsPage
-        PageScroll { Column { width:parent.width; padding:28*root.ui; spacing:12*root.ui
-            HeadingText{text:"Cài đặt"} MutedText{text:"Quản lý tích hợp trò chơi mô phỏng, DirectInput và định tuyến âm thanh."}
-            MutedText { width: Math.min(1040 * root.ui, parent.width - 56 * root.ui); text: "Ứng dụng sử dụng phông chữ MiSans Latin của Xiaomi."; wrapMode: Text.Wrap }
-            AppButton { text: "Thiết lập ban đầu"; highlighted: true; onClicked: backend.openSetup() }
-            MutedText{text:"TÙY CHỌN CHUNG"}
-            Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                SettingRow { width:parent.width; title:"Khởi động cùng Windows"; subtitle:"Tự động mở RaceEngineer khi đăng nhập"; showSwitch:true; checked:backend.startWithWindows; onToggled: checked => backend.setStartWithWindows(checked) }
-                SettingRow { width:parent.width; title:"Thu nhỏ vào Khay hệ thống"; subtitle:backend.trayAvailable ? "Tiếp tục chạy ngầm trong phiên đua" : "Khay hệ thống hiện không khả dụng"; showSwitch:true; enabled:backend.trayAvailable; checked:backend.minimizeToTray; onToggled: checked => backend.setMinimizeToTray(checked) }
-                SettingRow { width:parent.width; title:"Thu nhỏ khi đóng cửa sổ"; subtitle:backend.trayAvailable ? "Giữ các dịch vụ đang hoạt động" : "Khay hệ thống hiện không khả dụng"; showSwitch:true; enabled:backend.trayAvailable; checked:backend.minimizeOnClose; onToggled: checked => backend.setMinimizeOnClose(checked) }
-                SettingRow { width:parent.width; title:"Tăng tốc Phần cứng (GPU)"; subtitle:backend.gpuRendererRestartRequired ? "Khởi động lại ứng dụng để áp dụng" : "Dùng GPU để vẽ giao diện Qt Quick"; showSwitch:true; checked:backend.gpuRendererEnabled; onToggled: checked => backend.setGpuRendererEnabled(checked) }
-            }
-            MutedText{text:"AI CỤC BỘ & THIẾT BỊ CHẠY"}
-            Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                Item {
-                    width: parent.width
-                    height: 68 * root.ui
-                    BodyText {
-                        text: "Thiết bị chạy model AI"
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        font.family: root.uiFontFamily
-                        font.weight: Font.DemiBold
-                    }
-                    MutedText {
-                        text: "PhoWhisper-small và VieNeu-TTS · CPU hoặc Vulkan"
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.topMargin: 23 * root.ui
-                        width: parent.width - 430 * root.ui
-                        elide: Text.ElideRight
-                    }
-                    AppComboBox {
-                        id: aiComputeDeviceCombo
-                        width: 390 * root.ui
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        textRole: "label"
-                        model: backend.aiComputeDevices
-                        currentIndex: {
-                            for (var i = 0; i < backend.aiComputeDevices.length; ++i) {
-                                if (backend.aiComputeDevices[i].id === backend.selectedAiComputeDevice) {
-                                    return i
-                                }
-                            }
-                            return 0
-                        }
-                        onActivated: backend.setAiComputeDevice(backend.aiComputeDevices[index].id)
-                    }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Qt.rgba(.25, .28, .33, .35)
-                    }
-                }
-                MutedText {
-                    text: backend.aiComputeStatus
-                    color: root.amber
-                    wrapMode: Text.Wrap
-                }
-            }
-            MutedText{text:"GÁN PHÍM DIRECTINPUT (VÔ LĂNG & BÀN ĐẠP)"}
-            Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                SettingRow{width:parent.width;title:"Bộ điều khiển DirectInput";subtitle:root.directInputStatusText();value:backend.directInputBinding}
-                SettingRow{width:parent.width;title:"PTT bàn phím";subtitle:"Phím cách (Spacebar)";showSwitch:true;checked:backend.keyboardPttEnabled;onToggled:backend.setPushToTalkOptions(checked,backend.directInputPttEnabled)}
-                SettingRow{width:parent.width;title:"Nút đàm thoại PTT";subtitle:"Nhấn giữ trên vô lăng";showSwitch:true;checked:backend.directInputPttEnabled;onToggled:backend.setPushToTalkOptions(backend.keyboardPttEnabled,checked)}
-                AppButton{width:132*root.ui;text:"Gán lại";onClicked:backend.beginDirectInputMapping()}
-            }
-            MutedText{text:"BỘ MÁY GIỌNG NÓI & ĐỊNH TUYẾN ÂM THANH"}
-            Card { width:Math.min(1040*root.ui,parent.width-56*root.ui); title:""
-                Item {
-                    width: parent.width
-                    height: 54 * root.ui
-                    BodyText {
-                        text: "Thiết bị Thu âm Mặc định"
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.family: root.uiFontFamily
-                        font.weight: Font.DemiBold
-                    }
-                    AppComboBox {
-                        id: inputDevice
-                        width: 390 * root.ui
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        textRole: "name"
-                        model: backend.audioInputDevices
-                        currentIndex: {
-                            for (var i = 0; i < backend.audioInputDevices.length; ++i) {
-                                if (backend.audioInputDevices[i].id === backend.selectedAudioInputId)
-                                    return i
-                            }
-                            return 0
-                        }
-                        onPressedChanged: if (pressed) backend.refreshAudioInputDevices()
-                        onActivated: backend.setAudioInputDevice(backend.audioInputDevices[index].id)
-                    }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Qt.rgba(.25, .28, .33, .35)
-                    }
-                }
-                Item { width:parent.width; height:54*root.ui
-                    BodyText{text:"Thiết bị Phát âm thanh Mặc định";anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;font.family:root.uiFontFamily;font.weight:Font.DemiBold}
-                    AppComboBox { id:outputDevice; width:390*root.ui; anchors.right:parent.right; anchors.verticalCenter:parent.verticalCenter; model:backend.audioOutputDevices; currentIndex:Math.max(0,backend.audioOutputDevices.indexOf(backend.selectedAudioOutput)); onActivated:backend.setAudioOutputDevice(currentText) }
-                    Rectangle { anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; height:1; color:Qt.rgba(.25,.28,.33,.35) }
-                }
-                SettingRow{width:parent.width;title:"Tự động giảm âm lượng trò chơi";subtitle:"Giảm âm game khi kỹ sư AI phát giọng nói (-12dB)";showSwitch:true;checked:backend.audioDuckingEnabled;onToggled:checked => backend.setAudioDuckingEnabled(checked)}
-            }
-        } }
-    }
-
-    Component { id: setupWelcomeStep
-        ColumnLayout {
-            width: parent.width
-            spacing: 12 * root.ui
-            HeadingText { text: "Chào mừng đến với RaceEngineer"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-            MutedText {
-                text: "Thiết lập nhanh giọng kỹ sư, kết nối AI và số luồng TTS phù hợp với máy của bạn. Bạn có thể bỏ qua hoặc đổi lại sau trong Cài đặt."
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
-            Card {
-                Layout.fillWidth: true
-                title: "Tên tay đua"
-                AppTextField {
-                    id: setupDriverName
-                    width: parent.width
-                    text: backend.driverName
-                    placeholderText: "Nhập tên gọi trên radio"
-                    onEditingFinished: backend.setDriverName(text)
-                }
-            }
-        }
-    }
-    Component { id: setupVoiceStep
-        ColumnLayout {
-            width: parent.width
-            spacing: 12 * root.ui
-            MutedText { text: "Chọn backend và giọng kỹ sư. Âm thanh chỉ phát khi bạn bấm Nghe thử."; Layout.fillWidth: true; wrapMode: Text.Wrap }
-            Card {
-                Layout.fillWidth: true
-                title: "Giọng kỹ sư"
-                TtsVoiceSettings { width: parent.width }
-            }
-        }
-    }
-    Component { id: setupLlmStep
-        ColumnLayout {
-            function saveConfiguration() { setupLlmForm.saveConfiguration() }
-            width: parent.width
-            spacing: 12 * root.ui
-            MutedText {
-                text: "Nhập endpoint, API key và model để kiểm tra kết nối. Bạn vẫn có thể tiếp tục nếu chưa sẵn sàng hoặc máy chủ chưa phản hồi."
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
-            StatusPill { text: "API: " + root.apiStatusText(); statusColor: root.apiStatusColor() }
-            Card {
-                Layout.fillWidth: true
-                title: "Kết nối LLM"
-                LlmConnectionForm { id: setupLlmForm; width: parent.width }
-            }
-            AppButton { text: "Thiết lập sau"; onClicked: backend.setSetupStep(3) }
-        }
-    }
-    Component { id: setupOptimizationStep
-        ColumnLayout {
-            width: parent.width
-            spacing: 12 * root.ui
-            HeadingText { text: "Tối ưu số luồng TTS"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-            MutedText {
-                text: "Đo VieNeu trên máy này để chọn số luồng CPU. Kết quả giúp chọn cấu hình TTS; không bảo đảm hết khựng trong game."
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
-            TtsBenchmarkPanel {
-                Layout.fillWidth: true
-                visible: backend.ttsBackend === "VieNeu-TTS"
-            }
-            Card {
-                Layout.fillWidth: true
-                visible: backend.ttsBackend === "Google Gemini API"
-                title: "TTS Google"
-                BodyText { width: parent.width; text: "Không cần benchmark TTS local khi bạn chọn Google Gemini API."; wrapMode: Text.Wrap }
-            }
-        }
-    }
-
-    function finishSetupWizard() {
-        if (backend.ttsBenchmarkRunning)
-            backend.cancelTtsBenchmark()
-        backend.finishSetup()
     }
 
     MouseArea { width:7; anchors.left:parent.left; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.LeftEdge) }
     MouseArea { width:7; anchors.right:parent.right; anchors.top:parent.top; anchors.bottom:parent.bottom; cursorShape:Qt.SizeHorCursor; onPressed:root.startSystemResize(Qt.RightEdge) }
     MouseArea { height:7; anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; cursorShape:Qt.SizeVerCursor; onPressed:root.startSystemResize(Qt.BottomEdge) }
 
-    Rectangle {
-        id: startupOverlay
-        z: 1000
-        width: Math.min(390 * root.ui, root.width - 24 * root.ui)
-        implicitHeight: startupContents.implicitHeight + 28 * root.ui
+    StartupNotice {
+        objectName: "startupNotice"
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.margins: 14 * root.ui
-        visible: !root.startupNoticeDismissed && (!backend.startupReady || backend.startupError.length > 0)
-        radius: 12 * root.ui
-        color: root.panel
-        border.color: root.border
-
-        Column {
-            id: startupContents
-            anchors.fill: parent
-            anchors.margins: 14 * root.ui
-            spacing: 8 * root.ui
-            BodyText {
-                width: parent.width
-                text: backend.startupError.length > 0 ? "Mô hình AI chưa sẵn sàng" : "Đang chuẩn bị mô hình AI…"
-                font.weight: Font.DemiBold
-                wrapMode: Text.Wrap
-            }
-            MutedText {
-                width: parent.width
-                visible: backend.startupError.length > 0
-                text: backend.startupError
-                color: "#ffb4ab"
-                wrapMode: Text.Wrap
-            }
-            ProgressLine { width: parent.width; visible: !backend.startupReady; value: backend.startupProgress }
-            Row {
-                spacing: 8 * root.ui
-                AppButton {
-                    visible: backend.startupError.length > 0
-                    text: "Thử lại"
-                    highlighted: true
-                    onClicked: { root.startupNoticeDismissed = false; backend.retryStartup() }
-                }
-                AppButton { text: "Đóng"; onClicked: root.startupNoticeDismissed = true }
-            }
+        anchors.margins: 14
+        controller: backend
+        theme: root.designTheme
+    }
+    Component {
+        id: setupWizardComponent
+        SetupWizard {
+            controller: backend
+            theme: root.designTheme
+            onOpenGoogleVoiceDialogRequested: root.openGoogleVoiceDialogFromSetup()
         }
     }
-
-    Rectangle {
-        id: setupOverlay
-        z: 2000
+    Loader {
+        id: setupWizardLoader
+        objectName: "setupWizardLoader"
         anchors.fill: parent
-        visible: backend.setupVisible
-        color: Qt.rgba(0, 0, 0, 0.78)
-        MouseArea { anchors.fill: parent }
-
-        Rectangle {
-            id: setupPanel
-            width: Math.min(1060 * root.ui, root.width - 28 * root.ui)
-            height: Math.min(720 * root.ui, root.height - 24 * root.ui)
-            anchors.centerIn: parent
-            radius: 12 * root.ui
-            color: root.panel
-            border.color: root.border
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 16 * root.ui
-                spacing: 10 * root.ui
-                RowLayout {
-                    Layout.fillWidth: true
-                    HeadingText { text: "Thiết lập ban đầu"; Layout.fillWidth: true }
-                    AppButton {
-                        text: "Bỏ qua thiết lập"
-                        onClicked: root.finishSetupWizard()
-                    }
-                }
-                ProgressLine {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 8 * root.ui
-                    value: (backend.setupStep + 1) / 4
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 4 * root.ui
-                    Repeater {
-                        model: ["Chào mừng", "Giọng kỹ sư", "Kết nối LLM", "Tối ưu máy"]
-                        delegate: BodyText {
-                            required property int index
-                            required property string modelData
-                            Layout.fillWidth: true
-                            text: modelData
-                            color: index === backend.setupStep ? root.primary : root.textMuted
-                            font.pixelSize: 11 * root.ui
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-                ScrollView {
-                    id: setupContentScroll
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    contentWidth: availableWidth
-                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                    Column {
-                        width: setupContentScroll.availableWidth
-                        spacing: 10 * root.ui
-                        Loader {
-                            id: setupContent
-                            width: parent.width
-                            sourceComponent: [setupWelcomeStep, setupVoiceStep, setupLlmStep, setupOptimizationStep]
-                                [Math.max(0, Math.min(3, backend.setupStep))]
-                        }
-                    }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    AppButton {
-                        text: "Quay lại"
-                        visible: backend.setupStep > 0
-                        enabled: !backend.ttsBenchmarkRunning
-                        onClicked: backend.setSetupStep(Math.max(0, backend.setupStep - 1))
-                    }
-                    Item { Layout.fillWidth: true }
-                    AppButton {
-                        highlighted: true
-                        text: backend.setupStep === 3 ? "Hoàn tất" : "Tiếp tục"
-                        enabled: !backend.ttsBenchmarkRunning
-                        onClicked: {
-                            if (backend.setupStep === 2) setupContent.item.saveConfiguration()
-                            if (backend.setupStep === 3) root.finishSetupWizard()
-                            else backend.setSetupStep(backend.setupStep + 1)
-                        }
-                    }
-                }
-            }
-        }
+        active: backend.setupVisible
+        sourceComponent: setupWizardComponent
     }
-    function applyRaceEngineerVoicePrompt() {
-        googleVoiceName.text = "RaceEngineer · Tiếng Việt"
-        voiceDescription.text = backend.bonoVoiceDescription()
+    GoogleVoiceDialog {
+        id: googleVoiceDialogHost
+        controller: backend
+        theme: root.designTheme
+        live: root.liveWindow && ((root.googleVoiceDialogSource === "ai" && root.currentPage === 4 && aiVoiceLoader.item !== null && aiVoiceLoader.item.sectionIndex === 2)
+            || (root.googleVoiceDialogSource === "setup" && setupWizardLoader.item !== null && setupWizardLoader.item.currentStep === 1))
     }
 
-    function openGoogleVoiceDialog() {
-        voiceCreationMode.currentIndex = 0
-        addGoogleVoiceDialog.open()
-    }
 
-    property alias googleVoiceDialog: addGoogleVoiceDialog
-
-    Dialog {
-        id: addGoogleVoiceDialog
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        z: 3000
-        implicitWidth: Math.min(500 * root.ui, root.width - 32 * root.ui)
-        property string sourceWavPath: ""
-        property string consentWavPath: ""
-        title: "Thêm giọng Google"
-        font.family: root.uiFontFamily
-        palette.window: root.panel
-        palette.windowText: root.textMain
-        palette.button: root.raised
-        palette.buttonText: root.textMain
-        palette.base: root.bg
-        palette.text: root.textMain
-        background: Rectangle { color: root.panel; radius: 12 * root.ui; border.color: root.border }
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        onAccepted: {
-            if (voiceCreationMode.currentIndex === 0)
-                backend.createGooglePromptedVoice(googleVoiceName.text, voiceDescription.text)
-            else backend.createGoogleTtsVoice(googleVoiceName.text, sourceWavPath, consentWavPath)
-        }
-        contentItem: ScrollView {
-            id: voiceDialogScroll
-            implicitWidth: 470 * root.ui
-            implicitHeight: Math.min(voiceDialogFields.implicitHeight, root.height - 180 * root.ui)
-            contentWidth: availableWidth
-            clip: true
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ColumnLayout {
-            id: voiceDialogFields
-            width: voiceDialogScroll.availableWidth
-            spacing: 10 * root.ui
-            TabBar {
-                id: voiceCreationMode
-                Layout.fillWidth: true
-                background: Rectangle { color: root.bg; radius: 8 * root.ui }
-                TabButton {
-                    id: promptVoiceTab
-                    text: "Tạo bằng prompt"
-                    contentItem: BodyText { text: promptVoiceTab.text; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    background: Rectangle { color: promptVoiceTab.checked ? root.raised : root.bg; radius: 8 * root.ui }
-                }
-                TabButton {
-                    id: wavVoiceTab
-                    text: "Nhân bản từ WAV"
-                    contentItem: BodyText { text: wavVoiceTab.text; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    background: Rectangle { color: wavVoiceTab.checked ? root.raised : root.bg; radius: 8 * root.ui }
-                }
-            }
-            AppButton {
-                Layout.fillWidth: true
-                visible: voiceCreationMode.currentIndex === 0
-                text: "Dùng prompt RaceEngineer (mặc định)"
-                onClicked: root.applyRaceEngineerVoicePrompt()
-            }
-            TextField {
-                id: googleVoiceName
-                Layout.fillWidth: true
-                placeholderText: "Tên giọng"
-                text: "RaceEngineer · Tiếng Việt"
-                maximumLength: 80
-                font.family: root.uiFontFamily
-                color: root.textMain
-                background: Rectangle { color: root.bg; radius: 8 * root.ui; border.color: root.border }
-            }
-            TextArea {
-                id: voiceDescription
-                Layout.fillWidth: true
-                Layout.minimumHeight: 170 * root.ui
-                Layout.preferredHeight: implicitHeight
-                visible: voiceCreationMode.currentIndex === 0
-                text: backend.bonoVoiceDescription()
-                placeholderText: "Mô tả chất giọng, cách phát âm và nhịp nói"
-                wrapMode: TextEdit.Wrap
-                color: root.textMain
-                font.family: root.uiFontFamily
-                font.pixelSize: 13 * root.ui
-                background: Rectangle { color: root.bg; radius: 8 * root.ui; border.color: root.border }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Button { text: "Chọn mẫu WAV"; onClicked: sourceVoiceFileDialog.open() }
-                visible: voiceCreationMode.currentIndex === 1
-                MutedText { text: addGoogleVoiceDialog.sourceWavPath.length ? "Đã chọn mẫu" : "Mẫu giọng 10–30 giây"; Layout.fillWidth: true }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Button { text: "Chọn WAV đồng ý"; onClicked: consentVoiceFileDialog.open() }
-                visible: voiceCreationMode.currentIndex === 1
-                MutedText { text: addGoogleVoiceDialog.consentWavPath.length ? "Đã chọn bản ghi đồng ý" : "Bản ghi câu đồng ý"; Layout.fillWidth: true }
-            }
-            BodyText {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: "WAV PCM mono 16-bit. Bản ghi đồng ý phải đọc chính xác: “Tôi là chủ sở hữu giọng nói này và tôi đồng cho Google sử dụng giọng nói này để tạo mô hình giọng nói tổng hợp.”"
-                visible: voiceCreationMode.currentIndex === 1
-            }
-            MutedText {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: "Bấm OK để tạo giọng qua Google API; có thể phát sinh phí. Tạo thành công sẽ lưu tên vào danh sách giọng và chọn giọng mới."
-            }
-            }
-        }
-    }
-    FileDialog {
-        id: sourceVoiceFileDialog
-        title: "Chọn bản ghi giọng nói"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["WAV audio (*.wav)"]
-        onAccepted: addGoogleVoiceDialog.sourceWavPath = selectedFile.toLocalFile()
-    }
-    FileDialog {
-        id: consentVoiceFileDialog
-        title: "Chọn bản ghi đồng ý"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["WAV audio (*.wav)"]
-        onAccepted: addGoogleVoiceDialog.consentWavPath = selectedFile.toLocalFile()
-    }
 }

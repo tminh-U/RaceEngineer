@@ -1,0 +1,966 @@
+{
+  "git_head": "f01acc553c0d938af74f4ea6a026dbc6571eb06c",
+  "compile_all_qml_sources": true,
+  "qml_warnings": [],
+  "qt_logs": [],
+  "source_and_font_sha256": {
+    "qml/AiVoicePage.qml": "8c09d943bfe2561c1cab135f98a3aef50e62fb7904a4993165f58b160d6062aa",
+    "qml/Cockpit.qml": "951129de58dd77dac8bee38665462264743e0741aad505ba24d90b1680b5d0ec",
+    "qml/DrivingData.qml": "1d6f4e4fefee4b4888f8b28e8fe1f4618586d1acdd8a362cb834480170693353",
+    "qml/EngineerSpotterPage.qml": "b4c7716103ca0dd458265a2d905adf3b5e4d5191d06220e8269b88117f1ad3d3",
+    "qml/FuelStrategyPage.qml": "7e29e5e9a73e1d72552ea35b483c7dfb984decb3686b199f4e6e03509644be6d",
+    "qml/GoogleVoiceDialog.qml": "dde58c8abdd2459ef910e74e07fde449e7cac9b59a438bd9c27a3b20699dd0b7",
+    "qml/LlmConnectionForm.qml": "1f4ea478b91e82f6c186991782ed7bda62659af3de52ffbfe79e96f7bc016a10",
+    "qml/Main.qml": "febaba1d0f73c617f8d85328adbd5df7073772121fff4519bc5374ea962fc622",
+    "qml/SetupWizard.qml": "b75874cb7f6d5ee1777ff045e2a73987a72c6ea4ae24e2b76d47a99de8e20ef7",
+    "qml/StartupNotice.qml": "bb89e453e7f83881837dccb93d6f0ff9338cc3e39dd9e8773085a8258c5664b0",
+    "qml/SystemDevicesPage.qml": "c8eb8cead8bbf8dcbfc139d4bb1b3c1c99c9a2379e790ed25fb8e5edd9c1b20f",
+    "qml/TtsBenchmarkPanel.qml": "d8654407ebdab8b9e03c05065cbe1a078ac7a8e8c52bd94f48b4d46583935428",
+    "qml/TtsVoiceSettings.qml": "0b4a92d9b4b0a65507ffec168ea0d064bca49c33942543a0465a922e6e74a0e2",
+    "qml/UiTheme.qml": "93973a5fb9023a133ace04ac9e12c2340391a607b3feb24829ee9d6b6e1e0934",
+    "assets/fonts/BarlowCondensed-SemiBold.ttf": "7b619d14bc2327509a9ef32b0890f709626f7ecc9ff61191c2a4314c5499d2d9",
+    "assets/fonts/IBMPlexMono-Regular.ttf": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46",
+    "assets/fonts/IBMPlexSans-VF.ttf": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3",
+    "assets/fonts/README.md": "cb2acf601bce3759293c77ef5f07a221ff69ae0dbcddd0a3cafe04fffc4c691d",
+    "assets/fonts/RaceEngineerSans-Medium.ttf": "ee7c186daf8a3a6fba781b8853b57d81a98beec24ea89d95892d9940c9c464ad",
+    "assets/fonts/RaceEngineerSans-Regular.ttf": "0ffa2b88fc811e341710d8ad64b508f8c591a7e8b94768e82a407baee74e17ba",
+    "assets/fonts/RaceEngineerSans-SemiBold.ttf": "47d04529a411a6d531b5b939711fd84d3dd5829d6de00209e5bb97fe0418e630",
+    "assets/fonts/barlowcondensed-OFL.txt": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f",
+    "assets/fonts/ibmplexmono-OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "assets/fonts/ibmplexsans-OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "assets/fonts/raceengineer-sans-OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+  },
+  "source_and_font_manifest_sha256": "717a3df302e8c074e8b85e8dae04cfa34cbadaa2ebb9e7eb427836de73577451",
+  "cockpit_textScale": 1.0,
+  "cockpit_tile_geometry_by_size": {
+    "880x576": {
+      "window": [
+        880,
+        576
+      ],
+      "dataBounds": [
+        12,
+        166,
+        856,
+        306
+      ],
+      "viewportBounds": [
+        12,
+        166,
+        856,
+        306
+      ],
+      "gridBounds": [
+        264,
+        166,
+        352,
+        306
+      ],
+      "textScale": 1.0,
+      "compact": true,
+      "tiles": {
+        "FL": {
+          "dataIndex": 0,
+          "bounds": [
+            264,
+            166,
+            172,
+            149
+          ],
+          "cornerLabel": "FL",
+          "cornerLabelFontPx": 13,
+          "temperature": "82°C",
+          "temperatureFontPx": 16,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 13,
+          "temperatureCaptionWidth": 115.0,
+          "temperatureCaptionImplicitWidth": 60.3,
+          "pressure": "26,9 psi",
+          "pressureFontPx": 12,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 13,
+          "pressureCaptionWidth": 96.0,
+          "pressureCaptionImplicitWidth": 51.5,
+          "temperatureBounds": [
+            391,
+            233,
+            39,
+            21
+          ],
+          "pressureBounds": [
+            372,
+            259,
+            58,
+            16
+          ]
+        },
+        "FR": {
+          "dataIndex": 1,
+          "bounds": [
+            444,
+            166,
+            172,
+            149
+          ],
+          "cornerLabel": "FR",
+          "cornerLabelFontPx": 13,
+          "temperature": "84°C",
+          "temperatureFontPx": 16,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 13,
+          "temperatureCaptionWidth": 115.0,
+          "temperatureCaptionImplicitWidth": 60.3,
+          "pressure": "27,0 psi",
+          "pressureFontPx": 12,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 13,
+          "pressureCaptionWidth": 96.0,
+          "pressureCaptionImplicitWidth": 51.5,
+          "temperatureBounds": [
+            571,
+            233,
+            39,
+            21
+          ],
+          "pressureBounds": [
+            552,
+            259,
+            58,
+            16
+          ]
+        },
+        "RL": {
+          "dataIndex": 2,
+          "bounds": [
+            264,
+            323,
+            172,
+            149
+          ],
+          "cornerLabel": "RL",
+          "cornerLabelFontPx": 13,
+          "temperature": "84°C",
+          "temperatureFontPx": 16,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 13,
+          "temperatureCaptionWidth": 115.0,
+          "temperatureCaptionImplicitWidth": 60.3,
+          "pressure": "27,1 psi",
+          "pressureFontPx": 12,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 13,
+          "pressureCaptionWidth": 96.0,
+          "pressureCaptionImplicitWidth": 51.5,
+          "temperatureBounds": [
+            391,
+            390,
+            39,
+            21
+          ],
+          "pressureBounds": [
+            372,
+            416,
+            58,
+            16
+          ]
+        },
+        "RR": {
+          "dataIndex": 3,
+          "bounds": [
+            444,
+            323,
+            172,
+            149
+          ],
+          "cornerLabel": "RR",
+          "cornerLabelFontPx": 13,
+          "temperature": "85°C",
+          "temperatureFontPx": 16,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 13,
+          "temperatureCaptionWidth": 115.0,
+          "temperatureCaptionImplicitWidth": 60.3,
+          "pressure": "27,2 psi",
+          "pressureFontPx": 12,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 13,
+          "pressureCaptionWidth": 96.0,
+          "pressureCaptionImplicitWidth": 51.5,
+          "temperatureBounds": [
+            571,
+            390,
+            39,
+            21
+          ],
+          "pressureBounds": [
+            552,
+            416,
+            58,
+            16
+          ]
+        }
+      }
+    },
+    "1280x800": {
+      "window": [
+        1280,
+        800
+      ],
+      "dataBounds": [
+        26,
+        224,
+        1228,
+        401
+      ],
+      "viewportBounds": [
+        26,
+        224,
+        1228,
+        401
+      ],
+      "gridBounds": [
+        388,
+        224,
+        505,
+        401
+      ],
+      "textScale": 1.0,
+      "compact": false,
+      "tiles": {
+        "FL": {
+          "dataIndex": 0,
+          "bounds": [
+            388,
+            224,
+            245,
+            194
+          ],
+          "cornerLabel": "FL",
+          "cornerLabelFontPx": 15,
+          "temperature": "82°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 162.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "26,9 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 147.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            568,
+            311,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            553,
+            349,
+            68,
+            19
+          ]
+        },
+        "FR": {
+          "dataIndex": 1,
+          "bounds": [
+            647,
+            224,
+            246,
+            194
+          ],
+          "cornerLabel": "FR",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 163.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,0 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 148.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            828,
+            311,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            813,
+            349,
+            68,
+            19
+          ]
+        },
+        "RL": {
+          "dataIndex": 2,
+          "bounds": [
+            388,
+            432,
+            245,
+            193
+          ],
+          "cornerLabel": "RL",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 162.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,1 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 147.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            568,
+            519,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            553,
+            557,
+            68,
+            19
+          ]
+        },
+        "RR": {
+          "dataIndex": 3,
+          "bounds": [
+            647,
+            432,
+            246,
+            193
+          ],
+          "cornerLabel": "RR",
+          "cornerLabelFontPx": 15,
+          "temperature": "85°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 163.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,2 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 148.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            828,
+            519,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            813,
+            557,
+            68,
+            19
+          ]
+        }
+      }
+    },
+    "1600x1000": {
+      "window": [
+        1600,
+        1000
+      ],
+      "dataBounds": [
+        26,
+        243,
+        1548,
+        582
+      ],
+      "viewportBounds": [
+        26,
+        243,
+        1548,
+        582
+      ],
+      "gridBounds": [
+        482,
+        243,
+        637,
+        582
+      ],
+      "textScale": 1.0,
+      "compact": false,
+      "tiles": {
+        "FL": {
+          "dataIndex": 0,
+          "bounds": [
+            482,
+            243,
+            311,
+            284
+          ],
+          "cornerLabel": "FL",
+          "cornerLabelFontPx": 15,
+          "temperature": "82°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 228.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "26,9 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 213.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            728,
+            375,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            713,
+            413,
+            68,
+            19
+          ]
+        },
+        "FR": {
+          "dataIndex": 1,
+          "bounds": [
+            807,
+            243,
+            312,
+            284
+          ],
+          "cornerLabel": "FR",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 229.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,0 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 214.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            1054,
+            375,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            1039,
+            413,
+            68,
+            19
+          ]
+        },
+        "RL": {
+          "dataIndex": 2,
+          "bounds": [
+            482,
+            541,
+            311,
+            284
+          ],
+          "cornerLabel": "RL",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 228.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,1 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 213.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            728,
+            673,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            713,
+            711,
+            68,
+            19
+          ]
+        },
+        "RR": {
+          "dataIndex": 3,
+          "bounds": [
+            807,
+            541,
+            312,
+            284
+          ],
+          "cornerLabel": "RR",
+          "cornerLabelFontPx": 15,
+          "temperature": "85°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 229.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,2 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 214.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            1054,
+            673,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            1039,
+            711,
+            68,
+            19
+          ]
+        }
+      }
+    },
+    "1366x728": {
+      "window": [
+        1366,
+        728
+      ],
+      "dataBounds": [
+        12,
+        146,
+        1342,
+        478
+      ],
+      "viewportBounds": [
+        12,
+        146,
+        1342,
+        478
+      ],
+      "gridBounds": [
+        407,
+        146,
+        552,
+        478
+      ],
+      "textScale": 1.0,
+      "compact": false,
+      "tiles": {
+        "FL": {
+          "dataIndex": 0,
+          "bounds": [
+            407,
+            146,
+            269,
+            232
+          ],
+          "cornerLabel": "FL",
+          "cornerLabelFontPx": 15,
+          "temperature": "82°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 186.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "26,9 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 171.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            611,
+            252,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            596,
+            290,
+            68,
+            19
+          ]
+        },
+        "FR": {
+          "dataIndex": 1,
+          "bounds": [
+            690,
+            146,
+            269,
+            232
+          ],
+          "cornerLabel": "FR",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 186.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,0 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 171.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            894,
+            252,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            879,
+            290,
+            68,
+            19
+          ]
+        },
+        "RL": {
+          "dataIndex": 2,
+          "bounds": [
+            407,
+            392,
+            269,
+            232
+          ],
+          "cornerLabel": "RL",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 186.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,1 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 171.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            611,
+            498,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            596,
+            536,
+            68,
+            19
+          ]
+        },
+        "RR": {
+          "dataIndex": 3,
+          "bounds": [
+            690,
+            392,
+            269,
+            232
+          ],
+          "cornerLabel": "RR",
+          "cornerLabelFontPx": 15,
+          "temperature": "85°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 186.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,2 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 171.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            894,
+            498,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            879,
+            536,
+            68,
+            19
+          ]
+        }
+      }
+    },
+    "1280x720": {
+      "window": [
+        1280,
+        720
+      ],
+      "dataBounds": [
+        12,
+        146,
+        1256,
+        470
+      ],
+      "viewportBounds": [
+        12,
+        146,
+        1256,
+        470
+      ],
+      "gridBounds": [
+        382,
+        146,
+        516,
+        470
+      ],
+      "textScale": 1.0,
+      "compact": false,
+      "tiles": {
+        "FL": {
+          "dataIndex": 0,
+          "bounds": [
+            382,
+            146,
+            251,
+            228
+          ],
+          "cornerLabel": "FL",
+          "cornerLabelFontPx": 15,
+          "temperature": "82°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 168.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "26,9 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 153.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            568,
+            250,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            553,
+            288,
+            68,
+            19
+          ]
+        },
+        "FR": {
+          "dataIndex": 1,
+          "bounds": [
+            647,
+            146,
+            251,
+            228
+          ],
+          "cornerLabel": "FR",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 168.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,0 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 153.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            833,
+            250,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            818,
+            288,
+            68,
+            19
+          ]
+        },
+        "RL": {
+          "dataIndex": 2,
+          "bounds": [
+            382,
+            388,
+            251,
+            228
+          ],
+          "cornerLabel": "RL",
+          "cornerLabelFontPx": 15,
+          "temperature": "84°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 168.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,1 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 153.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            568,
+            492,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            553,
+            530,
+            68,
+            19
+          ]
+        },
+        "RR": {
+          "dataIndex": 3,
+          "bounds": [
+            647,
+            388,
+            251,
+            228
+          ],
+          "cornerLabel": "RR",
+          "cornerLabelFontPx": 15,
+          "temperature": "85°C",
+          "temperatureFontPx": 22,
+          "temperatureCaption": "NHIỆT ĐỘ",
+          "temperatureCaptionFontPx": 15,
+          "temperatureCaptionWidth": 168.0,
+          "temperatureCaptionImplicitWidth": 69.6,
+          "pressure": "27,2 psi",
+          "pressureFontPx": 14,
+          "pressureCaption": "ÁP SUẤT",
+          "pressureCaptionFontPx": 15,
+          "pressureCaptionWidth": 153.0,
+          "pressureCaptionImplicitWidth": 59.4,
+          "temperatureBounds": [
+            833,
+            492,
+            53,
+            29
+          ],
+          "pressureBounds": [
+            818,
+            530,
+            68,
+            19
+          ]
+        }
+      }
+    }
+  },
+  "telemetry": {
+    "textScale": 1.15,
+    "dataBounds": [
+      28,
+      230,
+      1224,
+      688
+    ],
+    "tiles": {
+      "FL": {
+        "dataIndex": 0,
+        "bounds": [
+          388,
+          230,
+          245,
+          337
+        ],
+        "cornerLabelFontPx": 17,
+        "temperature": "82°C",
+        "temperatureFontPx": 25,
+        "pressure": "26,9 psi",
+        "pressureFontPx": 16
+      },
+      "FR": {
+        "dataIndex": 1,
+        "bounds": [
+          647,
+          230,
+          244,
+          337
+        ],
+        "cornerLabelFontPx": 17,
+        "temperature": "84°C",
+        "temperatureFontPx": 25,
+        "pressure": "27,0 psi",
+        "pressureFontPx": 16
+      },
+      "RL": {
+        "dataIndex": 2,
+        "bounds": [
+          388,
+          581,
+          245,
+          337
+        ],
+        "cornerLabelFontPx": 17,
+        "temperature": "84°C",
+        "temperatureFontPx": 25,
+        "pressure": "27,1 psi",
+        "pressureFontPx": 16
+      },
+      "RR": {
+        "dataIndex": 3,
+        "bounds": [
+          647,
+          581,
+          244,
+          337
+        ],
+        "cornerLabelFontPx": 17,
+        "temperature": "85°C",
+        "temperatureFontPx": 25,
+        "pressure": "27,2 psi",
+        "pressureFontPx": 16
+      }
+    }
+  },
+  "missing_vs_zero_display": {
+    "FL": {
+      "temperature": "0°C",
+      "pressure": "—"
+    },
+    "FR": {
+      "temperature": "—",
+      "pressure": "0,0 psi"
+    }
+  },
+  "captures": {
+    "cockpit-tyre-tiles-1280x800.png": "cdecb1e5860bd76bbab1a379984b2d747738369f988d8c7e279eedeba9fcaeb8",
+    "cockpit-tyre-tiles-1600x1000.png": "2cbf9b381ce9ca56470a7ae5a46c1f81532e846ba99f859557da0eecd78dde9f",
+    "cockpit-tyre-tiles-880x576.png": "c552ad8ec0a17ccb813acbdcf60cad621a032f762ff1d0fb79dc9680e3d8a50b",
+    "cockpit-tyre-tiles-crop-1280x800.png": "0e6d32a6a325c1c6d897dbf09034b93b676ecc9e143ec1ed2ad245e5fc2bb65d",
+    "telemetry-tyre-tiles-1280x800.png": "3b074abb2fe1a2298ae6d0cedb1084b398f15d439950e9e3c70acc87baa65fc9"
+  },
+  "screenshot_paths": [
+    "/workspace/RaceEngineer/docs/ui-validation/core-review/cockpit-tyre-tiles-1280x800.png",
+    "/workspace/RaceEngineer/docs/ui-validation/core-review/cockpit-tyre-tiles-crop-1280x800.png",
+    "/workspace/RaceEngineer/docs/ui-validation/core-review/telemetry-tyre-tiles-1280x800.png"
+  ]
+}

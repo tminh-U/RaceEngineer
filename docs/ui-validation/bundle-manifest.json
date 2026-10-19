@@ -1,0 +1,361 @@
+{
+  "artifact": "RaceEngineer current UI gallery — Telemetry and DirectInput preview fixes",
+  "created_utc": "2026-10-19T11:58:05Z",
+  "baseline_commit": "f01acc553c0d938af74f4ea6a026dbc6571eb06c",
+  "integrated_run_utc": "2026-10-19T04:12:02Z",
+  "targeted_audit_utc": "2026-10-19T04:13:38Z",
+  "gallery_capture_utc": "2026-10-19T04:18:33Z",
+  "tile_item_capture_utc": "2026-10-19T04:18:56Z",
+  "renderer": "PySide6 6.8.3 / Qt 6.8.3 software renderer, offscreen QGuiApplication",
+  "full_window_screenshot_count": 52,
+  "full_tile_grid_item_capture_count": 4,
+  "qml_warnings": [],
+  "tile_capture_qml_warnings": [],
+  "tile_capture_qt_logs": [],
+  "native_live_data": false,
+  "obsolete_vehicle_illustration_images_included": false,
+  "source_sha256": {
+    "qml/AiVoicePage.qml": "64c09d77e1cd4e029c5a195ab7522e12b622c799241610f94fc811b65a343e3a",
+    "qml/Cockpit.qml": "1aa4e8588a973f6490a5feed25a98113631303746b96a8c3f8852a5a43d2c755",
+    "qml/DrivingData.qml": "564b857b2292c88d0e135681f581972da8d34a753bdcab3af409237cc04875c0",
+    "qml/EngineerSpotterPage.qml": "afcb9656508f909296a6d93e86ca30f2f016b8849e774195a26439b72cc3a7c9",
+    "qml/FuelStrategyPage.qml": "88e4c6661915744d695e43a7332e58191a5f0a7ed53b0375c43eb9003c5c6262",
+    "qml/GoogleVoiceDialog.qml": "c1fa352f6c89a9be5684dd5f6754bacc25eee19db068fc45b53c1a96809df6e4",
+    "qml/LlmConnectionForm.qml": "e299c7a855d77ad289f7567c5dae490ade656aec9d8064597f142984de7fac75",
+    "qml/Main.qml": "b698981a45e35073dbb881f228992fa5d59c38e64738743ec9cc31c6f562b55d",
+    "qml/SetupWizard.qml": "18a6415e7d157d10062b6082bf0b8e8cc5953d3511722bed6a0527618095814b",
+    "qml/StartupNotice.qml": "bb89e453e7f83881837dccb93d6f0ff9338cc3e39dd9e8773085a8258c5664b0",
+    "qml/SystemDevicesPage.qml": "017fc7ebcf2716696934a49e68272feec238e349f0dfa87c69f3a03eb4156c9c",
+    "qml/TelemetryPage.qml": "73f0ae7505651f953e9ea47b2d4a7a1cebf2c7bb44ce929906d9d88c6e9a5e7f",
+    "qml/TtsBenchmarkPanel.qml": "85bc1a2f29a3d02073f8a7c35c8adcf36dc2ba5c045859b70888c89018111c26",
+    "qml/TtsVoiceSettings.qml": "bffa18c3a5355e21a92e7075ad1c5c38e8cc8e8b9df08934ae294fec56a686cb",
+    "qml/UiTheme.qml": "93973a5fb9023a133ace04ac9e12c2340391a607b3feb24829ee9d6b6e1e0934",
+    "tests/ui/run_ui.py": "db87025d1092bae90329d6b0a91315cd3e645b4e6b7a60977f5e21fe5ccdeb3f",
+    "tests/ui/capture_review.py": "d363d5914a4927a0bc720ba48948d044bde7c4c85a78691547c53c59d2e20424",
+    "tests/ui/fake_application.py": "a27565f96c5fd5de043613a2176ed7174e34f4e7bfeb4f21245c5c451d657235",
+    "tests/ui/native_contract.py": "5c73aefa089e32750c055f7803cbc3227cbe5287a83acbf44cbb7c0c381c9830",
+    "tests/ui/parity_audit.py": "6598ba6697c4059366565c9142538e7faef3c5973c54661789c5c78788bcf2e1"
+  },
+  "bundled_files": [
+    {
+      "path": "README.md",
+      "sha256": "a15c225a8b27773a7df3544987f2fcc7cb88e085f772460bba9fd753ae8669c5",
+      "bytes": 5519
+    },
+    {
+      "path": "baseline-parity.md",
+      "sha256": "ce95d99ab708257a36f10bddf6af8776413fb4a88533f79acaa2dca9a01860d5",
+      "bytes": 14931
+    },
+    {
+      "path": "baseline-surface-audit.json",
+      "sha256": "2102c652e4c0dd83ed7a424b628c844774412665965b7032ad8c59bc7c16a3c0",
+      "bytes": 9813
+    },
+    {
+      "path": "render-report.json",
+      "sha256": "37df57bb0b19da827e47ca4d57461f7f3514419b45fbcfd4dde4c7513e165f35",
+      "bytes": 420697
+    },
+    {
+      "path": "index.html",
+      "sha256": "b278cb11f14b4aef0851083e659bc646eb1f4bea0395eb54a71ddd306f5b9738",
+      "bytes": 15996
+    },
+    {
+      "path": "gallery-standalone.html",
+      "sha256": "bc363b5adbdf1011504e62079b295e3e4580095ac0a10dec0cf42ce41b1416f9",
+      "bytes": 6873659
+    },
+    {
+      "path": "review-gallery/gallery-report.json",
+      "sha256": "362cf5ecb02a19dc6c585f57ec156f59111d7aab37bd1d1089607a8bb6a1f646",
+      "bytes": 215727
+    },
+    {
+      "path": "tyre-tile-closeups/index.html",
+      "sha256": "36f5f0276097cb7e431158690854e7c64b04aa41a5f7e0275c68ce2dea2d808a",
+      "bytes": 2196
+    },
+    {
+      "path": "review-gallery/cockpit-880x576.png",
+      "sha256": "f944ed8b12d29b00ddc63e26743d3f7c21bb1342f915e2fce324a26e0404dd9f",
+      "bytes": 74607
+    },
+    {
+      "path": "review-gallery/cockpit-1280x800.png",
+      "sha256": "a7e64d9b6a3577652f14a10fbfa3f1a069e88cf7f6ca55766e859bac94ca97ab",
+      "bytes": 106680
+    },
+    {
+      "path": "review-gallery/cockpit-1600x1000.png",
+      "sha256": "518cb0334e16cce9b22185ec0839d21e9d80c8306b52d5f552bb9c8760153fdc",
+      "bytes": 119211
+    },
+    {
+      "path": "review-gallery/cockpit-1366x728.png",
+      "sha256": "677f7f8ce99802e94af85f428f670148adc524bb6090229598e9fca4a1729f4c",
+      "bytes": 95610
+    },
+    {
+      "path": "review-gallery/cockpit-1280x720.png",
+      "sha256": "8ea13935c372e9e7f15218d19a22356876405489a65df27d05a2df763604b54b",
+      "bytes": 95342
+    },
+    {
+      "path": "review-gallery/fuel-strategy-880x576.png",
+      "sha256": "36afd0ba04fb1c0662dd529de51fa8ae94dc6634c4b13bda866673ed9487b8de",
+      "bytes": 53193
+    },
+    {
+      "path": "review-gallery/fuel-strategy-1280x800.png",
+      "sha256": "1f1399eb07e9c65e1b78cdefdb71387817e5a6f82371664396ed262c5ff2bcf3",
+      "bytes": 78992
+    },
+    {
+      "path": "review-gallery/fuel-strategy-1600x1000.png",
+      "sha256": "c4fa6834f976214b7531d4b9d1fef175a46556348158a1807751d17d309bda3f",
+      "bytes": 86251
+    },
+    {
+      "path": "review-gallery/engineer-spotter-880x576.png",
+      "sha256": "e44be35f129dfdc046623eb1bebdc9b81c3277444f8a7f9bd64e24e4fa3b500c",
+      "bytes": 44232
+    },
+    {
+      "path": "review-gallery/engineer-spotter-1280x800.png",
+      "sha256": "165070b656f3f8e1b09bc57abedc9ef800820240fc69a5dea01b7fadc6d04a7b",
+      "bytes": 121519
+    },
+    {
+      "path": "review-gallery/engineer-spotter-1600x1000.png",
+      "sha256": "364552f771b6959249a387895eb6658cd6ba4f4de5364930f589c2b582fc92ae",
+      "bytes": 147241
+    },
+    {
+      "path": "review-gallery/telemetry-880x576.png",
+      "sha256": "d6c824f9a52544533f22503729aa3d3c4977de9e89a03eba858adfac9ea6c710",
+      "bytes": 43723
+    },
+    {
+      "path": "review-gallery/telemetry-1280x800.png",
+      "sha256": "e59355669332977126a625fe01dba075fbee8dd7eb1cf5c9e858b1b249627cbc",
+      "bytes": 104549
+    },
+    {
+      "path": "review-gallery/telemetry-1600x1000.png",
+      "sha256": "68e55baa76d2dcd6a469daa2cee92078ee78c4dd041517cf84a677a3e4d4f450",
+      "bytes": 116220
+    },
+    {
+      "path": "review-gallery/ai-voice-880x576.png",
+      "sha256": "59961171ad9f2a20f273097f9217780f492b6a63c151a8abda5d93f0eacd41dc",
+      "bytes": 55202
+    },
+    {
+      "path": "review-gallery/ai-voice-1280x800.png",
+      "sha256": "c51c6cd0102b8c356e3dfff1f511b0308238ac0bf80f3197a6b0d8eabc40ee41",
+      "bytes": 108220
+    },
+    {
+      "path": "review-gallery/ai-voice-1600x1000.png",
+      "sha256": "3cee0899c7ac5f9821a56455c9b96f1e7d6bc50bcec0ed3916bc3976fdfc187f",
+      "bytes": 115168
+    },
+    {
+      "path": "review-gallery/system-devices-880x576.png",
+      "sha256": "48793706e4fb451f338ae010942417331a2c0eadb70a721ea5066f2fb80c8399",
+      "bytes": 62658
+    },
+    {
+      "path": "review-gallery/system-devices-1280x800.png",
+      "sha256": "1741ec323fadb401f8ed84d345ca0d72d6ab87b237509c90a444abaa9659f79e",
+      "bytes": 146135
+    },
+    {
+      "path": "review-gallery/system-devices-1600x1000.png",
+      "sha256": "207202ada26350fd230040dc0153b0a2f3c014e6830d27aecdd3b793351e88cd",
+      "bytes": 155448
+    },
+    {
+      "path": "review-gallery/telemetry-supplements-scrolled-880x576.png",
+      "sha256": "e2355a1d55f5ff657fc9c84f5c46e23c07e8de1cb59f718e6f8741aff3f4c6dc",
+      "bytes": 44421
+    },
+    {
+      "path": "review-gallery/engineer-directinput-binding-scrolled-880x576.png",
+      "sha256": "c702bddd2957263d2af1d35e4ec495aa9a5355a832a17545818c184e715ba223",
+      "bytes": 53827
+    },
+    {
+      "path": "review-gallery/ai-connection-880x576.png",
+      "sha256": "59961171ad9f2a20f273097f9217780f492b6a63c151a8abda5d93f0eacd41dc",
+      "bytes": 55202
+    },
+    {
+      "path": "review-gallery/ai-connection-1280x800.png",
+      "sha256": "c51c6cd0102b8c356e3dfff1f511b0308238ac0bf80f3197a6b0d8eabc40ee41",
+      "bytes": 108220
+    },
+    {
+      "path": "review-gallery/ai-connection-1600x1000.png",
+      "sha256": "3cee0899c7ac5f9821a56455c9b96f1e7d6bc50bcec0ed3916bc3976fdfc187f",
+      "bytes": 115168
+    },
+    {
+      "path": "review-gallery/ai-local-voice-880x576.png",
+      "sha256": "5dad3a9e56ad17b61955975d372bdbcf286a3c348b1adab7fc8699e8aea07bae",
+      "bytes": 56054
+    },
+    {
+      "path": "review-gallery/ai-local-voice-1280x800.png",
+      "sha256": "a2bb184b50658e0123d64dfee2e28068463bba849140643f46e41e7e09e8fde4",
+      "bytes": 119980
+    },
+    {
+      "path": "review-gallery/ai-local-voice-1600x1000.png",
+      "sha256": "0a9772fc0f85c18fc74e4d6e804656e4fd8d1f184a88850639a95f0b06582cd0",
+      "bytes": 123368
+    },
+    {
+      "path": "review-gallery/ai-google-tts-880x576.png",
+      "sha256": "0f4250b30df269968a4f86b1c2d0e7ac6264b301ab363b29ad5cba87b3efc751",
+      "bytes": 55812
+    },
+    {
+      "path": "review-gallery/ai-google-tts-1280x800.png",
+      "sha256": "46f0390f2a5260231ec6763de259b19c31d8552fce402ad46f3dcf5d8d0b95ab",
+      "bytes": 87143
+    },
+    {
+      "path": "review-gallery/ai-google-tts-1600x1000.png",
+      "sha256": "87582126c6cdfa7a74ffa1684dc2dbeca0b3b2132ede0f185ceb1ba6faadfa58",
+      "bytes": 89990
+    },
+    {
+      "path": "review-gallery/fuel-strategy-data-training-1280x800.png",
+      "sha256": "1e9e85e2f7a9d550bc4c1ee35111ffda67e3895467c46891a32b4b88dfefdaf0",
+      "bytes": 168796
+    },
+    {
+      "path": "review-gallery/setup-step-0-880x576.png",
+      "sha256": "c745991dc5da2f87d137fadb89f5cb4defa845f734d1b0f6c2377c00610b533d",
+      "bytes": 40453
+    },
+    {
+      "path": "review-gallery/setup-step-1-880x576.png",
+      "sha256": "45809b1bede14a4315ba91052b5dcb371d49fc2e0d8e5cbbd2d14817f2d64146",
+      "bytes": 54089
+    },
+    {
+      "path": "review-gallery/setup-step-2-880x576.png",
+      "sha256": "013694a82673075a5f2725b45cf590f3a8f27340f045579f5fc1d4d037be47e0",
+      "bytes": 52770
+    },
+    {
+      "path": "review-gallery/setup-step-3-880x576.png",
+      "sha256": "52fbba268d58d86e058c643bede29f875de0aad0d675a12687563f0cd570a156",
+      "bytes": 72030
+    },
+    {
+      "path": "review-gallery/setup-step-0-1280x800.png",
+      "sha256": "6002df34dc7e447270bea9c49959999ab349f33114d198c569de39f9d8312b87",
+      "bytes": 76745
+    },
+    {
+      "path": "review-gallery/setup-step-1-1280x800.png",
+      "sha256": "1ec5f7f47f6e235d3f591c63f603d08f3291efe390ec35b43000f4cf74aa17df",
+      "bytes": 92006
+    },
+    {
+      "path": "review-gallery/setup-step-2-1280x800.png",
+      "sha256": "4d5d8311ac14ee1d0940da516855b3c9eff1cf347dbc853f268d1ab897e2f65e",
+      "bytes": 104959
+    },
+    {
+      "path": "review-gallery/setup-step-3-1280x800.png",
+      "sha256": "7e5eee9db1afdd6d2a8c28f616d57d1211dbddd1d388eac7e4d7c20bb17c95a5",
+      "bytes": 115710
+    },
+    {
+      "path": "review-gallery/setup-step-0-1600x1000.png",
+      "sha256": "ed7936add6e37c878fa917b6689f88ede6d27eb805d451ba23efa81dcfdcc21b",
+      "bytes": 105316
+    },
+    {
+      "path": "review-gallery/setup-step-1-1600x1000.png",
+      "sha256": "0f727acd9d53e45aa48d28fddd209c528fadc2d45068fbfa3c52a0763b89501e",
+      "bytes": 120992
+    },
+    {
+      "path": "review-gallery/setup-step-2-1600x1000.png",
+      "sha256": "21cbfe06fc8eb24d0521669de48aec888f4f1ce83d79789ebe4b2d66902b4280",
+      "bytes": 134026
+    },
+    {
+      "path": "review-gallery/setup-step-3-1600x1000.png",
+      "sha256": "31cc1a68d92fdc10af0de72747f3c4070da0772653ea7c54c87fc3b53cabd1a4",
+      "bytes": 144997
+    },
+    {
+      "path": "review-gallery/google-voice-prompt-from-setup-1280x800.png",
+      "sha256": "3fc27afd0f53d5ea442b5722fb2a6017708177d62e70cfbb1716260a03ff3a43",
+      "bytes": 121108
+    },
+    {
+      "path": "review-gallery/google-voice-wav-from-setup-1280x800.png",
+      "sha256": "96d3b2398c994cda6a4db42224fb2629af7bc7c9f5fa37f9507d7ca607f7ba8e",
+      "bytes": 144446
+    },
+    {
+      "path": "review-gallery/startup-error-1280x800.png",
+      "sha256": "1ccd0233dae114ef52f9bf6afdbd6cc6dddb83eed62feef897ad2abee7cda9cd",
+      "bytes": 166629
+    },
+    {
+      "path": "review-gallery/header-stress-offline-1120x800.png",
+      "sha256": "316baa01c23787147dc85bb560421ad5836aa29da1e73d1654c14d8089de8f43",
+      "bytes": 89491
+    },
+    {
+      "path": "review-gallery/header-stress-offline-1280x800.png",
+      "sha256": "b142807f4274041e7b0b65f356c869a9b7485c218cdd32eeba7ded90d72597c2",
+      "bytes": 103535
+    },
+    {
+      "path": "review-gallery/header-stress-authentication-error-1120x800.png",
+      "sha256": "1e411bf13b4cd05ddab799734489fbc0ce80cc710f1327ea7fe8c797deedbb99",
+      "bytes": 88799
+    },
+    {
+      "path": "review-gallery/header-stress-authentication-error-1280x800.png",
+      "sha256": "187c0079463371db58702144cf676de469990fb42ac1dfc8383346f0064de31c",
+      "bytes": 102877
+    },
+    {
+      "path": "review-gallery/radio-history-1280x800.png",
+      "sha256": "4d10da5c13f43443447faabfe3feeed331f53ecb9ab15fbe804e4995ef80376b",
+      "bytes": 130706
+    },
+    {
+      "path": "tyre-tile-closeups/cockpit-880x576.png",
+      "sha256": "da738bcd0d07859114314c2029fe688e30314c1152327c1861d9a7ebb2649ab8",
+      "bytes": 14045
+    },
+    {
+      "path": "tyre-tile-closeups/cockpit-1280x800.png",
+      "sha256": "b793c321258e277c31c2a47cf71ecf82b47100abe4b0eab9df43b3ca6da87fbf",
+      "bytes": 19439
+    },
+    {
+      "path": "tyre-tile-closeups/cockpit-1600x1000.png",
+      "sha256": "c9c7e54c8e63658c9af13ef6f4c97fb88c9b5eb725d8d08c327a939ccb04ba5c",
+      "bytes": 20859
+    },
+    {
+      "path": "tyre-tile-closeups/telemetry-1280x800.png",
+      "sha256": "ec2da267834e48121e5d5f85a5d88c7978130d7e02730493e5c9151e80923bbf",
+      "bytes": 22861
+    }
+  ]
+}

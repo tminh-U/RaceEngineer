@@ -1,0 +1,178 @@
+{
+  "created_utc": "2026-10-19T14:04:05Z",
+  "scope": "Focused regressions for startup error layout, API diagnostic mapping, and Engineer voice shortcut routing.",
+  "historical_audit": "tests/ui/artifacts/edge_surface_audit.json (pre-fix 22/25; preserved)",
+  "renderer": {
+    "python": "3.12.14",
+    "pyside6": "6.8.3",
+    "qt": "6.8.3",
+    "platform": "offscreen",
+    "quick_backend": "software"
+  },
+  "window_size": [
+    880,
+    576
+  ],
+  "source_sha256": {
+    "qml/Main.qml": "f8dfcd73879837f643bf3908f215adb193a6251d26876d4f89f38bcbe63b736b",
+    "qml/StartupNotice.qml": "da48e4cb09b37f4b7b779a653658ae0370228ead00eee22f16d55323cd1d6c79",
+    "qml/LlmConnectionForm.qml": "bcfc116b63c5f4714c2485c0feb124d19f201e02e03ae5971562dbc9f92490e9",
+    "qml/EngineerSpotterPage.qml": "afcb9656508f909296a6d93e86ca30f2f016b8849e774195a26439b72cc3a7c9",
+    "qml/AiVoicePage.qml": "64c09d77e1cd4e029c5a195ab7522e12b622c799241610f94fc811b65a343e3a",
+    "tests/ui/run_ui.py": "db87025d1092bae90329d6b0a91315cd3e645b4e6b7a60977f5e21fe5ccdeb3f",
+    "tests/ui/fake_application.py": "a27565f96c5fd5de043613a2176ed7174e34f4e7bfeb4f21245c5c451d657235",
+    "tests/ui/focused_fix_regressions.py": "3c16e159a9adf89c309bd335a4b9454b8f9982e798619b913bd6f17a1a0feb43"
+  },
+  "qml_engine_warnings": [],
+  "qt_log_warnings": [],
+  "cases": {
+    "startup_notice_scroll_and_pinned_actions": {
+      "status": "PASS",
+      "evidence": {
+        "actual_window_size": [
+          880,
+          576
+        ],
+        "long_error_chars": 1356,
+        "notice_bounds": [
+          476,
+          14,
+          390,
+          548
+        ],
+        "scroll_view_bounds": [
+          490,
+          494,
+          362,
+          20
+        ],
+        "scroll_content_height": 580.0,
+        "scroll_view_height": 429.0,
+        "first_line_reachable": true,
+        "last_line_reachable": true,
+        "fixed_bounds_before_after_scroll": {
+          "title": [
+            [
+              518,
+              28,
+              334,
+              21
+            ],
+            [
+              518,
+              28,
+              334,
+              21
+            ]
+          ],
+          "retry": [
+            [
+              490,
+              510,
+              58,
+              38
+            ],
+            [
+              490,
+              510,
+              58,
+              38
+            ]
+          ],
+          "close": [
+            [
+              805,
+              510,
+              47,
+              38
+            ],
+            [
+              805,
+              510,
+              47,
+              38
+            ]
+          ]
+        },
+        "retry_invocations": 1,
+        "close_dismissed": true,
+        "short_error_height": 123.0,
+        "no_error_height": 111.0,
+        "success_screenshots": [
+          "docs/ui-validation/followup-fix/startup-error-long-880x576.png"
+        ]
+      }
+    },
+    "api_diagnostic_mapping": {
+      "status": "PASS",
+      "evidence": {
+        "cases": {
+          "Connected:Connected": {
+            "summary": "API: Đã kết nối   ·   missing-model",
+            "displayed_detail": "Máy chủ đã phản hồi; mô hình khả dụng."
+          },
+          "Connected:Model available": {
+            "summary": "API: Đã kết nối   ·   missing-model",
+            "displayed_detail": "Máy chủ đã phản hồi; mô hình khả dụng."
+          },
+          "Connected:Connected — model available": {
+            "summary": "API: Đã kết nối   ·   missing-model",
+            "displayed_detail": "Máy chủ đã phản hồi; mô hình khả dụng."
+          },
+          "ProviderError:Connected, but model 'missing-model' is unavailable": {
+            "summary": "API: Lỗi API   ·   missing-model",
+            "displayed_detail": "Connected, but model 'missing-model' is unavailable"
+          },
+          "ProviderError:Connected to host, but model discovery timed out": {
+            "summary": "API: Lỗi API   ·   missing-model",
+            "displayed_detail": "Connected to host, but model discovery timed out"
+          }
+        },
+        "unavailable_model_screenshot": "docs/ui-validation/followup-fix/api-unavailable-model-1280x800.png",
+        "success_detail": "Máy chủ đã phản hồi; mô hình khả dụng.",
+        "success_screenshot": "docs/ui-validation/followup-fix/api-connected-success-1280x800.png",
+        "status_strip_bounds": [
+          40,
+          377,
+          588,
+          63
+        ]
+      }
+    },
+    "voice_shortcut_first_and_cached_draft_preservation": {
+      "status": "PASS",
+      "evidence": {
+        "VieNeu-TTS": {
+          "backend": "VieNeu-TTS",
+          "expected_section": 1,
+          "first_entry_section": 1,
+          "cached_entry_section": 1,
+          "first_ai_page_was_lazy": true,
+          "cached_endpoint_draft_preserved": "http://unsaved-1.local/v1",
+          "first_visit_screenshot": "docs/ui-validation/followup-fix/voice-shortcut-first-1-VieNeu-TTS.png",
+          "cached_visit_screenshot": "docs/ui-validation/followup-fix/voice-shortcut-cached-1-VieNeu-TTS.png",
+          "qml_warnings": []
+        },
+        "Google Gemini API": {
+          "backend": "Google Gemini API",
+          "expected_section": 2,
+          "first_entry_section": 2,
+          "cached_entry_section": 2,
+          "first_ai_page_was_lazy": true,
+          "cached_endpoint_draft_preserved": "http://unsaved-2.local/v1",
+          "first_visit_screenshot": "docs/ui-validation/followup-fix/voice-shortcut-first-2-Google-Gemini-API.png",
+          "cached_visit_screenshot": "docs/ui-validation/followup-fix/voice-shortcut-cached-2-Google-Gemini-API.png",
+          "qml_warnings": []
+        }
+      }
+    }
+  },
+  "success_screenshots": {
+    "startup": "docs/ui-validation/followup-fix/startup-error-long-880x576.png",
+    "api_success": "docs/ui-validation/followup-fix/api-connected-success-1280x800.png"
+  },
+  "failure_count": 0,
+  "native_limits": [
+    "This run exercises QML against the repository's strict Python facade; it does not call real provider services, Windows startup/shutdown handlers, audio, or simulator devices."
+  ]
+}

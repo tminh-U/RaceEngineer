@@ -1,0 +1,300 @@
+{
+  "created_utc": "2026-10-19T14:37:48Z",
+  "assets": {
+    "pngs": {
+      "final_icon_16.png": {
+        "path": "assets/final_icon_16.png",
+        "sha256": "6a300939edb10622d85cc146558c59840f390036e331a858ac442bf226f1ffee",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              16,
+              16
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_24.png": {
+        "path": "assets/final_icon_24.png",
+        "sha256": "9299155e7bab3fc07437d1742fea59b5497934bfb403b6ddcc9306dfb4abe368",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              24,
+              24
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_32.png": {
+        "path": "assets/final_icon_32.png",
+        "sha256": "48e9a2e2e9fc2dbc233996d37fa90cc6cc2a088c276bc6baf30cfb920126c9fb",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              32,
+              32
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_48.png": {
+        "path": "assets/final_icon_48.png",
+        "sha256": "8a9d0947df17832e199844defa70e31acb3e670ede571c16087c4f755f4908e7",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              48,
+              48
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_64.png": {
+        "path": "assets/final_icon_64.png",
+        "sha256": "4baa9b9bd4bec063d71154165597af4c4d62a4dcd9da3bb939873f0e487ec3cb",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              64,
+              64
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_128.png": {
+        "path": "assets/final_icon_128.png",
+        "sha256": "a10933acef6cc707b6e52f0dbe74789ed9f8c4beab951c03cd9803fe85737eac",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              128,
+              128
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_180.png": {
+        "path": "assets/final_icon_180.png",
+        "sha256": "f183c8570329d008c87d6c300ac59ae9549e1a37161c22af9c2becb107beb50f",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              180,
+              180
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_192.png": {
+        "path": "assets/final_icon_192.png",
+        "sha256": "5df95fb89f2654c0819885643ad33c2a9259d0e2a63e30cd0bd3ba7b36f96446",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              192,
+              192
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_256.png": {
+        "path": "assets/final_icon_256.png",
+        "sha256": "81e19f68ef5613855c8450bac9b05d3872c31f797d03ccf5ba4fc85480b0f500",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              256,
+              256
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      },
+      "final_icon_512.png": {
+        "path": "assets/final_icon_512.png",
+        "sha256": "ceb564dbdefbd45e15ee51de819f3f03a05477b89eadabba5ea881f6968a094a",
+        "frame_count": 1,
+        "frames": [
+          {
+            "size": [
+              512,
+              512
+            ],
+            "nontransparent_non_gray_pixels": 0
+          }
+        ],
+        "grayscale": true,
+        "nontransparent_non_gray_pixels": 0
+      }
+    },
+    "ico": {
+      "path": "assets/final_icon.ico",
+      "sha256": "6131d17af63a19701b14adaa25f0b4a97bac8f7903c6077ab3962b0c1dcc2096",
+      "frame_count": 7,
+      "frames": [
+        {
+          "size": [
+            256,
+            256
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            128,
+            128
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            64,
+            64
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            48,
+            48
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            32,
+            32
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            24,
+            24
+          ],
+          "nontransparent_non_gray_pixels": 0
+        },
+        {
+          "size": [
+            16,
+            16
+          ],
+          "nontransparent_non_gray_pixels": 0
+        }
+      ],
+      "grayscale": true,
+      "nontransparent_non_gray_pixels": 0
+    },
+    "ico_required_sizes": [
+      [
+        16,
+        16
+      ],
+      [
+        24,
+        24
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        48,
+        48
+      ],
+      [
+        64,
+        64
+      ],
+      [
+        128,
+        128
+      ],
+      [
+        256,
+        256
+      ]
+    ],
+    "cmake_registered_resources": [
+      "assets/final_icon.ico",
+      "assets/final_icon_128.png",
+      "assets/final_icon_16.png",
+      "assets/final_icon_180.png",
+      "assets/final_icon_192.png",
+      "assets/final_icon_24.png",
+      "assets/final_icon_256.png",
+      "assets/final_icon_32.png",
+      "assets/final_icon_48.png",
+      "assets/final_icon_512.png",
+      "assets/final_icon_64.png"
+    ],
+    "windows_resource_file": "assets/final_icon.rc",
+    "readme_logo_links": {
+      "README.md": [
+        "assets/final_icon_256.png"
+      ],
+      "docs/readme_vie.md": [
+        "../assets/final_icon_256.png"
+      ]
+    },
+    "cmake_project_version": "1.0.6"
+  },
+  "runtime_logo": {
+    "object_name": "raceEngineerLogo",
+    "visible": true,
+    "status": "Ready",
+    "source_url": "../assets/final_icon_64.png",
+    "scene_bounds": [
+      24.0,
+      8.0,
+      32.0,
+      32.0
+    ],
+    "qml_warnings": [],
+    "source_sha256": "76b6fcc87ddab21ce7aca8bb559c2765a5cf7aa4a8c5abaa0e56dad3a7971c13"
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "a7696bb4adf7bfa5bc59d80652472b6cc3887c644df8bd80c23aaa5ce43cd80a",
+    "README.md": "c180a380974f28f0621af1bbf51979a685e08df03219d968bff32dbe113b6013",
+    "docs/readme_vie.md": "bc5180106b4c8dbd66cd7502ba080cca89aca9fd48a12a7d9ed91f120f02a5c2",
+    "qml/Main.qml": "76b6fcc87ddab21ce7aca8bb559c2765a5cf7aa4a8c5abaa0e56dad3a7971c13",
+    "tests/ui/run_ui.py": "db87025d1092bae90329d6b0a91315cd3e645b4e6b7a60977f5e21fe5ccdeb3f",
+    "tests/ui/logo_asset_audit.py": "1900dedefcda154703e057148dcff3335ba0d11cfea858cbd96e99f81ea4eb46"
+  }
+}

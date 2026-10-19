@@ -35,11 +35,17 @@ runtime.
 
 ## Runtime assets
 
-MiSans Latin is not stored in Git. Download the original variable font from
-[Xiaomi](https://hyperos.mi.com/font/en/details/latin/) and place it at
-`assets/fonts/MiSansLatinVF.ttf` before configuring CMake if you want it in your
-local build. Without that file, the UI falls back to Segoe UI. Keep Xiaomi's
-attribution in the app and follow its font license when distributing a build.
+Application branding uses the monochrome master `final_icon_redraw.png`.
+`scripts/generate_app_icons.ps1` regenerates all ten PNG sizes and the multi-size
+ICO in `assets/`; CMake, the app header, tray, Windows resources and installer
+share these assets. Both READMEs reference the same 256 px logo.
+
+The Cockpit UI bundles static RaceEngineer Sans Regular/Medium/SemiBold,
+IBM Plex Mono, and Barlow Condensed with their OFL notices. No font download is
+needed. See [font provenance](../assets/fonts/README.md) for the static instances
+derived from the prepared variable source. The UI uses Segoe UI/Consolas only if
+its local font loaders fail. The optional legacy MiSans CMake entry does not
+select the current interface font.
 
 Runtime models and voices are intentionally ignored by Git. Developer-only
 preparation is available through:
