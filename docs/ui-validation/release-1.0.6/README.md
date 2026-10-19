@@ -15,4 +15,8 @@ UI captures use sample telemetry and a fake application facade. They verify pres
 
 The Windows workflow builds from the current source, runs CTest, packages with the existing scripts, verifies the manifest and executable version, and renders the packaged setup UI. A tagged build prepares a draft release; publishing follows review of those results. The previous release supplies only unchanged model/voice runtime assets, checked against its published archive SHA-256. The executable, Qt package and installer are built again.
 
-Native Windows verification is pending until that workflow succeeds. Real AC/ACC sessions, microphones, audio, DirectInput hardware and live-track calibration are separate checks. No measured CPU/GPU performance improvement is claimed.
+Native Windows verification is pending until that workflow succeeds. The UI gate requires the executable's own `Setup UI 880x576: passed` marker and rejects a crash during its exit grace period. If native model warmup/shutdown still runs after that period, the harness terminates only the test instance and records this in JSON; this does not verify shutdown during model warmup. App backend code is unchanged.
+
+The GPU-less Windows runner registers its existing Chrome SwiftShader ICD only for CI; this driver is not bundled or installed by RaceEngineer. The Vulkan-enabled release requires a working Vulkan runtime/driver, including for CPU compute. Release CPU code targets AVX2 instead of inheriting AVX-512 from the build host.
+
+Real AC/ACC sessions, microphones, audio, DirectInput hardware and live-track calibration are separate checks. No measured CPU/GPU performance improvement is claimed.

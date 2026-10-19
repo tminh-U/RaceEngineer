@@ -20,7 +20,9 @@ Run from an x64 MSVC environment with Qt and Ninja available:
 
 The production build is kept in `build-production/`, separate from the
 development build. Runtime models and voices must already be installed; the
-build does not download them.
+build does not download them. Release CPU code targets AVX2 rather than the build host.
+The Vulkan-enabled package requires a working Vulkan runtime/driver even when
+CPU compute is selected.
 
 ## Pit strategy
 

@@ -77,13 +77,14 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 ### Requirements
 
 - Windows x64
+- AVX2-capable CPU
 - Visual Studio 2022 with an x64 MSVC toolchain
 - CMake 3.24 or newer
 - Ninja
 - Qt 6.5 or newer
 - Assetto Corsa and/or Assetto Corsa Competizione
 - Runtime models and voice assets
-- Vulkan SDK (optional; recommended for GPU acceleration)
+- Prebuilt packages require a working Vulkan driver/runtime, including when CPU compute is selected. The Vulkan SDK is optional for source builds.
 
 ### Installation
 

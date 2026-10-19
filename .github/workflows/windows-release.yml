@@ -107,24 +107,7 @@ jobs:
           $versionCheck = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--version' -Wait -PassThru -RedirectStandardOutput build\native-setup-version.txt
           Get-Content build\native-setup-version.txt
           if ($versionCheck.ExitCode -ne 0) { throw "Built executable version check failed: $($versionCheck.ExitCode)" }
-          $check = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\native-setup-stdout.txt -RedirectStandardError build\native-setup-stderr.txt
-          Get-Content build\native-setup-stdout.txt, build\native-setup-stderr.txt
-          if ($check.ExitCode -ne 0) {
-            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-5); Id = 1000, 1001 } -ErrorAction SilentlyContinue |
-              Format-List TimeCreated, Id, Message | Out-File build\native-setup-events.txt
-            Get-Content build\native-setup-events.txt
-            $cdb = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
-            if (-not (Test-Path $cdb)) {
-              $sdkSetup = Join-Path $env:RUNNER_TEMP 'winsdksetup.exe'
-              Invoke-WebRequest 'https://go.microsoft.com/fwlink/?linkid=2311805' -OutFile $sdkSetup
-              $install = Start-Process $sdkSetup -ArgumentList '/quiet', '/norestart', '/features', 'OptionId.WindowsDesktopDebuggers' -Wait -PassThru
-              if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
-            }
-            $env:VK_LOADER_DEBUG = 'error,warn'
-            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxd -c2 ".exr -1; kv; lm; q" eh; sxe -c ".exr -1; kv; lm; q" 0xc000001d; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
-            Get-Content build\native-setup-debugger.txt -Tail 160
-            throw "Built QML/setup verification failed: $($check.ExitCode)"
-          }
+          .\production\scripts\verify-setup-ui.ps1 -ExecutablePath .\build-production\RaceEngineer.exe -LogPrefix native
       - name: Package and verify
         if: inputs.smoke_build_run == ''
         shell: pwsh
@@ -143,9 +126,7 @@ jobs:
           $env:QT_QPA_PLATFORM = 'windows'
           $env:QT_FORCE_STDERR_LOGGING = '1'
           Remove-Item Env:QT_PLUGIN_PATH, Env:QML2_IMPORT_PATH -ErrorAction SilentlyContinue
-          $check = Start-Process ".\production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\packaged-setup-stdout.txt -RedirectStandardError build\packaged-setup-stderr.txt
-          Get-Content build\packaged-setup-stdout.txt, build\packaged-setup-stderr.txt
-          if ($check.ExitCode -ne 0) { throw 'Packaged QML/setup verification failed.' }
+          .\production\scripts\verify-setup-ui.ps1 -ExecutablePath ".\production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" -LogPrefix packaged
           Get-ChildItem production\dist -File | Where-Object { $_.Extension -in '.exe', '.zip' } |
             ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } |
             Set-Content production\dist\SHA256SUMS.txt
@@ -175,7 +156,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v4
-        if: failure() && inputs.smoke_build_run == ''
+        if: (failure() || cancelled()) && inputs.smoke_build_run == ''
         with:
           name: Windows-native-smoke
           path: |

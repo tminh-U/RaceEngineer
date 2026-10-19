@@ -79,13 +79,14 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 ### Yêu cầu
 
 - Windows x64
+- CPU hỗ trợ AVX2
 - Visual Studio 2022 with an x64 MSVC toolchain
 - CMake 3.24 or newer
 - Ninja
 - Qt 6.5 or newer
 - Assetto Corsa and/or Assetto Corsa Competizione
 - Runtime models and voice assets
-- Vulkan SDK (optional; recommended for GPU acceleration)
+- Bản dựng sẵn cần driver/runtime Vulkan hoạt động, kể cả khi chọn tính toán CPU. Vulkan SDK tùy chọn khi build từ nguồn.
 
 ### Cài đặt
 
