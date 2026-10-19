@@ -55,6 +55,16 @@ jobs:
         shell: pwsh
         run: |
           .\production\scripts\build-release.ps1 -QtPrefix $env:QT_ROOT_DIR -EnableLtcg
+      - name: Verify built QML and setup
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: windows
+          QT_FORCE_STDERR_LOGGING: 1
+        run: |
+          New-Item build -ItemType Directory -Force | Out-Null
+          $check = Start-Process .\build-production\RaceEngineer.exe -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\native-setup-stdout.txt -RedirectStandardError build\native-setup-stderr.txt
+          Get-Content build\native-setup-stdout.txt, build\native-setup-stderr.txt
+          if ($check.ExitCode -ne 0) { throw "Built QML/setup verification failed: $($check.ExitCode)" }
       - name: Package and verify
         shell: pwsh
         run: |
@@ -67,8 +77,11 @@ jobs:
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
           .\production\scripts\package-portable.ps1 -Version $version -QtPrefix $env:QT_ROOT_DIR
           .\production\scripts\verify-release.ps1 -PackageDirectory ".\production\dist\RaceEngineer-$version"
-          $env:QT_QPA_PLATFORM = 'offscreen'
-          $check = Start-Process ".\production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" -ArgumentList '--verify-setup-ui' -Wait -PassThru
+          $env:QT_QPA_PLATFORM = 'windows'
+          $env:QT_FORCE_STDERR_LOGGING = '1'
+          Remove-Item Env:QT_PLUGIN_PATH, Env:QML2_IMPORT_PATH -ErrorAction SilentlyContinue
+          $check = Start-Process ".\production\dist\RaceEngineer-$version\bin\RaceEngineer.exe" -ArgumentList '--verify-setup-ui' -Wait -PassThru -RedirectStandardOutput build\packaged-setup-stdout.txt -RedirectStandardError build\packaged-setup-stderr.txt
+          Get-Content build\packaged-setup-stdout.txt, build\packaged-setup-stderr.txt
           if ($check.ExitCode -ne 0) { throw 'Packaged QML/setup verification failed.' }
           Get-ChildItem production\dist -File | Where-Object { $_.Extension -in '.exe', '.zip' } |
             ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } |
@@ -83,6 +96,15 @@ jobs:
             production/dist/RaceEngineer-*/release-manifest.json
             build/setup-ui-check/*.png
           if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-QML-diagnostics
+          path: |
+            build/*setup-*.txt
+            build/setup-ui-check/*.png
+          if-no-files-found: ignore
           retention-days: 14
       - name: Prepare verified draft release
         if: startsWith(github.ref, 'refs/tags/')
