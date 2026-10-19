@@ -2,11 +2,17 @@ name: Windows release
 
 on:
   workflow_dispatch:
+    inputs:
+      smoke_build_run:
+        description: 'Diagnose an existing Windows-native-smoke artifact; never package or release it'
+        required: false
+        type: string
   push:
     tags: ['v*']
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -57,10 +63,37 @@ jobs:
           Copy-Item "$runtime\bin\models" .\models -Recurse
           Copy-Item "$runtime\bin\voices" .\voices -Recurse
           "VC_REDIST_X64=$runtime\vc_redist.x64.exe" >> $env:GITHUB_ENV
+      - uses: actions/download-artifact@v4
+        if: inputs.smoke_build_run != ''
+        with:
+          name: Windows-native-smoke
+          path: build-production
+          run-id: ${{ inputs.smoke_build_run }}
+          github-token: ${{ github.token }}
       - name: Build and test Windows x64
+        if: inputs.smoke_build_run == ''
         shell: pwsh
         run: |
           .\production\scripts\build-release.ps1 -QtPrefix $env:QT_ROOT_DIR -EnableLtcg
+      - name: Configure software Vulkan for the GPU-less smoke runner
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:ProgramFiles\Google\Chrome\Application\*\vk_swiftshader_icd.json",
+            "${env:ProgramFiles(x86)}\Google\Chrome\Application\*\vk_swiftshader_icd.json",
+            "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\*\vk_swiftshader_icd.json"
+          )
+          $icd = Get-ChildItem $candidates -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $icd) { throw 'SwiftShader Vulkan ICD not found on the smoke runner.' }
+          $definition = Get-Content $icd.FullName -Raw | ConvertFrom-Json
+          $driver = Join-Path $icd.DirectoryName $definition.ICD.library_path
+          if (-not (Test-Path $driver)) { throw 'SwiftShader Vulkan DLL is missing.' }
+          $env:VK_DRIVER_FILES = $icd.FullName
+          $env:VK_ICD_FILENAMES = $icd.FullName
+          "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
+          "VK_ICD_FILENAMES=$($icd.FullName)" >> $env:GITHUB_ENV
+          & "$env:VULKAN_SDK\Bin\vulkaninfo.exe" --summary
+          if ($LASTEXITCODE -ne 0) { throw 'Software Vulkan instance creation failed.' }
       - name: Verify built QML and setup
         shell: pwsh
         env:
@@ -85,11 +118,12 @@ jobs:
               if ($install.ExitCode -ne 0) { throw "Debugger installation failed: $($install.ExitCode)" }
             }
             $env:QT_DEBUG_PLUGINS = '1'
-            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
+            & $cdb -G -logo build\native-setup-debugger.txt -c 'sxe -c ".exr -1; !cppexr -1; kv; lm; q" eh; sxe -c ".exr -1; kv; lm; q" 0xc0000409; sxe -c ".exr -1; kv; lm; q" av; g' .\build-production\RaceEngineer.exe --verify-setup-ui
             Get-Content build\native-setup-debugger.txt -Tail 160
             throw "Built QML/setup verification failed: $($check.ExitCode)"
           }
       - name: Package and verify
+        if: inputs.smoke_build_run == ''
         shell: pwsh
         run: |
           $cmake = Get-Content CMakeLists.txt -Raw
@@ -111,6 +145,7 @@ jobs:
             ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } |
             Set-Content production\dist\SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
+        if: inputs.smoke_build_run == ''
         with:
           name: RaceEngineer-${{ env.RELEASE_VERSION }}-windows-x64
           path: |
@@ -131,7 +166,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && inputs.smoke_build_run == ''
         with:
           name: Windows-native-smoke
           path: |
@@ -146,7 +181,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       - name: Prepare verified draft release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && inputs.smoke_build_run == ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
