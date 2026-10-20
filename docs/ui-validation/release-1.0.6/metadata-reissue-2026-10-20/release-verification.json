@@ -1,0 +1,79 @@
+{
+  "source_sha": "b0ecd9699c310d42dfbd525b7d29fe8ee40b6b4e",
+  "build_run": "39392660681",
+  "version": "1.0.6",
+  "manifest_files": 1762,
+  "executable_sha256": "bfc3dccdd8f2eb689169ff5ea09b28a8dd4b3a89e54d5cb5177e0cd41f65ee15",
+  "package_sha256": {
+    "RaceEngineer-1.0.6-Setup.exe": "2915492f13a3cdc892fefb744d6bbdd585f418c4e7426f8a7a94228d3074f0ca",
+    "RaceEngineer-1.0.6-windows-x64.zip": "bdf151afabb102e33c0c0c62b2543075e8a937bc1a08f252978c4e9aa4ea493a"
+  },
+  "native_ui": {
+    "native": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\build-production\\RaceEngineer.exe",
+      "sha256": "bfc3dccdd8f2eb689169ff5ea09b28a8dd4b3a89e54d5cb5177e0cd41f65ee15",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    },
+    "packaged": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\production\\dist\\RaceEngineer-1.0.6\\bin\\RaceEngineer.exe",
+      "sha256": "bfc3dccdd8f2eb689169ff5ea09b28a8dd4b3a89e54d5cb5177e0cd41f65ee15",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    }
+  },
+  "reissue_run": "39395396279",
+  "native_ctest": {
+    "passed": 7,
+    "failed": 0
+  },
+  "native_metadata": {
+    "target": "TelemetryMetadataTests",
+    "passed": true,
+    "duration_seconds": 13.36,
+    "providers": [
+      "AC",
+      "ACC"
+    ],
+    "shared_memory": "synthetic Windows mappings"
+  },
+  "qt_metadata_cases": 12,
+  "qt_source_hashes_match": true,
+  "limits": [
+    "The UI regression uses an offscreen Qt/PySide facade. The Windows metadata test executes the actual providers against synthetic shared-memory mappings, not live games.",
+    "No real AC/ACC session, companion UDP server, UAC interaction or in-app updater network flow was exercised.",
+    "Native setup UI assertions passed, but instances were terminated after their exit grace period during model warmup; orderly shutdown during warmup is not verified."
+  ],
+  "public_zip_manifest_matches": true,
+  "public_executable_sha256": "bfc3dccdd8f2eb689169ff5ea09b28a8dd4b3a89e54d5cb5177e0cd41f65ee15",
+  "voice_model_hashes_unchanged": {
+    "bin/models/vieneu-v3/backbone.gguf": "3d8b9600125abc6cfb485ce2841c74a1877f62984251b49369366c17f5fcf5bd",
+    "bin/models/vieneu-v3/vieneu_v3_heads.npz": "5bd867ce5341227b11ce30ff7919645779404fdf686642fb93604b6a79ff69e3",
+    "bin/models/vieneu-v3/voices_v3_turbo.json": "c7a2c64aef84ae9b1a44ba5166058f0cfbffe36d94042cdefcb648996d968f17"
+  },
+  "minh_quan_preset_present": true,
+  "release_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6",
+  "release_id": 417596939,
+  "public_checksums_match": true,
+  "github_asset_digests_match": true,
+  "tag_matches_source": true,
+  "assets": [
+    {
+      "name": "RaceEngineer-1.0.6-Setup.exe",
+      "bytes": 621714212,
+      "digest": "sha256:2915492f13a3cdc892fefb744d6bbdd585f418c4e7426f8a7a94228d3074f0ca"
+    },
+    {
+      "name": "RaceEngineer-1.0.6-windows-x64.zip",
+      "bytes": 746674525,
+      "digest": "sha256:bdf151afabb102e33c0c0c62b2543075e8a937bc1a08f252978c4e9aa4ea493a"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 198,
+      "digest": "sha256:2ea959781d6e09589ea3d136d7b1e484ef649c1115d26a1197b05c1ccdd732d6"
+    }
+  ]
+}

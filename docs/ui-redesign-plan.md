@@ -1,6 +1,6 @@
 # RaceEngineer — plan triển khai Cockpit cho mô hình tiếp nhận
 
-## Sửa Cockpit báo chờ khi đã nhận telemetry — đang chuẩn bị tái phát hành
+## Sửa Cockpit báo chờ khi đã nhận telemetry — đã tái phát hành v1.0.6
 
 Theo yêu cầu kiểm tra kỹ, commit và tái phát hành v1.0.6; cho phép sửa provider và bổ sung kiểm tra cần thiết.
 
@@ -9,7 +9,7 @@ Theo yêu cầu kiểm tra kỹ, commit và tái phát hành v1.0.6; cho phép s
 - [x] Cockpit ưu tiên trạng thái kết nối: thiếu track/xe không yêu cầu khởi động game đã kết nối; ngắt kết nối không giữ tên cũ.
 - [x] 12/12 ca Qt ở 880×576/1280×800 đạt, 0 warning/log; root đã xem ảnh và xác nhận hash nguồn khớp. [Báo cáo](ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-ui-report.json).
 - [x] Bổ sung `TelemetryMetadataTests` cho Windows, dùng cả provider AC/ACC thật và mapping giả: thiếu/zero static, dữ liệu đến muộn, đổi track/xe, xóa subclass/metadata và reconnect; từ chối ghi mapping đã tồn tại.
-- [ ] Commit/push, build Windows và chạy toàn bộ CTests, kiểm tra native/packaged setup, manifest/version/icon trước khi thay asset v1.0.6.
+- [x] Commit/push `b0ecd96`; Windows build `39392660681` đạt 7/7 CTests (metadata provider test đạt 13.36s), native/packaged setup UI, manifest/version/icon. Workflow `39395396279` xác minh 1762 file, thay tag/installer/ZIP/checksum và cập nhật Changes; đối chiếu file công khai với CI. [Bằng chứng](ui-validation/release-1.0.6/metadata-reissue-2026-10-20/README.md).
 - [ ] Xác minh lúc app mở trước game, metadata đến muộn và đổi track/xe trong game thật; fixture không thay thế lượt kiểm này.
 
 ## Thiết lập game và kiểm tra cập nhật — đã tái phát hành v1.0.6
