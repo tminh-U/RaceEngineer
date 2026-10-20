@@ -1,0 +1,102 @@
+name: Reissue verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: 'Successful Windows release workflow run'
+        required: true
+        type: string
+      source_sha:
+        description: 'Full source commit used by that build'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: reissue-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN: ${{ inputs.build_run }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source build and download its packages
+        run: |
+          python - <<'PY'
+          import json, os, re, subprocess
+          assert re.fullmatch(r'[0-9]+', os.environ['BUILD_RUN'])
+          assert re.fullmatch(r'[0-9a-f]{40}', os.environ['SOURCE_SHA'])
+          run = json.loads(subprocess.check_output(['gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["BUILD_RUN"]}']))
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['head_sha'] == os.environ['SOURCE_SHA']
+          assert run['path'] == '.github/workflows/windows-release.yml'
+          subprocess.run(['git', 'merge-base', '--is-ancestor', os.environ['SOURCE_SHA'], 'HEAD'], check=True)
+          PY
+          gh run download "$BUILD_RUN" --name 'RaceEngineer-1.0.6-windows-x64' --dir artifacts
+          gh run download "$BUILD_RUN" --name 'Windows-QML-diagnostics' --dir diagnostics
+      - name: Verify hashes, version, source and native UI results
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          root = pathlib.Path('artifacts')
+          checksum = next(root.rglob('SHA256SUMS.txt'))
+          package = checksum.parent
+          hashes = {}
+          for line in checksum.read_text(encoding='utf-8-sig').splitlines():
+              expected, name = line.split(None, 1)
+              name = name.strip()
+              assert name in ('RaceEngineer-1.0.6-Setup.exe', 'RaceEngineer-1.0.6-windows-x64.zip')
+              with (package / name).open('rb') as file:
+                  actual = hashlib.file_digest(file, 'sha256').hexdigest()
+              assert actual == expected, name
+              hashes[name] = actual
+          assert len(hashes) == 2
+          with zipfile.ZipFile(package / 'RaceEngineer-1.0.6-windows-x64.zip') as archive:
+              manifest = json.loads(archive.read('release-manifest.json'))
+              assert manifest['version'] == '1.0.6'
+              assert os.environ['SOURCE_SHA'].startswith(manifest['commit']) and len(manifest['commit']) >= 7
+              for entry in manifest['files']:
+                  with archive.open(entry['path'].replace('\\', '/')) as file:
+                      assert hashlib.file_digest(file, 'sha256').hexdigest() == entry['sha256'], entry['path']
+              executable = next(e['sha256'] for e in manifest['files'] if e['path'].replace('\\', '/') == 'bin/RaceEngineer.exe')
+          native = {}
+          for name in ('native', 'packaged'):
+              result = json.loads(next(pathlib.Path('diagnostics').rglob(f'{name}-setup-result.json')).read_text(encoding='utf-8-sig'))
+              assert result['ui_assertions_passed'] and result['sha256'] == executable
+              native[name] = result
+          proof = {'source_sha': os.environ['SOURCE_SHA'], 'build_run': os.environ['BUILD_RUN'], 'version': manifest['version'], 'manifest_files': len(manifest['files']), 'executable_sha256': executable, 'package_sha256': hashes, 'native_ui': native}
+          pathlib.Path('publish-verification.json').write_text(json.dumps(proof, indent=2))
+          print('REISSUE_VERIFICATION=' + json.dumps(proof))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'PACKAGE_DIR={package}\n')
+          PY
+      - name: Update existing v1.0.6 tag and release
+        run: |
+          gh release view v1.0.6 >/dev/null
+          previous=$(git ls-remote origin refs/tags/v1.0.6 | cut -f1)
+          test -n "$previous"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag --force --annotate v1.0.6 "$SOURCE_SHA" --message "Reissued v1.0.6 from $SOURCE_SHA"
+          git push --force-with-lease="refs/tags/v1.0.6:$previous" origin refs/tags/v1.0.6
+          git show "$SOURCE_SHA:docs/releases/v1.0.6.md" > release-notes.md
+          python - <<'PY'
+          import os
+          with open('release-notes.md', 'a') as notes:
+              sha = os.environ['SOURCE_SHA']
+              notes.write(f'\nSource for these binaries: [commit {sha[:7]}](https://github.com/{os.environ["GITHUB_REPOSITORY"]}/commit/{sha}).\n')
+          PY
+          gh release upload v1.0.6 "$PACKAGE_DIR/RaceEngineer-1.0.6-Setup.exe" "$PACKAGE_DIR/RaceEngineer-1.0.6-windows-x64.zip" "$PACKAGE_DIR/SHA256SUMS.txt" --clobber
+          gh release edit v1.0.6 --notes-file release-notes.md --target "$SOURCE_SHA" --latest
