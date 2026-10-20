@@ -1,5 +1,17 @@
 # RaceEngineer — plan triển khai Cockpit cho mô hình tiếp nhận
 
+## Sửa Cockpit báo chờ khi đã nhận telemetry — đang chuẩn bị tái phát hành
+
+Theo yêu cầu kiểm tra kỹ, commit và tái phát hành v1.0.6; cho phép sửa provider và bổ sung kiểm tra cần thiết.
+
+- [x] Rà tiêu đề và provider: metadata AC/ACC chỉ đọc lúc kết nối nên nội dung/mapping đến muộn bị bỏ lỡ.
+- [x] Đọc lại static metadata mỗi giây bằng hai snapshot khớp nhau; thử mở mapping static/graphics chưa có, cập nhật/loại metadata cũ khi đổi phiên. Giữ nhịp polling telemetry.
+- [x] Cockpit ưu tiên trạng thái kết nối: thiếu track/xe không yêu cầu khởi động game đã kết nối; ngắt kết nối không giữ tên cũ.
+- [x] 12/12 ca Qt ở 880×576/1280×800 đạt, 0 warning/log; root đã xem ảnh và xác nhận hash nguồn khớp. [Báo cáo](ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-ui-report.json).
+- [x] Bổ sung `TelemetryMetadataTests` cho Windows, dùng cả provider AC/ACC thật và mapping giả: thiếu/zero static, dữ liệu đến muộn, đổi track/xe, xóa subclass/metadata và reconnect; từ chối ghi mapping đã tồn tại.
+- [ ] Commit/push, build Windows và chạy toàn bộ CTests, kiểm tra native/packaged setup, manifest/version/icon trước khi thay asset v1.0.6.
+- [ ] Xác minh lúc app mở trước game, metadata đến muộn và đổi track/xe trong game thật; fixture không thay thế lượt kiểm này.
+
 ## Thiết lập game và kiểm tra cập nhật — đã tái phát hành v1.0.6
 
 Yêu cầu mới cho phép thêm tính năng và sửa native/installer cần thiết; các giới hạn UI-only trong lịch sử không áp dụng cho tích hợp này. Giữ toàn bộ tính năng cũ và thuật toán telemetry/voice/strategy. Theo yêu cầu commit và tái phát hành, binary/tag v1.0.6 mới từ `e57adf0c093eb06f77575886dc9997f5cc7b35aa`.

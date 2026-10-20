@@ -1,0 +1,742 @@
+{
+  "created_utc": "2026-10-20T06:26:02Z",
+  "result": "PASS",
+  "scope": "Qt/PySide QML binding and rendered text with synthetic facade telemetry",
+  "runtime": {
+    "python": "3.12.14",
+    "pyside6": "6.8.3",
+    "qt": "6.8.3",
+    "platform": "offscreen",
+    "quick_backend": "software"
+  },
+  "sizes_and_states": [
+    {
+      "requested_size": [
+        880,
+        576
+      ],
+      "actual_size": [
+        880,
+        576
+      ],
+      "states": [
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12
+          },
+          "rendered": {
+            "track": "ĐÃ KẾT NỐI",
+            "car": "Chưa có thông tin xe từ simulator",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              149.0,
+              46.0
+            ],
+            "car": [
+              173.0,
+              124.0,
+              593.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-connected-metadata-missing.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "c816553677ade3a74f26e2253273e0a23ecbdc6518e5752d6442c65ba50cd751"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Monza"
+          },
+          "rendered": {
+            "track": "MONZA",
+            "car": "Chưa có thông tin xe từ simulator",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              91.0,
+              46.0
+            ],
+            "car": [
+              115.0,
+              124.0,
+              651.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-track-only-metadata.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "0e0bd581a8c564dd0727c7cddc7265b697e635c75bede6e669b7fa0c53945b68"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "carModel": "Ferrari 296 GT3"
+          },
+          "rendered": {
+            "track": "ĐÃ KẾT NỐI",
+            "car": "Ferrari 296 GT3",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              149.0,
+              46.0
+            ],
+            "car": [
+              173.0,
+              124.0,
+              593.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-car-only-metadata.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "d473f593cf10deac72a634a9e4157ec873e0f260ad24de4a901e0df3b42c0e3e"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Monza",
+            "carModel": "Ferrari 296 GT3"
+          },
+          "rendered": {
+            "track": "MONZA",
+            "car": "Ferrari 296 GT3",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              91.0,
+              46.0
+            ],
+            "car": [
+              115.0,
+              124.0,
+              651.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-metadata-arrived.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "f5315db1841a41190ac44255a475e2e77c59afd8b938ad84bedc6bafea47a14a"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Silverstone",
+            "carModel": "Porsche 992 GT3 R"
+          },
+          "rendered": {
+            "track": "SILVERSTONE",
+            "car": "Porsche 992 GT3 R",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              179.0,
+              46.0
+            ],
+            "car": [
+              203.0,
+              124.0,
+              563.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-metadata-changed.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "eb40ef342792422187a09bcb01ca7e9c24b35c259f2af6f18fe8de9adff300c4"
+          }
+        },
+        {
+          "connected": false,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Stale Track",
+            "carModel": "Stale Car Model"
+          },
+          "rendered": {
+            "track": "CHỜ PHIÊN",
+            "car": "Khởi động simulator để xem dữ liệu xe",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              12.0,
+              98.0,
+              141.0,
+              46.0
+            ],
+            "car": [
+              165.0,
+              124.0,
+              601.0,
+              16.0
+            ],
+            "speed": [
+              18.0,
+              189.0,
+              74.0,
+              68.0
+            ],
+            "gear": [
+              163.0,
+              209.0,
+              17.97,
+              51.0
+            ],
+            "fuel": [
+              622.82,
+              179.0,
+              90.0,
+              51.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-880x576-disconnected-stale-names.png",
+            "width": 880,
+            "height": 576,
+            "sha256": "03ece470bbf4f000df057bd61491d3117ef31ac0c499d0bf25a47c607ea3a19f"
+          }
+        }
+      ]
+    },
+    {
+      "requested_size": [
+        1280,
+        800
+      ],
+      "actual_size": [
+        1280,
+        800
+      ],
+      "states": [
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12
+          },
+          "rendered": {
+            "track": "ĐÃ KẾT NỐI",
+            "car": "Chưa có thông tin xe từ simulator",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              375.0,
+              116.0
+            ],
+            "car": [
+              448.0,
+              130.0,
+              611.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-connected-metadata-missing.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "8d5167ddc03b20899f64233b11f615364f631778c6fac58d447007bb56073a1f"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Monza"
+          },
+          "rendered": {
+            "track": "MONZA",
+            "car": "Chưa có thông tin xe từ simulator",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              228.0,
+              116.0
+            ],
+            "car": [
+              301.0,
+              130.0,
+              758.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-track-only-metadata.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "1e0ef1d5324b4b716f86745b221b342c5dda4d99b3b6901b39fe8e894c65eb13"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "carModel": "Ferrari 296 GT3"
+          },
+          "rendered": {
+            "track": "ĐÃ KẾT NỐI",
+            "car": "Ferrari 296 GT3",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              375.0,
+              116.0
+            ],
+            "car": [
+              448.0,
+              130.0,
+              611.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-car-only-metadata.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "6a8a70faad5b77a6dce8c3808a751e8eddbdaeb8bb6fac2ee421e8de4b4b52bc"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Monza",
+            "carModel": "Ferrari 296 GT3"
+          },
+          "rendered": {
+            "track": "MONZA",
+            "car": "Ferrari 296 GT3",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              228.0,
+              116.0
+            ],
+            "car": [
+              301.0,
+              130.0,
+              758.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-metadata-arrived.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "e59ef86e24e0712cdc0aa05fc5450b6dc51b992bb61d965ae70eeed06fee6ad9"
+          }
+        },
+        {
+          "connected": true,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Silverstone",
+            "carModel": "Porsche 992 GT3 R"
+          },
+          "rendered": {
+            "track": "SILVERSTONE",
+            "car": "Porsche 992 GT3 R",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              452.0,
+              116.0
+            ],
+            "car": [
+              525.0,
+              130.0,
+              534.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-metadata-changed.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "3950e6db13bd7a1e3c77bfc980a7d2601f2aa18ddb00d377a82d8c3b731316f3"
+          }
+        },
+        {
+          "connected": false,
+          "telemetry": {
+            "speedKmh": 224.0,
+            "gear": 5,
+            "rpm": 7825.0,
+            "fuelLiters": 32.4,
+            "throttle": 0.82,
+            "brake": 0.12,
+            "track": "Stale Track",
+            "carModel": "Stale Car Model"
+          },
+          "rendered": {
+            "track": "CHỜ PHIÊN",
+            "car": "Khởi động simulator để xem dữ liệu xe",
+            "speed": "224",
+            "gear": "5",
+            "fuel": "32,4 L"
+          },
+          "bounds": {
+            "track": [
+              24.0,
+              68.0,
+              356.0,
+              116.0
+            ],
+            "car": [
+              429.0,
+              130.0,
+              630.0,
+              19.0
+            ],
+            "speed": [
+              34.0,
+              243.0,
+              194.0,
+              178.0
+            ],
+            "gear": [
+              305.0,
+              295.0,
+              35.09,
+              99.0
+            ],
+            "fuel": [
+              904.24,
+              243.0,
+              170.0,
+              96.0
+            ]
+          },
+          "screenshot": {
+            "path": "docs/ui-validation/release-1.0.6/metadata-reissue-2026-10-20/metadata-1280x800-disconnected-stale-names.png",
+            "width": 1280,
+            "height": 800,
+            "sha256": "28194c910dc3ca316be16b3e3e9f15da4a1931c24eb1abaea84c029e933a3e2a"
+          }
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "qt_logs": [],
+  "source_sha256": {
+    "qml/Cockpit.qml": "b1ed02c1fa50558de4165bf6c4e5aeeabf39c47a3e76248d5ff18de6f36c95ba",
+    "qml/Main.qml": "d7817699e8e4e94c5a4331f0b47fe2d894aaccf4a00335174b46f336db64951c",
+    "tests/ui/metadata_regression.py": "4fc5b9bc7b08953297cf4fd14d96c8bd43efef7d93817ca618ec072e1d6697fd",
+    "tests/TelemetryMetadataTests.cpp": "980111cd7500d20186d23c0474750afcb7e5d4594755a1c842a163f3e0451916",
+    "tests/ui/fake_application.py": "eefc0a76a426020869a22165ac06afd09853a36cd1d1ecf7d5abe4991a66af4a",
+    "src/telemetry/ac/ACTelemetryProvider.cpp": "6d30248d5e6e304f6d4a369445f90520f837da02c4d49f78109c4e4035c3ac40",
+    "src/telemetry/acc/ACCTelemetryProvider.cpp": "0669e61d588f70bc5ce4a6c11c06eadaeafd7abb3811d1189e2847edaaa20205"
+  },
+  "limitations": [
+    "The UI facade supplies synthetic telemetry and metadata; this does not run AC/ACC or their shared-memory providers.",
+    "Native provider regression is in tests/TelemetryMetadataTests.cpp and must execute on Windows.",
+    "No real simulator, UDP companion, graphics driver, or game-session behavior is verified here."
+  ]
+}

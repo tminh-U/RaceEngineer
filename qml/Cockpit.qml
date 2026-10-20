@@ -84,7 +84,8 @@ Item {
                 id: trackText
                 objectName: "trackValue"
                 Layout.maximumWidth: (cockpit.width - (cockpit.compact ? 32 : 52)) * 0.40
-                text: cockpit.telemetry.track ? String(cockpit.telemetry.track).toUpperCase() : "CHỜ PHIÊN"
+                text: !cockpit.controller.connected ? "CHỜ PHIÊN"
+                    : cockpit.telemetry.track ? String(cockpit.telemetry.track).toUpperCase() : "ĐÃ KẾT NỐI"
                 font.family: cockpit.theme.displayFont
                 font.weight: cockpit.theme.displayWeight
                 font.pixelSize: cockpit.compact ? 38 : cockpit.width >= 1450 ? 112 : 96
@@ -105,7 +106,8 @@ Item {
                     id: carText
                     objectName: "carValue"
                     width: parent.width
-                    text: cockpit.telemetry.carModel || "Khởi động simulator để xem dữ liệu xe"
+                    text: !cockpit.controller.connected ? "Khởi động simulator để xem dữ liệu xe"
+                        : cockpit.telemetry.carModel || "Chưa có thông tin xe từ simulator"
                     elide: Text.ElideRight
                     font.pixelSize: cockpit.compact ? 12 : 14
                     Accessible.name: text

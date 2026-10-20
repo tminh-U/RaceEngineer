@@ -24,8 +24,7 @@ bool copyStable(const WindowsSharedMemory& page, T& output)
         if (!page.copyTo(first) || !page.copyTo(second)) {
             return false;
         }
-        if (first.packetId == second.packetId
-            && std::memcmp(&first, &second, sizeof(T)) == 0) {
+        if (std::memcmp(&first, &second, sizeof(T)) == 0) {
             output = second;
             return true;
         }
@@ -140,29 +139,11 @@ bool ACCTelemetryProvider::start()
     broadcast_.start();
 
     state_ = {};
+    staticRefreshAt_ = {};
     state_.simulator = Simulator::AssettoCorsaCompetizione;
     state_.connected = true;
     connected_ = true;
 
-    acc::SPageFileStatic staticData{};
-    if (staticPage_.copyTo(staticData)) {
-        const auto track = wideToUtf8(staticData.track);
-        if (!track.empty()) {
-            state_.track = track;
-        }
-        const auto carModel = wideToUtf8(staticData.carModel);
-        if (!carModel.empty()) {
-            state_.carModel = carModel;
-            const auto vehicle = classifyVehicle(state_.simulator, carModel);
-            state_.carCategory = vehicle.category;
-            if (!vehicle.subclass.empty()) state_.carSubclass = vehicle.subclass;
-        }
-        const auto driver = playerDisplayName(staticData);
-        if (!driver.empty()) state_.driverName = driver;
-        if (std::isfinite(staticData.maxFuel) && staticData.maxFuel > 0.0F) {
-            state_.fuelCapacityLiters = staticData.maxFuel;
-        }
-    }
     return update();
 }
 
@@ -188,6 +169,38 @@ bool ACCTelemetryProvider::update()
     }
 
     state_.capturedAt = std::chrono::steady_clock::now();
+    // Static metadata can arrive after physics and change between sessions.
+    if (staticRefreshAt_ == std::chrono::steady_clock::time_point{}
+        || state_.capturedAt - staticRefreshAt_ >= std::chrono::seconds(1)) {
+        staticRefreshAt_ = state_.capturedAt;
+        if (!graphicsPage_.isOpen()) graphicsPage_.open(L"Local\\acpmf_graphics", sizeof(acc::SPageFileGraphic));
+        if (!staticPage_.isOpen()) staticPage_.open(L"Local\\acpmf_static", sizeof(acc::SPageFileStatic));
+        acc::SPageFileStatic staticData{};
+        if (copyStable(staticPage_, staticData)) {
+            state_.track.reset();
+            state_.carModel.reset();
+            state_.carCategory.reset();
+            state_.carSubclass.reset();
+            state_.driverName.reset();
+            state_.fuelCapacityLiters.reset();
+            const auto track = wideToUtf8(staticData.track);
+            if (!track.empty()) {
+                state_.track = track;
+            }
+            const auto carModel = wideToUtf8(staticData.carModel);
+            if (!carModel.empty()) {
+                state_.carModel = carModel;
+                const auto vehicle = classifyVehicle(state_.simulator, carModel);
+                state_.carCategory = vehicle.category;
+                if (!vehicle.subclass.empty()) state_.carSubclass = vehicle.subclass;
+            }
+            const auto driver = playerDisplayName(staticData);
+            if (!driver.empty()) state_.driverName = driver;
+            if (std::isfinite(staticData.maxFuel) && staticData.maxFuel > 0.0F) {
+                state_.fuelCapacityLiters = staticData.maxFuel;
+            }
+        }
+    }
     state_.speedKmh = std::max(0.0F, physics.speedKmh);
     state_.rpm = std::max(0, physics.rpms);
     state_.gear = normalizeAcGear(physics.gear);

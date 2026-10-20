@@ -433,6 +433,30 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME RaceStateTests COMMAND RaceStateTests)
 
+    if(WIN32)
+        add_executable(TelemetryMetadataTests
+            tests/TelemetryMetadataTests.cpp
+            src/telemetry/ac/ACTelemetryProvider.cpp
+            src/telemetry/ac/AcExtensionClient.cpp
+            src/telemetry/acc/ACCTelemetryProvider.cpp
+            src/telemetry/acc/AccBroadcastClient.cpp
+            src/telemetry/common/WindowsSharedMemory.cpp
+            src/telemetry/common/RaceState.cpp
+            src/telemetry/common/VehicleCatalog.cpp
+            assets/vehicle_catalog/catalog.qrc
+        )
+        set_target_properties(TelemetryMetadataTests PROPERTIES AUTORCC ON)
+        target_include_directories(TelemetryMetadataTests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        target_link_libraries(TelemetryMetadataTests PRIVATE Qt6::Core Qt6::Network Advapi32)
+        target_compile_definitions(TelemetryMetadataTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        if(MSVC)
+            target_compile_options(TelemetryMetadataTests PRIVATE /W4 /permissive- /utf-8)
+        endif()
+        add_test(NAME TelemetryMetadataTests COMMAND TelemetryMetadataTests)
+        set_tests_properties(TelemetryMetadataTests PROPERTIES RUN_SERIAL TRUE TIMEOUT 45)
+    endif()
+
     add_executable(GoogleTtsBackendTests
         tests/GoogleTtsBackendTests.cpp
         src/llm/providers/OpenAICompatibleProvider.cpp

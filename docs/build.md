@@ -85,6 +85,11 @@ Run the offline tests:
 ctest --test-dir build --output-on-failure
 ```
 
+On Windows, `TelemetryMetadataTests` exercises the real AC/ACC readers with
+synthetic shared-memory pages, including delayed metadata and reconnects. Close
+both simulators before running it: the test refuses to replace existing game
+shared-memory mappings. This does not replace validation in a real game session.
+
 The local race-data pipeline has a separate Python suite, not registered by
 CTest:
 

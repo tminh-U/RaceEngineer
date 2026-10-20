@@ -4,6 +4,8 @@
 #include "telemetry/common/ISimTelemetryProvider.h"
 #include "telemetry/common/WindowsSharedMemory.h"
 
+#include <chrono>
+
 namespace raceengineer {
 
 class ACTelemetryProvider final : public ISimTelemetryProvider {
@@ -21,6 +23,7 @@ private:
     WindowsSharedMemory staticPage_;
     AcExtensionClient extensionClient_;
     RaceState state_;
+    std::chrono::steady_clock::time_point staticRefreshAt_{};
     bool connected_{false};
 };
 
