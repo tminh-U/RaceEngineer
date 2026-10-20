@@ -1,5 +1,9 @@
 # RaceEngineer 1.0.6 — release verification
 
+## Current assets: reissued 2026-10-20
+
+The existing v1.0.6 release now contains rebuilt binaries from `bc143b0c56ef9507e26b76fec3e70c787cb8bc3c`, fixing the disconnected status marker. [Current verification, checksums and Qt captures](reissue-2026-10-20/README.md). The original publication evidence below is retained as history.
+
 ## Frontend and branding
 
 - [Full Qt UI suite](render-report.json): 15 QML components compile, 51/51 baseline facade methods exercised, 12 Cockpit breakpoints and 20 window captures, no QML/Qt warnings.
@@ -17,7 +21,7 @@ The Windows workflow builds from the current source, runs CTest, packages with t
 
 [Windows workflow 39297911475](https://github.com/tminh-U/RaceEngineer/actions/runs/39297911475) succeeded: 6/6 CTests, executable version/manifest verification, built and packaged UI assertions, and all seven source ICO frames embedded in both app and installer. Root independently checked the downloaded app EXE and all eleven packaged logo files against source, matched installer/ZIP hashes to GitHub asset digests, and reviewed all seven Windows UI captures. [Verification record](native/release-verification.json), [embedded icons](native/embedded-icons.json), [first setup](native/setup-ui-check/step-0.png), [Google voice dialog](native/setup-ui-check/step-6.png).
 
-[RaceEngineer v1.0.6](https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6) is published as the latest stable release, with installer, portable ZIP and SHA256SUMS. Its binaries come from commit `a5a5fca8e3758b393243c93a7748cbfed07c60fe`. The UI gate requires the executable's own `Setup UI 880x576: passed` marker and rejects a crash during its exit grace period. If native model warmup/shutdown still runs after that period, the harness terminates only the test instance and records this in JSON; this does not verify shutdown during model warmup. App backend code is unchanged.
+The original [RaceEngineer v1.0.6](https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6) publication supplied installer, portable ZIP and SHA256SUMS from commit `a5a5fca8e3758b393243c93a7748cbfed07c60fe`; the current assets are the reissue linked above. The UI gate requires the executable's own `Setup UI 880x576: passed` marker and rejects a crash during its exit grace period. If native model warmup/shutdown still runs after that period, the harness terminates only the test instance and records this in JSON; this does not verify shutdown during model warmup. App backend code is unchanged.
 
 The GPU-less Windows runner registers its existing Chrome SwiftShader ICD only for CI; this driver is not bundled or installed by RaceEngineer. The Vulkan-enabled release requires a working Vulkan runtime/driver, including for CPU compute. Release CPU code targets AVX2 instead of inheriting AVX-512 from the build host.
 

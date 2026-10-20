@@ -1,0 +1,69 @@
+{
+  "source_sha": "bc143b0c56ef9507e26b76fec3e70c787cb8bc3c",
+  "build_run": "39363124808",
+  "version": "1.0.6",
+  "manifest_files": 1762,
+  "executable_sha256": "d3260559239c30f18e4836e21965d2fcfdd69a871bd2d3b9cf67a7fd0ffadc0f",
+  "package_sha256": {
+    "RaceEngineer-1.0.6-Setup.exe": "b06eb090e7ca9c56761d37b2647c2fcbdb722a259eea387736d67840ec8fadb5",
+    "RaceEngineer-1.0.6-windows-x64.zip": "d824cfd3c170c5cfc863ebf7dc62f995db9cb3abbbe53d57a3489e8d0af73181"
+  },
+  "native_ui": {
+    "native": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\build-production\\RaceEngineer.exe",
+      "sha256": "d3260559239c30f18e4836e21965d2fcfdd69a871bd2d3b9cf67a7fd0ffadc0f",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    },
+    "packaged": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\production\\dist\\RaceEngineer-1.0.6\\bin\\RaceEngineer.exe",
+      "sha256": "d3260559239c30f18e4836e21965d2fcfdd69a871bd2d3b9cf67a7fd0ffadc0f",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    }
+  },
+  "release_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6",
+  "release_id": 417596939,
+  "reissue_run": "39365222484",
+  "public_checksums_match": true,
+  "github_asset_digests_match": true,
+  "tag_matches_source": true,
+  "assets": [
+    {
+      "name": "RaceEngineer-1.0.6-Setup.exe",
+      "bytes": 621605906,
+      "digest": "sha256:b06eb090e7ca9c56761d37b2647c2fcbdb722a259eea387736d67840ec8fadb5"
+    },
+    {
+      "name": "RaceEngineer-1.0.6-windows-x64.zip",
+      "bytes": 746633103,
+      "digest": "sha256:d824cfd3c170c5cfc863ebf7dc62f995db9cb3abbbe53d57a3489e8d0af73181"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 198,
+      "digest": "sha256:618755601927d58444938288168728b6c590b4bc164c43dfc0f16a9e8488d498"
+    }
+  ],
+  "public_zip_manifest_matches": true,
+  "public_executable_sha256": "d3260559239c30f18e4836e21965d2fcfdd69a871bd2d3b9cf67a7fd0ffadc0f",
+  "voice_model_hashes_unchanged": {
+    "bin/models/vieneu-v3/backbone.gguf": "3d8b9600125abc6cfb485ce2841c74a1877f62984251b49369366c17f5fcf5bd",
+    "bin/models/vieneu-v3/vieneu_v3_heads.npz": "5bd867ce5341227b11ce30ff7919645779404fdf686642fb93604b6a79ff69e3",
+    "bin/models/vieneu-v3/voices_v3_turbo.json": "c7a2c64aef84ae9b1a44ba5166058f0cfbffe36d94042cdefcb648996d968f17"
+  },
+  "minh_quan_preset_present": true,
+  "native_ctest": {
+    "passed": 6,
+    "failed": 0
+  },
+  "qt_marker_cases": 4,
+  "qt_source_sha256": "d7817699e8e4e94c5a4331f0b47fe2d894aaccf4a00335174b46f336db64951c",
+  "limits": [
+    "Qt marker screenshots use PySide6 offscreen with a fake facade.",
+    "Native UI assertions passed; instances were terminated after the exit grace period, so model warmup/shutdown is not verified.",
+    "No real simulator, audio or input hardware session was run for this UI hotfix."
+  ]
+}

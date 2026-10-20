@@ -1,6 +1,12 @@
 # RaceEngineer — plan triển khai Cockpit cho mô hình tiếp nhận
 
-## Phát hành 1.0.6 — theo yêu cầu mới nhất
+## Tái phát hành 1.0.6 — sửa marker ngày 2026-10-20
+
+- [x] Commit/push `bc143b0`: marker chưa kết nối là vòng tròn rỗng, đã kết nối là chấm đặc; giữ monochrome và cập nhật changelog.
+- [x] Bốn ca Qt ở 880×576/1280×800 đạt, không warning; root đã xem ảnh. Windows build `39363124808` đạt 6/6 CTests, native/packaged UI, manifest/version/icon.
+- [x] Workflow `39365222484` dùng gói đã qua CI, kiểm 1762 file, cập nhật tag `v1.0.6` về commit binary và thay installer/ZIP/SHA256SUMS; root đối chiếu checksum, manifest và EXE trong ZIP công khai. Weights/preset Minh Quân giữ nguyên. [Bằng chứng](ui-validation/release-1.0.6/reissue-2026-10-20/README.md).
+
+## Phát hành gốc 1.0.6
 
 - [x] Tạo logo monochrome mới; thay master, 10 PNG/ICO, header, tài nguyên app/tray/installer và social preview; hai README dùng chung logo, sửa đường dẫn README tiếng Việt.
 - [x] Thay ảnh README bằng Cockpit Qt mới với dữ liệu minh họa, giữ wordmark/font/header typography hiện có.

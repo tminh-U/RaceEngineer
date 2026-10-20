@@ -1,0 +1,233 @@
+{
+  "created_utc": "2026-10-20T03:13:41Z",
+  "qml": "qml/Main.qml",
+  "source_sha256": "d7817699e8e4e94c5a4331f0b47fe2d894aaccf4a00335174b46f336db64951c",
+  "runtime": {
+    "pyside6": "6.8.3",
+    "qt": "6.8.3",
+    "platform": "offscreen",
+    "quick_backend": "software"
+  },
+  "cases": [
+    {
+      "requested_size": [
+        880,
+        576
+      ],
+      "actual_size": [
+        880,
+        576
+      ],
+      "connected": false,
+      "status_text": "Ch\u1edd AC / ACC",
+      "pill_bounds": [
+        488,
+        50,
+        108,
+        28
+      ],
+      "marker_bounds": [
+        498,
+        60,
+        8,
+        8
+      ],
+      "marker_size": [
+        8.0,
+        8.0
+      ],
+      "marker_radius": 4.0,
+      "marker_solid": false,
+      "marker_fill_rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "marker_outline_rgba": [
+        181,
+        181,
+        181,
+        255
+      ],
+      "marker_border_width": 1.0,
+      "label_found": true,
+      "screenshot": "status-880x576-disconnected.png",
+      "render": {
+        "path": "status-880x576-disconnected.png",
+        "size": [
+          880,
+          576
+        ],
+        "sampled_unique_colors": 106,
+        "sampled_chromatic_fraction": 0.0
+      }
+    },
+    {
+      "requested_size": [
+        880,
+        576
+      ],
+      "actual_size": [
+        880,
+        576
+      ],
+      "connected": true,
+      "status_text": "AC / ACC \u00b7 K\u1ebft n\u1ed1i",
+      "pill_bounds": [
+        464,
+        50,
+        132,
+        28
+      ],
+      "marker_bounds": [
+        474,
+        60,
+        8,
+        8
+      ],
+      "marker_size": [
+        8.0,
+        8.0
+      ],
+      "marker_radius": 4.0,
+      "marker_solid": true,
+      "marker_fill_rgba": [
+        224,
+        224,
+        224,
+        255
+      ],
+      "marker_outline_rgba": [
+        224,
+        224,
+        224,
+        255
+      ],
+      "marker_border_width": 0.0,
+      "label_found": true,
+      "screenshot": "status-880x576-connected.png",
+      "render": {
+        "path": "status-880x576-connected.png",
+        "size": [
+          880,
+          576
+        ],
+        "sampled_unique_colors": 110,
+        "sampled_chromatic_fraction": 0.0
+      }
+    },
+    {
+      "requested_size": [
+        1280,
+        800
+      ],
+      "actual_size": [
+        1280,
+        800
+      ],
+      "connected": false,
+      "status_text": "Ch\u1edd AC / ACC",
+      "pill_bounds": [
+        768,
+        18,
+        108,
+        28
+      ],
+      "marker_bounds": [
+        778,
+        28,
+        8,
+        8
+      ],
+      "marker_size": [
+        8.0,
+        8.0
+      ],
+      "marker_radius": 4.0,
+      "marker_solid": false,
+      "marker_fill_rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "marker_outline_rgba": [
+        181,
+        181,
+        181,
+        255
+      ],
+      "marker_border_width": 1.0,
+      "label_found": true,
+      "screenshot": "status-1280x800-disconnected.png",
+      "render": {
+        "path": "status-1280x800-disconnected.png",
+        "size": [
+          1280,
+          800
+        ],
+        "sampled_unique_colors": 91,
+        "sampled_chromatic_fraction": 0.0
+      }
+    },
+    {
+      "requested_size": [
+        1280,
+        800
+      ],
+      "actual_size": [
+        1280,
+        800
+      ],
+      "connected": true,
+      "status_text": "AC / ACC \u00b7 K\u1ebft n\u1ed1i",
+      "pill_bounds": [
+        744,
+        18,
+        132,
+        28
+      ],
+      "marker_bounds": [
+        754,
+        28,
+        8,
+        8
+      ],
+      "marker_size": [
+        8.0,
+        8.0
+      ],
+      "marker_radius": 4.0,
+      "marker_solid": true,
+      "marker_fill_rgba": [
+        224,
+        224,
+        224,
+        255
+      ],
+      "marker_outline_rgba": [
+        224,
+        224,
+        224,
+        255
+      ],
+      "marker_border_width": 0.0,
+      "label_found": true,
+      "screenshot": "status-1280x800-connected.png",
+      "render": {
+        "path": "status-1280x800-connected.png",
+        "size": [
+          1280,
+          800
+        ],
+        "sampled_unique_colors": 91,
+        "sampled_chromatic_fraction": 0.0
+      }
+    }
+  ],
+  "engine_warnings": [],
+  "qt_logs": [],
+  "passed": true,
+  "limitations": "Qt/PySide6 offscreen rendering with fake application facade; not a native Windows GUI run."
+}
