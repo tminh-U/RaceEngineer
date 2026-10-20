@@ -182,7 +182,7 @@ ApplicationWindow {
             Rectangle {
                 width: 8 * root.ui
                 height: width
-                radius: pill.solidMarker ? width / 2 : 1
+                radius: width / 2
                 color: pill.solidMarker ? pill.statusColor : "transparent"
                 border.color: pill.statusColor
                 border.width: pill.solidMarker ? 0 : 1
