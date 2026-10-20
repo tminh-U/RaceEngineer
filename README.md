@@ -76,54 +76,28 @@ RaceEngineer is a local race-engineering application that processes telemetry da
 
 ### Requirements
 
-- Windows x64
-- AVX2-capable CPU
-- Visual Studio 2022 with an x64 MSVC toolchain
-- CMake 3.24 or newer
-- Ninja
-- Qt 6.5 or newer
-- Assetto Corsa and/or Assetto Corsa Competizione
-- Runtime models and voice assets
-- Prebuilt packages require a working Vulkan driver/runtime, including when CPU compute is selected. The Vulkan SDK is optional for source builds.
+- Windows x64 and an AVX2-capable CPU.
+- A working Vulkan driver/runtime, including when CPU compute is selected.
+- Assetto Corsa and/or Assetto Corsa Competizione.
+- A microphone for voice input; an API provider/key and network connection for LLM conversation.
 
-### Installation
+The installer bundles local runtime models and voices. Visual Studio, CMake and the Qt SDK are only required for [source builds](docs/build.md).
 
-1. Download `RaceEngineer-X.X.X-Setup.exe` from [Releases](https://github.com/tminh-U/RaceEngineer/releases).
-2. Run `RaceEngineer-X.X.X-Setup.exe`.
-3. Launch `RaceEngineer` and start using it.
+### Quickstart
 
-### AC Python App
+1. Close AC, ACC and RaceEngineer. Download and run the installer from [Releases](https://github.com/tminh-U/RaceEngineer/releases/latest).
+2. The installer detects Steam libraries, installs/enables the bundled AC Python companion, and configures ACC Broadcasting for detected games. Existing valid ACC ports/passwords and unrelated settings are preserved; changed files are backed up alongside the originals.
+3. Launch RaceEngineer and complete the initial voice/AI setup. Choose your microphone and speaker under **Settings → System & Devices**. LLM API settings and TTS settings are separate.
+4. Open **System & Devices → Game connections** and refresh the installation status. If AC was not found, choose its folder containing `acs.exe`, then install/update the companion. For ACC, use **Set up ACC UDP** with the game closed; launch ACC once if its user folder has not yet been created.
+5. Restart AC/Content Manager or ACC after setup, then enter a track session. Confirm Cockpit connects and displays live data. A valid configuration alone does not prove the game is transmitting.
+6. Hold **Ctrl+Space** to speak, release to send, or map a DirectInput wheel button. Spotter availability still depends on simulator data: AC requires the current companion; ACC Broadcasting does not expose wheel-contact geometry for proximity Spotter.
+7. Use **System & Devices → Version & updates → Check for updates** to check GitHub stable releases, including newer builds reissued under the same version. Open the release page, close the app/game, and run the downloaded installer to update.
 
-This is an optional addon for getting additional data from Assetto Corsa. The installer includes the addon at:
+Portable users must extract the complete package and run `bin/RaceEngineer.exe`, then use the in-app setup controls; installer setup does not run for ZIP extraction. Permission errors, running games and invalid configuration files are reported for repair instead of assuming setup succeeded.
 
-```text
-<RaceEngineer install>\extras\AssettoCorsa\apps\python\RaceEngineer
-```
+ACC configuration uses Windows Documents at `Assetto Corsa Competizione/Config/broadcasting.json`. The official port key is `updListenerPort`; the legacy `udpListenerPort` alias remains readable. Setup preserves valid ports and creates a default port of 9000 only when needed.
 
-Copy the `RaceEngineer` folder into Assetto Corsa's `apps\python` folder, or drag it into Content Manager.
-
-Update this companion when updating RaceEngineer. Left/right proximity warnings
-require the new companion's wheel-contact geometry; older companions still
-provide legacy telemetry but cannot enable the current Spotter.
-
-### ACC Broadcasting
-
-To use additional data such as opponent positions or the leaderboard, configure the ACC Broadcasting listener at:
-
-```text
-Documents\Assetto Corsa Competizione\Config\broadcasting.json
-```
-
-Then set it to a port that is not being used by another application, for example:
-
-```json
-{
-  "udpListenerPort": 9000
-}
-```
-
-ACC Broadcasting adds optional opponent data. It does not provide the
-wheel-contact geometry required by the current proximity Spotter.
+See the [detailed Quickstart and troubleshooting (Vietnamese)](docs/quickstart.md), [logging guide](docs/logging-guide.md), and [source build guide](docs/build.md).
 
 ## Documentation
 

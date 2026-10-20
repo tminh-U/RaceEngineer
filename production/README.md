@@ -175,7 +175,21 @@ the retention and deletion policy before opening uploads to players.
 
 ## Optional Assetto Corsa addon
 
-The package includes the optional Python companion at
-`extras\AssettoCorsa\apps\python\RaceEngineer`. The installer does not write into
-the game directory; copy that folder to Assetto Corsa or install it through
-Content Manager when extra telemetry is needed.
+The package includes the Python companion at
+`extras\AssettoCorsa\apps\python\RaceEngineer`. After installing the runtime,
+the installer runs `bin\RaceEngineer.exe --configure-simulators` before loading
+voice models. It detects Steam libraries, updates/enables the AC companion,
+and configures ACC Broadcasting for a detected installation or existing user
+config folder. Changed files are backed up; valid ACC ports/passwords and
+unrelated settings are retained. Protected AC folders use a separate elevated
+`--install-ac-files <AC directory>` helper that copies only companion files;
+the original process updates the original user's Python configuration.
+
+Missing games, denied elevation, running simulators and invalid configs can be
+repaired under Settings → System & Devices → Game connections. Portable ZIPs
+use those controls directly. See the [Quickstart](../docs/quickstart.md).
+
+System & Devices also offers an explicit GitHub stable-release check. Build
+commits are compared when release versions match, covering same-version
+reissues. Updating opens the release page; no installer is downloaded or run
+automatically.

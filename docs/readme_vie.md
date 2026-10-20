@@ -76,57 +76,27 @@ RaceEngineer là một phần mềm kỹ sư đua xe chạy local trên máy, x�
 
 ## Bắt đầu
 
-### Yêu cầu
+### Yêu cầu chạy app
 
-- Windows x64
-- CPU hỗ trợ AVX2
-- Visual Studio 2022 with an x64 MSVC toolchain
-- CMake 3.24 or newer
-- Ninja
-- Qt 6.5 or newer
-- Assetto Corsa and/or Assetto Corsa Competizione
-- Runtime models and voice assets
-- Bản dựng sẵn cần driver/runtime Vulkan hoạt động, kể cả khi chọn tính toán CPU. Vulkan SDK tùy chọn khi build từ nguồn.
+- Windows x64, CPU hỗ trợ AVX2 và driver/runtime Vulkan hoạt động, kể cả khi chọn tính toán CPU.
+- Assetto Corsa hoặc Assetto Corsa Competizione.
+- Microphone nếu dùng giọng nói; provider/model/API key và mạng nếu hỏi AI qua API.
 
-### Cài đặt
+Installer kèm model/giọng local. Visual Studio, CMake và Qt SDK chỉ cần khi [build từ source](build.md).
 
-1. Tải `RaceEngineer-X.X.X-Setup.exe` từ [Release](https://github.com/tminh-U/RaceEngineer/releases).
-2. Chạy `RaceEngineer-X.X.X-Setup.exe`.
-3. Khởi động app `RaceEngineer` và bắt đầu sử dụng.
+### Quickstart
 
+1. Thoát AC, ACC và RaceEngineer; tải và chạy installer từ [Releases](https://github.com/tminh-U/RaceEngineer/releases/latest).
+2. Installer tự tìm thư viện Steam, cài/bật Python companion của AC và cấu hình UDP cho ACC được phát hiện. Giữ cổng/password hợp lệ và cấu hình khác; sao lưu file trước khi thay đổi.
+3. Mở app, hoàn tất thiết lập giọng/AI; chọn micro và loa ở **Thiết lập → Hệ thống & thiết bị**. Kết nối LLM và cấu hình TTS là hai phần riêng.
+4. Vào **Hệ thống & thiết bị → Kết nối game · AC / ACC → Kiểm tra lại**. AC chưa được tìm thấy thì chọn thư mục chứa `acs.exe`, bấm **Cài / cập nhật companion**. Với ACC, bấm **Thiết lập ACC UDP** khi game đã thoát; mở game một lần nếu chưa có thư mục người dùng.
+5. Khởi động lại game/Content Manager sau thiết lập, vào track và kiểm tra Cockpit có kết nối/dữ liệu. File đúng chưa chứng minh telemetry đang hoạt động. AC Spotter cần companion hiện tại; UDP ACC chưa cung cấp hình học bánh xe cho proximity Spotter.
+6. Giữ **Ctrl+Space** để nói, thả để gửi; hoặc gán nút vô lăng DirectInput.
+7. Mở **Hệ thống & thiết bị → Phiên bản & cập nhật** để kiểm tra bản stable và bản tái phát hành cùng số phiên bản; tải installer trên GitHub và chạy khi đã thoát app/game.
 
-### AC Python App
+Bản portable cần giải nén đầy đủ, mở `bin/RaceEngineer.exe` rồi dùng nút thiết lập trong app. Khi thiếu quyền ghi, game đang chạy hoặc JSON hỏng, xem trạng thái lỗi và sửa lại. Khóa cổng ACC chính thức là `updListenerPort`; app vẫn đọc alias `udpListenerPort` cũ và giữ nguyên cổng đang hợp lệ.
 
-Đây là addon tùy chọn để lấy thêm dữ liệu từ Assetto Corsa. Installer đã kèm sẵn addon tại:
-
-```text
-<RaceEngineer install>\extras\AssettoCorsa\apps\python\RaceEngineer
-```
-
-Copy thư mục `RaceEngineer` vào thư mục `apps\python` của Assetto Corsa, hoặc kéo nó vào Content Manager.
-
-Cập nhật companion khi cập nhật RaceEngineer. Cảnh báo xe bên trái/phải cần dữ
-liệu điểm tiếp xúc bánh xe từ companion mới; bản cũ vẫn cung cấp telemetry
-legacy nhưng không bật được Spotter hiện tại.
-
-
-### ACC Broadcasting
-
-Để sử dụng được thêm các dữ liệu từ vị trí đổi thủ hoặc bảng xếp hạng, hãy config ACC broadcasting listener ở vị trí :
-
-```text
-Documents\Assetto Corsa Competizione\Config\broadcasting.json
-```
-
-Sau đó set với một cổng không được app nào sử dụng (ví dụ):
-```json
-{
-  "udpListenerPort": 9000
-}
-```
-
-ACC Broadcasting bổ sung dữ liệu đối thủ, nhưng không cung cấp hình học bánh xe
-mà Spotter hiện tại cần để phát cảnh báo xe kế bên.
+Xem [Quickstart đầy đủ và cách xử lý lỗi](quickstart.md), [ghi log/train](logging-guide.md) và [build từ source](build.md).
 
 ## Tài liệu
 

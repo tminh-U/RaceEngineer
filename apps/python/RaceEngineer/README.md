@@ -19,7 +19,16 @@ trên track AC thực tế. Xem
 
 ## Cách cài đặt
 
-### Cách 1: Qua Content Manager (Khuyên dùng)
+### Tự cài bằng RaceEngineer
+
+Installer tự tìm AC qua Steam, chép companion và bật Python app khi game đã thoát.
+Trong RaceEngineer, mở **Thiết lập → Hệ thống & thiết bị → Kết nối game** để kiểm tra,
+chọn thư mục chứa `acs.exe` nếu chưa phát hiện và bấm **Cài / cập nhật companion**.
+Chấp nhận UAC nếu thư mục game cần quyền admin. Khởi động lại AC / Content Manager.
+File cũ được sao lưu trước khi thay đổi; cấu hình sẵn sàng cần được kiểm chứng bằng
+dữ liệu thực tế sau khi vào track. Bản portable dùng các nút thiết lập này.
+
+### Cách thủ công: Qua Content Manager
 1. Kéo thả trực tiếp thư mục `apps/python/RaceEngineer` vào cửa sổ **Content Manager**.
 2. Hoặc copy cả thư mục `RaceEngineer` vào:
    ```text

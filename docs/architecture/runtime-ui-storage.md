@@ -153,8 +153,19 @@ hashes and parity. Planner calibration has a separate gate.
 
 `verify-release.ps1` checks required files, SHA-256 hashes, forbidden debug/user
 files, obsolete installer payloads and executable version against the manifest.
-The per-user installer does not copy/update the companion inside AC; users must
-install the packaged companion separately, including geometry updates.
+The per-user installer invokes `--configure-simulators`, using `SimulatorSetup`
+to detect Steam libraries, copy/update and enable the AC companion, and merge
+ACC Broadcasting configuration. Writes create backups and use atomic replacement;
+running simulators and invalid JSON prevent configuration changes. A scoped
+elevated `--install-ac-files` helper handles protected AC game folders while the
+original process retains ownership of user-profile configuration. System & Devices
+exposes installation/configuration checks and repair controls. A ready file state
+is distinct from a confirmed live simulator connection.
+
+`UpdateChecker` uses asynchronous GitHub API requests only after the user asks.
+It checks stable semantic versions and compares the build commit against the
+release tag for same-version reissues. Missing metadata, network errors and rate
+limits remain explicit; opening the release page is separate from checking.
 
 ## Verification
 

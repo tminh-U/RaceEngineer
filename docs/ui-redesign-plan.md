@@ -1,5 +1,17 @@
 # RaceEngineer — plan triển khai Cockpit cho mô hình tiếp nhận
 
+## Thiết lập game và kiểm tra cập nhật — mã nguồn chưa phát hành
+
+Yêu cầu mới cho phép thêm tính năng và sửa native/installer cần thiết; các giới hạn UI-only trong lịch sử không áp dụng cho tích hợp này. Giữ toàn bộ tính năng cũ và thuật toán telemetry/voice/strategy. Người dùng đã yêu cầu commit và tái phát hành v1.0.6; đang chuẩn bị build từ nguồn mới trước khi thay asset.
+
+- [x] Dùng chung `SimulatorSetup` cho installer và app: dò Steam, chọn AC thủ công, cài đúng companion đi kèm và bật Python app; cấu hình ACC UDP, giữ cổng/password hợp lệ và các tùy chọn khác, sao lưu file thay đổi.
+- [x] Nâng quyền riêng bước chép companion nếu thư mục AC cần quyền admin; cấu hình Documents vẫn dùng tài khoản gốc. Chặn sửa khi game đang chạy hoặc chưa kiểm tra được tiến trình; báo lỗi thay vì ghi đè JSON hỏng.
+- [x] Thêm mục Kết nối game trong Hệ thống & thiết bị: trạng thái AC/ACC, kiểm tra lại và các nút cài/sửa. Phân biệt cấu hình sẵn sàng với kết nối telemetry thực tế.
+- [x] Thêm kiểm tra cập nhật stable trên GitHub theo yêu cầu; đối chiếu commit để phát hiện tái phát hành cùng version. Mở release để tải/cài thủ công; không tự chạy installer.
+- [x] Viết [Quickstart](quickstart.md), đồng bộ hai README, hướng dẫn companion/build/production và kiến trúc. Rà tĩnh native/installer và QML lint; không thêm/chạy tests trong tác vụ này.
+- [ ] Build Windows và xác minh installer/portable, UAC chấp nhận/từ chối, Steam nhiều thư viện, Documents chuyển vị trí, backup/repair và kết nối AC/ACC thật.
+- [ ] Xác minh cập nhật với bản mới hơn/cùng commit/tái phát hành/lỗi mạng trong binary Windows trước khi phát hành. Bằng chứng release v1.0.6 phía dưới chỉ áp dụng binary cũ.
+
 ## Tái phát hành 1.0.6 — sửa marker ngày 2026-10-20
 
 - [x] Commit/push `bc143b0`: marker chưa kết nối là vòng tròn rỗng, đã kết nối là chấm đặc; giữ monochrome và cập nhật changelog.

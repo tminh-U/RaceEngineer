@@ -8,6 +8,8 @@
 #include "ai/LocalAiRuntime.h"
 #include "strategy/StrategyPredictor.h"
 #include "strategy/StrategyRecorder.h"
+#include "integration/SimulatorSetup.h"
+#include "integration/UpdateChecker.h"
 
 #include <QObject>
 #include <QJsonObject>
@@ -39,6 +41,8 @@ class Application final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString simulatorName READ simulatorName NOTIFY connectionChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectionChanged)
+    Q_PROPERTY(QObject* simulatorSetup READ simulatorSetup CONSTANT)
+    Q_PROPERTY(QObject* appUpdates READ appUpdates CONSTANT)
     Q_PROPERTY(QString connectionText READ connectionText NOTIFY connectionChanged)
     Q_PROPERTY(QVariantMap telemetry READ telemetry NOTIFY telemetryChanged)
     Q_PROPERTY(bool mockAvailable READ mockAvailable CONSTANT)
@@ -217,6 +221,8 @@ public:
     Q_INVOKABLE void setLapSummaryEnabled(bool enabled);
     Q_INVOKABLE bool configureStrategySharing(const QString& endpoint, const QString& token);
     QObject* strategyData() { return &strategyRecorder_; }
+    QObject* simulatorSetup() { return &simulatorSetup_; }
+    QObject* appUpdates() { return &appUpdates_; }
     [[nodiscard]] QVariantList availableTtsVoices() const;
     [[nodiscard]] QString selectedTtsVoice() const { return settingsManager_.tts().voice; }
     [[nodiscard]] QStringList audioOutputDevices() const;
@@ -385,6 +391,8 @@ private:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     SettingsManager settingsManager_;
+    SimulatorSetup simulatorSetup_;
+    UpdateChecker appUpdates_;
     bool gpuRendererAtStartup_{settingsManager_.gpuRendererEnabled()};
     LocalAiRuntimeSelection aiRuntimeSelection_;
     QThread telemetryThread_;

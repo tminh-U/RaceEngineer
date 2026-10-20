@@ -8,12 +8,12 @@
 
 namespace raceengineer {
 
-RunningSimulator detectRunningSimulator() noexcept
+std::optional<RunningSimulator> inspectRunningSimulator() noexcept
 {
 #ifdef _WIN32
     const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) {
-        return RunningSimulator::None;
+        return std::nullopt;
     }
 
     PROCESSENTRY32W entry{};
@@ -31,11 +31,18 @@ RunningSimulator detectRunningSimulator() noexcept
             }
         } while (Process32NextW(snapshot, &entry) != FALSE);
     }
+    const DWORD enumerationError = GetLastError();
     CloseHandle(snapshot);
+    if (enumerationError != ERROR_NO_MORE_FILES) return std::nullopt;
     return foundAc ? RunningSimulator::AssettoCorsa : RunningSimulator::None;
 #else
-    return RunningSimulator::None;
+    return std::nullopt;
 #endif
+}
+
+RunningSimulator detectRunningSimulator() noexcept
+{
+    return inspectRunningSimulator().value_or(RunningSimulator::None);
 }
 
 } // namespace raceengineer

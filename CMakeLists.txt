@@ -57,6 +57,10 @@ qt_add_executable(RaceEngineer
     src/main.cpp
     src/app/Application.cpp
     src/app/Application.h
+    src/integration/SimulatorSetup.cpp
+    src/integration/SimulatorSetup.h
+    src/integration/UpdateChecker.cpp
+    src/integration/UpdateChecker.h
     src/telemetry/common/RaceState.cpp
     src/telemetry/common/RaceState.h
     src/telemetry/common/VehicleCatalog.cpp
@@ -173,6 +177,7 @@ qt_add_qml_module(RaceEngineer
         qml/SystemDevicesPage.qml
         qml/GoogleVoiceDialog.qml
         qml/TtsVoiceSettings.qml
+        qml/SimulatorSetupPanel.qml
         qml/TtsBenchmarkPanel.qml
         qml/LlmConnectionForm.qml
         qml/SetupWizard.qml
@@ -310,15 +315,20 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/spotter/manifest.json")
 endif()
 
 if(WIN32)
-    target_link_libraries(RaceEngineer PRIVATE Advapi32 Dinput8 Dxguid Ole32 Dwmapi)
+    target_link_libraries(RaceEngineer PRIVATE Advapi32 Dinput8 Dxguid Ole32 Dwmapi Shell32)
     target_compile_definitions(RaceEngineer PRIVATE
         WIN32_LEAN_AND_MEAN
         NOMINMAX
     )
 endif()
 
+execute_process(COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE RACEENGINEER_BUILD_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 target_compile_definitions(RaceEngineer PRIVATE
     RACEENGINEER_VERSION="${PROJECT_VERSION}"
+    RACEENGINEER_BUILD_COMMIT="${RACEENGINEER_BUILD_COMMIT}"
     RACEENGINEER_ENABLE_MOCK=$<IF:$<CONFIG:Debug>,1,0>
 )
 

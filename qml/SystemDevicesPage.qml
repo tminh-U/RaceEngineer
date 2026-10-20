@@ -11,6 +11,9 @@ Item {
     required property UiTheme theme
     required property bool live
     readonly property bool compact: width < 1120
+    readonly property var simulatorSetup: controller.simulatorSetup || null
+    readonly property var appUpdates: controller.appUpdates || null
+    onLiveChanged: if (live && simulatorSetup) simulatorSetup.refresh()
 
     function directInputStatusText() {
         switch (controller.directInputStatus) {
@@ -499,6 +502,34 @@ Item {
                             }
                         }
                     }
+                }
+            }
+            SurfaceCard {
+                Layout.fillWidth: true
+                title: "Kết nối game · AC / ACC"
+                SimulatorSetupPanel {
+                    width: parent.width
+                    theme: page.theme
+                    setup: page.simulatorSetup
+                    live: page.live
+                    telemetryConnected: page.controller.connected
+                }
+            }
+            SurfaceCard {
+                Layout.fillWidth: true
+                title: "Phiên bản & cập nhật"
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 12
+                    BodyText { text: "Đang dùng: " + (page.appUpdates ? page.appUpdates.currentVersion : Qt.application.version); Layout.fillWidth: true }
+                    BodyText { objectName: "appUpdateStatus"; text: page.appUpdates ? page.appUpdates.status : "Chưa kiểm tra cập nhật."; Layout.fillWidth: true }
+                    BodyText { visible: !!page.appUpdates && page.appUpdates.latestVersion.length > 0; text: "Bản ổn định: " + (page.appUpdates ? page.appUpdates.latestVersion : "—"); Layout.fillWidth: true }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ActionButton { objectName: "checkAppUpdatesButton"; text: page.appUpdates && page.appUpdates.checking ? "Đang kiểm tra…" : "Kiểm tra cập nhật"; enabled: page.live && !!page.appUpdates && !page.appUpdates.checking; onClicked: page.appUpdates.check() }
+                        ActionButton { objectName: "openAppReleaseButton"; text: "Mở bản phát hành"; enabled: page.live && !!page.appUpdates; onClicked: page.appUpdates.openRelease() }
+                    }
+                    MutedText { text: "Kiểm tra khi bạn bấm nút. Tải installer từ GitHub và chạy để cập nhật; cấu hình cá nhân được giữ lại."; Layout.fillWidth: true }
                 }
             }
             MutedText {

@@ -16,6 +16,7 @@
 #include <QTimer>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QDir>
 #include <iostream>
@@ -84,8 +85,28 @@ int main(int argc, char* argv[])
         QStringLiteral("Measure local TTS at 2/3/4 threads, apply the result, and exit."));
     const QCommandLineOption verifySetupOption(QStringLiteral("verify-setup-ui"),
         QStringLiteral("Render setup steps at minimum window size with isolated test settings."));
-    parser.addOptions({mockOption, mapOption, setKeyOption, testLlmOption, benchmarkOption, verifySetupOption});
+    const QCommandLineOption configureSimulatorsOption(QStringLiteral("configure-simulators"),
+        QStringLiteral("Install the bundled AC app and configure detected ACC without loading voice models."));
+    const QCommandLineOption installAcFilesOption(QStringLiteral("install-ac-files"),
+        QStringLiteral("Copy only bundled companion files into the specified AC folder."), QStringLiteral("ac_directory"));
+    parser.addOptions({mockOption, mapOption, setKeyOption, testLlmOption, benchmarkOption, verifySetupOption, configureSimulatorsOption, installAcFilesOption});
     parser.process(qtApplication);
+    if (parser.isSet(configureSimulatorsOption) || parser.isSet(installAcFilesOption)) {
+        raceengineer::SimulatorSetup setup;
+        const bool success = parser.isSet(installAcFilesOption)
+            ? setup.installAcFiles(parser.value(installAcFilesOption)) : setup.configureDetectedGames();
+        QJsonObject report = QJsonObject::fromVariantMap(setup.status());
+        report.insert(QStringLiteral("message"), setup.message());
+        report.insert(QStringLiteral("success"), success);
+        const QByteArray json = QJsonDocument(report).toJson();
+        const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        QSaveFile file(QDir(directory).filePath(QStringLiteral("simulator-setup.json")));
+        if (!QDir().mkpath(directory) || !file.open(QIODevice::WriteOnly)
+            || file.write(json) != json.size() || !file.commit())
+            QTextStream(stderr) << "Không lưu được báo cáo thiết lập. Xem trạng thái trong Hệ thống & thiết bị.\n";
+        QTextStream(stdout) << QString::fromUtf8(json);
+        return success ? 0 : 1;
+    }
     if (parser.isSet(verifySetupOption)) {
         QStandardPaths::setTestModeEnabled(true);
         qtApplication.setApplicationName(QStringLiteral("RaceEngineer-SetupUiTests"));

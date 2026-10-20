@@ -176,9 +176,13 @@ The optional Assetto Corsa companion is stored in the package at:
 extras\AssettoCorsa\apps\python\RaceEngineer
 ```
 
-The installer does not write into the user's Assetto Corsa directory. Copy this
-folder into the game's `apps\python` directory or install it through Content
-Manager when the extra telemetry is required.
+The installer runs `RaceEngineer.exe --configure-simulators` to install/enable
+the companion for a detected AC installation and configure ACC UDP. Protected
+AC directories request elevation only for copying companion files; user-profile
+configuration stays in the original process. Missing games, denied elevation,
+running games and invalid configuration files remain repairable under System &
+Devices. Portable users use the same in-app controls, or install the companion
+manually with Content Manager. See [Quickstart](quickstart.md).
 
 ## Verify a release package
 

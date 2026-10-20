@@ -202,7 +202,7 @@ Item {
                             spacing: 12
                             HeadingText { text: "Chào mừng đến với RaceEngineer"; Layout.fillWidth: true }
                             MutedText {
-                                text: "Thiết lập nhanh giọng kỹ sư, kết nối AI và số luồng TTS phù hợp với máy của bạn. Bạn có thể bỏ qua hoặc đổi lại sau trong Cài đặt."
+                                text: "Thiết lập giọng kỹ sư, kết nối AI và số luồng TTS. Sau khi hoàn tất, mở Hệ thống & thiết bị để kiểm tra AC companion / ACC UDP trước khi vào track. Bạn có thể bỏ qua hoặc đổi lại sau."
                                 Layout.fillWidth: true
                             }
                             SurfaceCard {

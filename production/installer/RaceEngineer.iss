@@ -56,3 +56,5 @@ Name: "{group}\RaceEngineer"; Filename: "{app}\bin\RaceEngineer.exe"; WorkingDir
 
 [Run]
 Filename: "{app}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Microsoft Visual C++ runtime..."; Verb: "runas"; Flags: shellexec waituntilterminated skipifdoesntexist
+Filename: "{app}\bin\RaceEngineer.exe"; Parameters: "--configure-simulators"; WorkingDir: "{app}\bin"; StatusMsg: "Setting up Assetto Corsa companion and ACC UDP..."; Flags: runhidden waituntilterminated
+Filename: "{app}\bin\RaceEngineer.exe"; WorkingDir: "{app}\bin"; Description: "Launch RaceEngineer"; Flags: postinstall nowait skipifsilent
