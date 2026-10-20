@@ -1,0 +1,67 @@
+{
+  "source_sha": "e57adf0c093eb06f77575886dc9997f5cc7b35aa",
+  "build_run": "39372199687",
+  "version": "1.0.6",
+  "manifest_files": 1762,
+  "executable_sha256": "3dc114996a785c290af78f2783a740d11487a340057ce12051329769cf21a52a",
+  "package_sha256": {
+    "RaceEngineer-1.0.6-Setup.exe": "632ca43ecd25957298146b249df3bee524e73b7d63d00bde65e008ac31e6dd6e",
+    "RaceEngineer-1.0.6-windows-x64.zip": "f996b5474e3d5c336083de565bb81c75537baddf955e6dbcb1e06f12af29b127"
+  },
+  "native_ui": {
+    "native": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\build-production\\RaceEngineer.exe",
+      "sha256": "3dc114996a785c290af78f2783a740d11487a340057ce12051329769cf21a52a",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    },
+    "packaged": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\production\\dist\\RaceEngineer-1.0.6\\bin\\RaceEngineer.exe",
+      "sha256": "3dc114996a785c290af78f2783a740d11487a340057ce12051329769cf21a52a",
+      "ui_assertions_passed": true,
+      "cleanup": "terminated after passed UI assertions; model warmup/shutdown not verified",
+      "exit_code": null
+    }
+  },
+  "reissue_run": "39373778949",
+  "native_ctest": {
+    "passed": 6,
+    "failed": 0
+  },
+  "limits": [
+    "Existing Windows CTests and setup UI assertions passed; they do not exercise the new game-setup or update-checker flows end to end.",
+    "Native UI instances were terminated after their exit grace period; orderly shutdown while models warm up is not verified.",
+    "Interactive UAC consent/cancellation, real AC/ACC sessions and the app update-checker network flow have not been exercised on a user Windows machine."
+  ],
+  "public_zip_manifest_matches": true,
+  "public_executable_sha256": "3dc114996a785c290af78f2783a740d11487a340057ce12051329769cf21a52a",
+  "voice_model_hashes_unchanged": {
+    "bin/models/vieneu-v3/backbone.gguf": "3d8b9600125abc6cfb485ce2841c74a1877f62984251b49369366c17f5fcf5bd",
+    "bin/models/vieneu-v3/vieneu_v3_heads.npz": "5bd867ce5341227b11ce30ff7919645779404fdf686642fb93604b6a79ff69e3",
+    "bin/models/vieneu-v3/voices_v3_turbo.json": "c7a2c64aef84ae9b1a44ba5166058f0cfbffe36d94042cdefcb648996d968f17"
+  },
+  "minh_quan_preset_present": true,
+  "release_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.6",
+  "release_id": 417596939,
+  "public_checksums_match": true,
+  "github_asset_digests_match": true,
+  "tag_matches_source": true,
+  "assets": [
+    {
+      "name": "RaceEngineer-1.0.6-Setup.exe",
+      "bytes": 621716262,
+      "digest": "sha256:632ca43ecd25957298146b249df3bee524e73b7d63d00bde65e008ac31e6dd6e"
+    },
+    {
+      "name": "RaceEngineer-1.0.6-windows-x64.zip",
+      "bytes": 746674893,
+      "digest": "sha256:f996b5474e3d5c336083de565bb81c75537baddf955e6dbcb1e06f12af29b127"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 198,
+      "digest": "sha256:0afae6d38719f23cf5106e6076a58f36e37e8c0e2268d256fcfdab23914d7bf7"
+    }
+  ]
+}
