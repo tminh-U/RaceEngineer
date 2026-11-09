@@ -418,6 +418,7 @@ private:
     UpdateChecker appUpdates_;
     bool gpuRendererAtStartup_{settingsManager_.gpuRendererEnabled()};
     bool lowResourceAtStartup_{settingsManager_.lowResourceMode()};
+    QString aiDeviceAtStartup_{settingsManager_.localAi().deviceId()};
     bool uiActive_{true};
     QElapsedTimer uiPublishClock_;
     LocalAiRuntimeSelection aiRuntimeSelection_;

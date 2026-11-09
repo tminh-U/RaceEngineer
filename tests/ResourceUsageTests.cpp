@@ -154,6 +154,11 @@ void testPresentationCadence(bool lightweight)
     check(QFileInfo::exists(settings.filePath()), "test settings are writable in the isolated config directory");
     Application application(false);
     check(application.lowResourceMode() == lightweight, "resource policy survives settings serialization");
+    check(!application.aiComputeRestartRequired(), "startup AI policy does not report an unapplied device change");
+    application.setAiComputeDevice(QStringLiteral("cpu"));
+    check(application.aiComputeRestartRequired(), "a new saved AI device still requires restart");
+    application.setAiComputeDevice(QStringLiteral("auto"));
+    check(!application.aiComputeRestartRequired(), "restoring the startup device clears the restart requirement");
     wait(100); // Drain the initial disconnected/warm-up notifications.
     // Immutable samples survive a queued cross-thread-style delivery without cloning
     // the opponent tree and without observing later mutations of the producer's state.

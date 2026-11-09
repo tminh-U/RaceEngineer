@@ -1,0 +1,39 @@
+[0/2] Re-checking globbed directories...
+[1/5] Automatic MOC for target ResourceUsageTests
+[2/4] Building CXX object CMakeFiles/ResourceUsageTests.dir/workspace/RaceEngineer/tests/ResourceUsageTests.cpp.o
+[3/4] Linking CXX executable ResourceUsageTests
+raceengineer.stt: PhoWhisper-small Q5_1 model loaded: "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-JVrEcP/synthetic-model.bin" model_load_ms= 0.030026 threads= 2 flash_attn= true
+raceengineer.stt: whisper.cpp system: Lifecycle test stub; no inference
+raceengineer.stt: STT timing total_ms= 0.939809 preprocess_ms= 0.021693 sample_ms= 0 encoder_ms= 0 decoder_ms= 0 batch_decoder_ms= 0 prompt_ms= 0 gpu_sync_transfer_estimate_ms= 0.00013 threads= 2 max_tokens= 48 gpu_request= false flash_attn= true language= "vi"
+raceengineer.stt: PhoWhisper-small Q5_1 model loaded: "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-JVrEcP/synthetic-model.bin" model_load_ms= 0.012659 threads= 2 flash_attn= true
+raceengineer.stt: whisper.cpp system: Lifecycle test stub; no inference
+raceengineer.stt: STT timing total_ms= 0.47711 preprocess_ms= 0.11312 sample_ms= 0 encoder_ms= 0 decoder_ms= 0 batch_decoder_ms= 0 prompt_ms= 0 gpu_sync_transfer_estimate_ms= 0.0003 threads= 2 max_tokens= 48 gpu_request= false flash_attn= true language= "vi"
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+PulseAudioService: pa_context_connect() failed
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-OWTgPO"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 1 (voice: test style: tu_nhien temp: 0.4 ): "On demand lifecycle test"
+raceengineer.tts: VieNeu synthesis failed for request 1 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu context released on worker; generation 2
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-OWTgPO"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 2 (voice: test style: tu_nhien temp: 0.4 ): "Reload lifecycle test"
+raceengineer.tts: VieNeu synthesis failed for request 2 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu context released on worker; generation 3
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-BtfEXE"
+raceengineer.tts: Failed to initialize native VieNeu-TTS: "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-791646c5-21ad-4887-bc89-562de8fef988-BtfEXE"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 1 (voice: test style: tu_nhien temp: 0.4 ): "Retry after initialization failure"
+raceengineer.tts: VieNeu synthesis failed for request 1 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.audio: PTT sound not found: /workspace/RaceEngineer/.tooling/native/build/sound.mp3
+raceengineer.tts: TTS warm-up failed: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.stt: STT startup warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+FAIL: startup AI policy does not report an unapplied device change

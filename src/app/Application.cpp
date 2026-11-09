@@ -165,8 +165,8 @@ QString resolvePhoWhisperModelPath()
 Application::Application(const bool startWithMock, QObject* const parent)
     : QObject(parent)
     , aiRuntimeSelection_(LocalAiRuntime::resolveAndApply(
-          lowResourceAtStartup_ && settingsManager_.localAi().deviceId() == QStringLiteral("auto")
-              ? QStringLiteral("cpu") : settingsManager_.localAi().deviceId()))
+          lowResourceAtStartup_ && aiDeviceAtStartup_ == QStringLiteral("auto")
+              ? QStringLiteral("cpu") : aiDeviceAtStartup_))
     , telemetryManager_(new TelemetryManager)
     , voiceInput_(new VoiceInputController)
     , speechRecognizer_(new WhisperRecognizer(
@@ -751,7 +751,7 @@ QString Application::aiComputeStatus() const
 
 bool Application::aiComputeRestartRequired() const
 {
-    return selectedAiComputeDevice() != aiRuntimeSelection_.requestedDeviceId;
+    return selectedAiComputeDevice() != aiDeviceAtStartup_;
 }
 
 void Application::setAiComputeDevice(const QString& deviceId)
