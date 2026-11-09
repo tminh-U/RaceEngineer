@@ -1,0 +1,1 @@
+Collector helper checks passed; native memory APIs checked on Windows, declarations only on Linux. ETW/game capture is not validated by these tests.

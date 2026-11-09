@@ -1,0 +1,35 @@
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+Failed to create secure directory (/home/agent/.config/pulse): Read-only file system
+PulseAudioService: pa_context_connect() failed
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: Retrying "Google Gemini TTS API" 1 /2 in 500 ms
+raceengineer.tts: Retrying "Google Gemini TTS API" 2 /2 in 1000 ms
+raceengineer.tts: "Online TTS quota or rate limit reached."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: "TTS endpoint must return raw 24 kHz mono PCM, not JSON, MP3 or WAV."
+raceengineer.tts: Retrying "OpenAI-compatible TTS" 1 /2 in 500 ms
+raceengineer.tts: Retrying "OpenAI-compatible TTS" 2 /2 in 1000 ms
+raceengineer.tts: "Online TTS network request failed (HTTP 503)."
+raceengineer.tts: "Online TTS PCM stream ended with an incomplete 16-bit sample."
+raceengineer.tts: "Online TTS request failed."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: "Online TTS PCM stream ended with an incomplete 16-bit sample."
+raceengineer.tts: "Online TTS returned invalid base64 audio."
+raceengineer.tts: "Online TTS returned an unsupported audio format; expected raw PCM audio/l16."
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: Retrying "Google Gemini TTS API" 1 /2 in 500 ms
+raceengineer.tts: Retrying "Google Gemini TTS API" 2 /2 in 1000 ms
+raceengineer.tts: "Online TTS authentication failed; check the configured TTS API key."
+raceengineer.tts: Retrying "Google Gemini TTS API" 1 /2 in 500 ms
+raceengineer.tts: "Online TTS network request failed (HTTP 503)."
+raceengineer.api: Chat request started for "OpenAI-compatible" "offline-model"
+raceengineer.api: Chat request started for "OpenAI-compatible" "offline-model"
+raceengineer.api: Chat request started for "OpenAI-compatible" "offline-model"
+raceengineer.api: LLM connection will be checked again in 15000 ms
+raceengineer.tts: Retrying "Google Gemini TTS API" 1 /2 in 500 ms
+raceengineer.tts: Retrying "Google Gemini TTS API" 2 /2 in 1000 ms
+raceengineer.tts: "Online TTS network request failed (HTTP 503)."
+Compatible Speech API checks completed

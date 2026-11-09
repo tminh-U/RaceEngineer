@@ -378,7 +378,9 @@ void SettingsManager::load()
     tts_.googleVoiceName = tts.value(QStringLiteral("google_voice_name")).toString();
     tts_.googleCustomVoices = tts.value(QStringLiteral("google_custom_voices")).toArray();
     normalizeGoogleVoices(tts_);
-    tts_.cpuThreads = tts.value(QStringLiteral("cpu_threads")).toInt(tts_.cpuThreads);
+    // Existing files without this field predate the two-thread fresh-install default.
+    // Preserve their setting; lightweight mode applies its runtime cap separately.
+    tts_.cpuThreads = tts.value(QStringLiteral("cpu_threads")).toInt(4);
     lowResourceMode_ = root.value(QStringLiteral("low_resource_mode")).toBool(true);
     bool shouldSave = false;
     if (tts_.voice.trimmed().isEmpty()) {

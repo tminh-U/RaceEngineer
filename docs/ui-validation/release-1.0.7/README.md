@@ -5,6 +5,7 @@ Ngày 2026-11-09. Người dùng yêu cầu kiểm thử lại, push GitHub và 
 ## Kiểm chứng cục bộ đã đạt
 
 - Compile/link lại nguồn C++ bằng GCC 14, Qt 6.8 (harness dùng stub AI, simulator và DirectInput).
+- TtsBenchmarkTests và hai ca lifecycle đạt sau khi giữ mặc định 4 luồng cho file cấu hình cũ thiếu trường cpu_threads; cài mới vẫn mặc định 2, chế độ nhẹ áp dụng cap riêng. Test settings dùng thư mục tạm trên Linux.
 - ResourceUsageTests: lifecycle model, giới hạn thread/PTT, shared snapshot, nhịp UI, khôi phục và ranh giới session.
 - GoogleTtsBackendTests: Google/Speech API qua HTTP mock; PCM streaming, retry/cancel, auth/format, pause/resume. Phát lại qua PulseAudio null sink đạt; không phải loa thật hoặc Internet TTS.
 - 15 ca analyzer Python và kiểm tra helper/parser PowerShell đạt trên Linux.
@@ -15,6 +16,6 @@ Các report, log và ảnh đi kèm nằm trong thư mục này. `linux-validati
 
 ## Windows và phát hành
 
-Build Windows MSVC/Qt, CTest, helper collector Windows, kiểm chứng native/packaged UI, manifest/version/icon và checksum sẽ được xác nhận từ workflow Windows release trước khi công khai bản phát hành.
+Lượt Windows đầu [42616315346](https://github.com/tminh-U/RaceEngineer/actions/runs/42616315346) compile/link đạt, 7/8 CTests đạt; ca migration TTS phát hiện thay đổi mặc định khi đọc cấu hình cũ thiếu cpu_threads. Đã sửa production để giữ giá trị cũ và chạy lại kiểm tra cục bộ; chưa phát hành binary của lượt lỗi. Build Windows và các bước package sẽ được chạy lại trước khi công khai release.
 
 Chưa kiểm chứng game AC/ACC thật, frametime trên máy 8 GB, Vulkan GPU vật lý, microphone/loa, giọng/API key thật hoặc UAC tương tác. [Quy trình đo Windows](../../windows-performance-capture.md) giữ riêng phần nghiệm thu này.

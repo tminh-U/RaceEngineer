@@ -1,0 +1,58 @@
+raceengineer.stt: PhoWhisper-small Q5_1 model loaded: "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-McRPcF/synthetic-model.bin" model_load_ms= 0.107743 threads= 2 flash_attn= true
+raceengineer.stt: whisper.cpp system: Lifecycle test stub; no inference
+raceengineer.stt: STT timing total_ms= 0.518643 preprocess_ms= 0.022544 sample_ms= 0 encoder_ms= 0 decoder_ms= 0 batch_decoder_ms= 0 prompt_ms= 0 gpu_sync_transfer_estimate_ms= 0.000271 threads= 2 max_tokens= 48 gpu_request= false flash_attn= true language= "vi"
+raceengineer.stt: PhoWhisper-small Q5_1 model loaded: "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-McRPcF/synthetic-model.bin" model_load_ms= 0.00615 threads= 2 flash_attn= true
+raceengineer.stt: whisper.cpp system: Lifecycle test stub; no inference
+raceengineer.stt: STT timing total_ms= 0.287224 preprocess_ms= 0.020121 sample_ms= 0 encoder_ms= 0 decoder_ms= 0 batch_decoder_ms= 0 prompt_ms= 0 gpu_sync_transfer_estimate_ms= 9e-05 threads= 2 max_tokens= 48 gpu_request= false flash_attn= true language= "vi"
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+PulseAudioService: pa_context_connect() failed
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-QNtcQp"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 1 (voice: test style: tu_nhien temp: 0.4 ): "On demand lifecycle test"
+raceengineer.tts: VieNeu synthesis failed for request 1 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu context released on worker; generation 2
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-QNtcQp"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 2 (voice: test style: tu_nhien temp: 0.4 ): "Reload lifecycle test"
+raceengineer.tts: VieNeu synthesis failed for request 2 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu context released on worker; generation 3
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-MAMjHg"
+raceengineer.tts: Failed to initialize native VieNeu-TTS: "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: VieNeu CPU threads: 2 (setting: 2 , OMP override: false )
+raceengineer.tts: Initializing native VieNeu-TTS from "/tmp/ResourceUsage-b1fe3aee-87fd-4166-bd35-e07b8a641634-MAMjHg"
+raceengineer.tts: Native VieNeu-TTS initialized successfully
+raceengineer.tts: VieNeu synthesizing request 1 (voice: test style: tu_nhien temp: 0.4 ): "Retry after initialization failure"
+raceengineer.tts: VieNeu synthesis failed for request 1 : "Lifecycle test: synthetic synthesis failure"
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.audio: PTT sound not found: /workspace/RaceEngineer/.tooling/native/build/sound.mp3
+raceengineer.tts: TTS warm-up failed: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.tts: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.stt: STT startup warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.app: Startup STT warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.audio: Không tìm thấy microphone.
+Cadence observed: low_resource=1, updates=10
+raceengineer.audio: PTT utterance complete: 1600 samples
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.audio: PTT sound not found: /workspace/RaceEngineer/.tooling/native/build/sound.mp3
+raceengineer.tts: TTS warm-up failed: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.stt: STT startup warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.tts: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.app: Startup STT warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.audio: Không tìm thấy microphone.
+Cadence observed: low_resource=0, updates=30
+raceengineer.audio: PTT utterance complete: 1600 samples
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.audio: PTT sound not found: /workspace/RaceEngineer/.tooling/native/build/sound.mp3
+raceengineer.tts: TTS warm-up failed: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.tts: Thiếu mô hình VieNeu-TTS v3 Turbo.
+raceengineer.stt: STT startup warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.app: Startup STT warm-up failed: Không tìm thấy mô hình Whisper: /workspace/RaceEngineer/.tooling/native/build/../models/ggml-phowhisper-small-q5_1.bin
+raceengineer.audio: Không tìm thấy microphone.
+Native telemetry: low_resource=1, samples=31, visible_notifications=10, hidden_samples=100, hidden_notifications=0
+Native telemetry: low_resource=0, samples=31, visible_notifications=30, hidden_samples=100, hidden_notifications=0
+Resource lifecycle, PTT and native presentation checks passed (AI runtimes stubbed).

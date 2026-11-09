@@ -1,0 +1,14 @@
+raceengineer.app: Invalid settings JSON; using defaults: "unterminated object"
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 3
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 4
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 3
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+raceengineer.tts: Started TTS benchmark harness after worker release; threads 2
+TtsBenchmarkTests passed

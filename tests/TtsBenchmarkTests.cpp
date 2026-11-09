@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QThread>
 #include <QSemaphore>
@@ -145,7 +146,12 @@ int main(int argc, char** argv)
         return 0;
     }
     app.setApplicationName("RaceEngineer-TtsBenchmarkTests");
+    QTemporaryDir config;
+    check(config.isValid(), "isolated settings directory");
+    qputenv("XDG_CONFIG_HOME", config.path().toUtf8());
+#ifdef Q_OS_WIN
     QStandardPaths::setTestModeEnabled(true);
+#endif
     const QString path = QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("settings.json");
     QFile::remove(path);
     SettingsManager fresh;

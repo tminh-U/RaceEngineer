@@ -1,0 +1,30 @@
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+Failed to load cookie file from cookie: No such file or directory
+raceengineer.tts: "Google Gemini TTS API" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 44100 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+Failed to load cookie file from cookie: No such file or directory
+raceengineer.tts: "Google Gemini TTS API" first audio playback began after 20 ms
+raceengineer.tts: "Google Gemini TTS API" request and playback completed in 2901 ms
+raceengineer.tts: "Google Gemini TTS API" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "Google Gemini TTS API" first audio playback began after 19 ms
+raceengineer.tts: "Google Gemini TTS API" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "Google Gemini TTS API" first audio playback began after 19 ms
+raceengineer.tts: "Google Gemini TTS API" request and playback completed in 3279 ms
+raceengineer.tts: "Google Gemini TTS API" request and playback completed in 5626 ms
+raceengineer.tts: "Google Gemini TTS API" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "Google Gemini TTS API" first audio playback began after 19 ms
+raceengineer.tts: "Google Gemini TTS API" request and playback completed in 3771 ms
+raceengineer.tts: "OpenAI-compatible TTS" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "OpenAI-compatible TTS" first audio playback began after 6 ms
+raceengineer.tts: "OpenAI-compatible TTS" request and playback completed in 3227 ms
+raceengineer.tts: "OpenAI-compatible TTS" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "OpenAI-compatible TTS" first audio playback began after 6 ms
+raceengineer.tts: "OpenAI-compatible TTS" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "OpenAI-compatible TTS" first audio playback began after 7 ms
+raceengineer.tts: "OpenAI-compatible TTS" request and playback completed in 3128 ms
+raceengineer.tts: "OpenAI-compatible TTS" request and playback completed in 5483 ms
+raceengineer.tts: "OpenAI-compatible TTS" audio output: "RaceEngineerTest" preferred format: QAudioFormat( 48000 Hz,  2 Channels,  Int16 Format ) native 24 kHz mono support: true
+raceengineer.tts: "OpenAI-compatible TTS" first audio playback began after 8 ms
+raceengineer.tts: "OpenAI-compatible TTS" request and playback completed in 3671 ms
+Device: RaceEngineerTest; preferred rate=44100; channels=2; sample format=2; native 24k mono support=1
+Device playback: passed
+Compatible PCM first audio (local mock): 6 ms

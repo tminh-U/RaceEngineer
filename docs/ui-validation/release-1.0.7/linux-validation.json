@@ -11,7 +11,10 @@
     "collector_powershell_helpers": 0,
     "full_ui": 0,
     "metadata_ui": 0,
-    "focused_ui": 0
+    "focused_ui": 0,
+    "migration": 0,
+    "migration-owned": 0,
+    "migration-external": 0
   },
   "source_sha256": {
     "CMakeLists.txt": "4430e2459ccb770b8106c0364c20311f31c5e643c5f972cd399f22bc5a413ef9",
@@ -23,7 +26,7 @@
     "src/audio/MessageDispatcher.cpp": "853b81814efd8e8865e90e688bb86b3d15d5676efff3799fbe0a63bd09cb4135",
     "src/audio/VoiceInputController.cpp": "592d855c6ca392077e6d2c8b1b16be240f5122a4c649b716c6119cea95cebddb",
     "src/config/CredentialStore.cpp": "5c957165784e9eb7038e6ab1886801ce3473504af45ca2bd3149fab09265a5f9",
-    "src/config/SettingsManager.cpp": "b37241b1442ee5ae3dd41b9a77dfa56c3080c3a718ab27de8733dbc1107d5210",
+    "src/config/SettingsManager.cpp": "8526aa4b653ac890b652848cdc6fd573f1c4c7724107be370ddf66ca16f327fb",
     "src/events/EventEngine.cpp": "c9dd655d6626df995f0279d671b997061932b4fd077407bf9c3ad10e38e1648a",
     "src/input/DInputButtonMonitor.cpp": "82da73e53b8262988cddc9a876e43e7054e14e8eb3028b89fc38de61c48ddd3f",
     "src/integration/SimulatorSetup.cpp": "623c270b2312e6d6c07643784808d39267a399c17b748172fb81a23b80c58ca6",
@@ -116,7 +119,8 @@
     "tests/ResourceUsageTests.cpp": "7d914a95e7e5fe78d561023dcd27dc764df10f842af976734fac349dc9c9981b",
     "tests/test_race_performance_collector.ps1": "ec090aa57e6eff3bc0fc5efbb094cdfa60430324fc55a1e1c0844ee0c6265155",
     "tools/measure-race-performance.ps1": "f70baa295a034d6abdb0dcc53454de48db62fe62971ce8f287390be84b369baf",
-    "tools/analyze_race_performance.py": "e1512db8b3068c7d8e496b54530d68956a46efaa5b61245964f2d10b6d15a25f"
+    "tools/analyze_race_performance.py": "e1512db8b3068c7d8e496b54530d68956a46efaa5b61245964f2d10b6d15a25f",
+    "tests/TtsBenchmarkTests.cpp": "ce2887c339f6c6f4e0537dee58212611738898f3408ab57152fa976a6cc42bc5"
   },
   "limitations": [
     "Not real AC/ACC or Windows 8GB measurement.",

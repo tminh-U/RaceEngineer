@@ -1,0 +1,6 @@
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+Failed to create secure directory (/home/agent/.config/pulse): Read-only file system
+PulseAudioService: pa_context_connect() failed
+raceengineer.tts: Preloaded spotter audio: 26838780 bytes; phrases: 19
+raceengineer.tts: VieNeu context released on worker; generation 2
+raceengineer.tts: VieNeu context released on worker; generation 3
