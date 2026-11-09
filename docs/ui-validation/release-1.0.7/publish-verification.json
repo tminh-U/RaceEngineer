@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "version": "1.0.7",
+  "source_sha": "95d33cce64055759ea9c3d08fcd0f880836089f0",
+  "build_run": 42620614821,
+  "workflow_url": "https://github.com/tminh-U/RaceEngineer/actions/runs/42620614821",
+  "workflow_conclusion": "success",
+  "manifest_files_verified": 1762,
+  "executable_sha256": "949f8827202c9e0ae9fb61ab91b1b649c1478c187b3b22750d222e3ca4e634ca",
+  "package_sha256": {
+    "RaceEngineer-1.0.7-Setup.exe": "85a08f56846d3d74db1dcf82800c38d5ad254d1eae0b3d26ccf9e9569bbb6b37",
+    "RaceEngineer-1.0.7-windows-x64.zip": "a52bcb580d36b7d399da5100720463850e63bcfbf9e362bd82c7c54510466793"
+  },
+  "native_ui": {
+    "native": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\build-production\\RaceEngineer.exe",
+      "sha256": "949f8827202c9e0ae9fb61ab91b1b649c1478c187b3b22750d222e3ca4e634ca",
+      "ui_assertions_passed": true,
+      "cleanup": "exited",
+      "exit_code": 0
+    },
+    "packaged": {
+      "executable": "D:\\a\\RaceEngineer\\RaceEngineer\\production\\dist\\RaceEngineer-1.0.7\\bin\\RaceEngineer.exe",
+      "sha256": "949f8827202c9e0ae9fb61ab91b1b649c1478c187b3b22750d222e3ca4e634ca",
+      "ui_assertions_passed": true,
+      "cleanup": "exited",
+      "exit_code": 0
+    }
+  },
+  "settings_sample": {
+    "path": "settings.example.json",
+    "low_resource_mode": true,
+    "cpu_threads": 2,
+    "speech_endpoint": "https://api.openai.com/v1/audio/speech"
+  },
+  "release_id": 439149050,
+  "github_asset_digests_verified": true,
+  "asset_sha256": {
+    "RaceEngineer-1.0.7-Setup.exe": "85a08f56846d3d74db1dcf82800c38d5ad254d1eae0b3d26ccf9e9569bbb6b37",
+    "RaceEngineer-1.0.7-windows-x64.zip": "a52bcb580d36b7d399da5100720463850e63bcfbf9e362bd82c7c54510466793",
+    "SHA256SUMS.txt": "08eaeb0404bd15bc6cc5bf4f2bc7f91ed662a3e1e5b811ef708da2cbf88ec694"
+  },
+  "published_utc": "2026-11-09T13:14:41Z",
+  "release_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.7",
+  "public_checksum_download_verified": true,
+  "windows_ctest_passed": 8,
+  "windows_analyzer_cases_passed": 15,
+  "windows_collector_native_memory_api_checked": true
+}

@@ -1,7 +1,8 @@
 # Kiểm chứng tối ưu tài nguyên và Speech API
 
 Ngày: 2026-11-09. Báo cáo ghi nhận lượt kiểm chứng Linux trước khi chuẩn bị release
-v1.0.7; tại thời điểm đo này chưa tạo/phát hành EXE Windows mới.
+v1.0.7; tại thời điểm đo này chưa tạo/phát hành EXE Windows mới. Release hiện đã
+được build/kiểm chứng Windows và phát hành; xem [bằng chứng v1.0.7](ui-validation/release-1.0.7/README.md).
 
 Lượt tiếp theo đã tối ưu shared snapshot/metadata/key và chạy profiling có
 baseline riêng. Xem [kết quả allocation](performance-allocation-profile.md) cùng

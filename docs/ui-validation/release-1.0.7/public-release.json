@@ -1,0 +1,32 @@
+{
+  "id": 439149050,
+  "tag_name": "v1.0.7",
+  "target_commitish": "95d33cce64055759ea9c3d08fcd0f880836089f0",
+  "draft": false,
+  "prerelease": false,
+  "html_url": "https://github.com/tminh-U/RaceEngineer/releases/tag/v1.0.7",
+  "published_at": "2026-11-09T13:14:41Z",
+  "assets": [
+    {
+      "name": "RaceEngineer-1.0.7-Setup.exe",
+      "size": 621394182,
+      "digest": "sha256:85a08f56846d3d74db1dcf82800c38d5ad254d1eae0b3d26ccf9e9569bbb6b37",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/tminh-U/RaceEngineer/releases/download/v1.0.7/RaceEngineer-1.0.7-Setup.exe"
+    },
+    {
+      "name": "RaceEngineer-1.0.7-windows-x64.zip",
+      "size": 746691953,
+      "digest": "sha256:a52bcb580d36b7d399da5100720463850e63bcfbf9e362bd82c7c54510466793",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/tminh-U/RaceEngineer/releases/download/v1.0.7/RaceEngineer-1.0.7-windows-x64.zip"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 198,
+      "digest": "sha256:08eaeb0404bd15bc6cc5bf4f2bc7f91ed662a3e1e5b811ef708da2cbf88ec694",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/tminh-U/RaceEngineer/releases/download/v1.0.7/SHA256SUMS.txt"
+    }
+  ]
+}

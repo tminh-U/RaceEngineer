@@ -1,0 +1,24 @@
+release	Build and test Windows x64	2026-11-09T13:01:46.3609462Z     Start 1: TtsBenchmarkTests
+release	Build and test Windows x64	2026-11-09T13:01:47.5353973Z 1/8 Test #1: TtsBenchmarkTests ................   Passed    1.17 sec
+release	Build and test Windows x64	2026-11-09T13:01:47.5365216Z     Start 2: VieNeuThreadOwnershipTests
+release	Build and test Windows x64	2026-11-09T13:01:49.8920444Z 2/8 Test #2: VieNeuThreadOwnershipTests .......   Passed    2.36 sec
+release	Build and test Windows x64	2026-11-09T13:01:49.8923486Z     Start 3: VieNeuExternalOverrideTests
+release	Build and test Windows x64	2026-11-09T13:01:49.9549384Z 3/8 Test #3: VieNeuExternalOverrideTests ......   Passed    0.06 sec
+release	Build and test Windows x64	2026-11-09T13:01:49.9551996Z     Start 4: StrategyRecorderTests
+release	Build and test Windows x64	2026-11-09T13:01:49.9865083Z 4/8 Test #4: StrategyRecorderTests ............   Passed    0.03 sec
+release	Build and test Windows x64	2026-11-09T13:01:49.9867889Z     Start 5: RaceStateTests
+release	Build and test Windows x64	2026-11-09T13:01:57.2374480Z 5/8 Test #5: RaceStateTests ...................   Passed    7.25 sec
+release	Build and test Windows x64	2026-11-09T13:01:57.2377913Z     Start 6: TelemetryMetadataTests
+release	Build and test Windows x64	2026-11-09T13:02:10.5804841Z 6/8 Test #6: TelemetryMetadataTests ...........   Passed   13.34 sec
+release	Build and test Windows x64	2026-11-09T13:02:10.5808228Z     Start 7: GoogleTtsBackendTests
+release	Build and test Windows x64	2026-11-09T13:02:52.0936698Z 7/8 Test #7: GoogleTtsBackendTests ............   Passed   41.51 sec
+release	Build and test Windows x64	2026-11-09T13:02:52.0939786Z     Start 8: ResourceUsageTests
+release	Build and test Windows x64	2026-11-09T13:02:54.9254009Z 8/8 Test #8: ResourceUsageTests ...............   Passed    2.83 sec
+release	Build and test Windows x64	2026-11-09T13:02:54.9262660Z 100% tests passed, 0 tests failed out of 8
+release	Build and test Windows x64	2026-11-09T13:02:54.9262986Z Total Test time (real) =  68.58 sec
+release	Check performance capture tools	2026-11-09T13:02:55.6825956Z Ran 15 tests in 0.217s
+release	Check performance capture tools	2026-11-09T13:02:55.6826333Z OK
+release	Check performance capture tools	2026-11-09T13:02:59.9530049Z Collector helper checks passed; native memory APIs checked on Windows, declarations only on Linux. ETW/game capture is not validated by these tests.
+release	Verify built QML and setup	2026-11-09T13:03:09.1914751Z Native setup UI passed; cleanup: exited
+release	Package and verify	2026-11-09T13:09:59.3822592Z Release verified: RaceEngineer 1.0.7 (windows-x64)
+release	Package and verify	2026-11-09T13:10:05.0128988Z Native setup UI passed; cleanup: exited
