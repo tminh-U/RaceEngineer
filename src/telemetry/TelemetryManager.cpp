@@ -101,7 +101,7 @@ void TelemetryManager::pollTelemetry()
         return;
     }
     if (uiPublishClock_.elapsed() >= 33) {
-        emit stateUpdated(active_->getCurrentState());
+        emit stateUpdated(std::make_shared<const RaceState>(active_->getCurrentState()));
         uiPublishClock_.restart();
     }
 }
@@ -139,7 +139,7 @@ void TelemetryManager::selectProvider(const SelectedProvider selection)
         emit connectionStatusChanged(QString::fromUtf8(candidate->simName().data(),
                                          static_cast<qsizetype>(candidate->simName().size())),
             true);
-        emit stateUpdated(candidate->getCurrentState());
+        emit stateUpdated(std::make_shared<const RaceState>(candidate->getCurrentState()));
         uiPublishClock_.restart();
         return;
     }
@@ -164,7 +164,7 @@ void TelemetryManager::publishDisconnected()
     RaceState state;
     state.capturedAt = std::chrono::steady_clock::now();
     emit connectionStatusChanged(QStringLiteral("Not Connected"), false);
-    emit stateUpdated(state);
+    emit stateUpdated(std::make_shared<const RaceState>(std::move(state)));
 }
 
 } // namespace raceengineer

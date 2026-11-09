@@ -1621,25 +1621,39 @@ def _test_radio(engine: QQmlApplicationEngine, root: Any, fake: Any) -> dict[str
     # The window stays alive in the tray path. Live bindings and the history
     # model must detach while hidden, then reattach without losing the reader's
     # position when the window returns.
+    ui_active_calls = [args for name, args in fake.calls if name == "setUiActive"]
     root.showMinimized()
     _pump(50)
     minimized_live = _find(root, "cockpit").property("live")
     minimized_drawer_visible = _visible(history)
+    ui_calls_after_minimize = [args for name, args in fake.calls if name == "setUiActive"][len(ui_active_calls):]
+    minimized_ui_active = bool(fake.ui_active)
     fake.values["conversationLog"] = [*fake.values["conversationLog"],
                                        {"role": "engineer", "text": "Message while hidden"}]
     fake.changed.emit()
     _pump(60)
     minimized_history_count = int(history_list.property("count"))
+    calls_before_restore = [args for name, args in fake.calls if name == "setUiActive"]
     root.showNormal()
     _pump(50)
     restored_history_count = int(history_list.property("count"))
     restored_y = float(history_list.property("contentY")) - float(history_list.property("originY"))
+    ui_calls_after_restore = [args for name, args in fake.calls if name == "setUiActive"][len(calls_before_restore):]
+    restored_ui_active = bool(fake.ui_active)
     if minimized_live or not minimized_drawer_visible:
         raise AssertionError(f"Minimize lifecycle failed to freeze Cockpit/preserve the open history drawer: live={minimized_live}, drawer_visible={minimized_drawer_visible}")
     if minimized_history_count != hidden_count:
         raise AssertionError(f"History model changed while the window was minimized: {hidden_count} → {minimized_history_count}")
     if restored_history_count != hidden_count + 1:
         raise AssertionError(f"History model did not refresh after restore: expected {hidden_count + 1}, got {restored_history_count}")
+    if ui_calls_after_minimize != [(False,)]:
+        raise AssertionError(f"Minimize should deactivate UI work exactly once, got {ui_calls_after_minimize}")
+    if minimized_ui_active:
+        raise AssertionError("Fake facade did not record its inactive UI state after minimize")
+    if ui_calls_after_restore != [(True,)]:
+        raise AssertionError(f"Restore should reactivate UI work exactly once, got {ui_calls_after_restore}")
+    if not restored_ui_active:
+        raise AssertionError("Fake facade did not record its active UI state after restore")
     if abs(restored_y - restore_y) > max(80, float(history_list.height()) * 0.75):
         raise AssertionError(f"History reading position was not restored after minimize: {restore_y} → {restored_y}")
     # Leave the subsequent workspace tests unobstructed by the modal drawer.
@@ -1657,6 +1671,10 @@ def _test_radio(engine: QQmlApplicationEngine, root: Any, fake: Any) -> dict[str
             "minimized_live": minimized_live,
             "history_drawer_stays_open_on_minimize": minimized_drawer_visible,
             "history_updates_detached_while_minimized": minimized_history_count == hidden_count,
+            "ui_active_transitions": {"minimize": ui_calls_after_minimize,
+                                      "restore": ui_calls_after_restore,
+                                      "active_after_minimize": minimized_ui_active,
+                                      "active_after_restore": restored_ui_active},
             "history_count_after_restore": restored_history_count,
             "history_read_position_after_restore": {"before": restore_y, "after": restored_y}}
 
@@ -1957,7 +1975,7 @@ def _test_system_actions(engine: QQmlApplicationEngine, root: Any, fake: Any) ->
     page = _find(root, "systemDevicesPage")
     settings = {name: _find_visible_scoped(page, name) for name in (
         "startWithWindowsToggle", "minimizeToTrayToggle", "minimizeOnCloseToggle",
-        "gpuRendererToggle", "aiComputeDeviceCombo", "keyboardPttToggle",
+        "gpuRendererToggle", "lowResourceToggle", "aiComputeDeviceCombo", "keyboardPttToggle",
         "directInputPttToggle", "audioInputCombo", "audioOutputCombo",
         "audioDuckingToggle", "radioVolumeSlider", "openSetupButton", "mapDirectInputButton")}
     fake.values.update({
@@ -2008,6 +2026,32 @@ def _test_system_actions(engine: QQmlApplicationEngine, root: Any, fake: Any) ->
             raise AssertionError(f"{method_name} did not apply {target}")
         result["interactions"][object_name] = {"method": method_name, "args": [target],
                                                "result": fake.values[property_name]}
+
+    low_resource = settings["lowResourceToggle"]
+    if fake.values["lowResourceMode"] is not True or fake.values["lowResourceRestartRequired"] is not False:
+        raise AssertionError("Fake facade low-resource defaults should be enabled without a pending restart")
+    if not bool(low_resource.property("checked")):
+        raise AssertionError("Low-resource mode should reflect the saved enabled setting on page entry")
+    before = len(fake.calls)
+    low_resource_notifications = QSignalSpy(fake.generalSettingsChanged)
+    _click(root, low_resource)
+    _assert_call_delta(fake, "setLowResourceMode", before, (False,))
+    if low_resource_notifications.count() != 1:
+        raise AssertionError(f"Low-resource save should emit one general settings notification, got {low_resource_notifications.count()}")
+    if fake.values["lowResourceMode"] is not False or fake.values["lowResourceRestartRequired"] is not True:
+        raise AssertionError("Low-resource setting did not persist its new value and require a restart")
+    if bool(low_resource.property("checked")):
+        raise AssertionError("Low-resource switch did not follow the saved disabled value")
+    if _find_visible_text_item(page, "Khởi động lại ứng dụng để áp dụng.", required=False) is None:
+        raise AssertionError("Low-resource setting did not show its restart-required status")
+    _route_to(engine, root, 4)
+    _route_to(engine, root, 5)
+    low_resource = _find_visible_scoped(page, "lowResourceToggle")
+    if bool(low_resource.property("checked")) or fake.values["lowResourceMode"] is not False:
+        raise AssertionError("Low-resource selection did not persist across workspace navigation")
+    result["interactions"]["lowResourceToggle"] = {
+        "method": "setLowResourceMode", "args": [False],
+        "persisted_after_navigation": True, "restart_required": True}
 
     compute = settings["aiComputeDeviceCombo"]
     if int(compute.property("count")) != 2 or compute.property("currentText") != "CPU":
@@ -2270,7 +2314,23 @@ def _test_navigation_and_gates(engine: QQmlApplicationEngine, root: Any, fake: A
 
 
 def _test_forms_and_setup(engine: QQmlApplicationEngine, root: Any, fake: Any) -> dict[str, Any]:
+    main_window_identity = int(shiboken6.getCppPointer(root)[0])
+    main_window_marker = str(root.property("_uiValidationIdentity"))
+    root_wrapper_reacquisitions: list[str] = []
+
+    def refresh_main_window(phase: str, expected_page: int = 4) -> None:
+        nonlocal root
+        root, reacquired = _reacquire_main_if_needed(
+            engine, root, main_window_identity, main_window_marker, expected_page, phase
+        )
+        if reacquired:
+            if not root.isVisible():
+                raise AssertionError(f"Main window became hidden while reacquiring its wrapper after {phase}")
+            _window_metrics(root)
+            root_wrapper_reacquisitions.append(phase)
+
     _route_to(engine, root, 4)
+    refresh_main_window("AI route")
     ai_page = _find(root, "aiVoicePage")
     fake.values.update({
         "apiConfigured": True, "apiState": "LLM Server Offline",
@@ -2507,6 +2567,127 @@ def _test_forms_and_setup(engine: QQmlApplicationEngine, root: Any, fake: Any) -
         raise AssertionError(f"Backend selector failed to preserve native VieNeu backend id: {backend_calls[-1:]}")
     if int(ai_page.property("sectionIndex")) != 1:
         raise AssertionError("Changing backend in the Google tab did not route to the selected local voice section")
+    tts_backend = _find_visible_scoped(ai_page, "ttsBackendCombo")
+
+    # OpenAI-compatible speech uses the same provider selector but owns a
+    # separate tab and credential. Saving an empty key at the same endpoint
+    # must retain it; changing endpoints with an empty key must clear it.
+    _activate_combo(tts_backend, 2)
+    refresh_main_window("OpenAI-compatible TTS route")
+    if _last_call(fake, "setTtsBackend") != ("OpenAI-compatible TTS",):
+        raise AssertionError("OpenAI-compatible TTS selection did not use the native backend id")
+    if int(ai_page.property("sectionIndex")) != 3:
+        raise AssertionError("OpenAI-compatible TTS backend did not route to the fourth TTS tab")
+    fake.values.update({"ttsBackend": "OpenAI-compatible TTS", "connected": False,
+                        "speechTtsEndpoint": "https://api.openai.com/v1/audio/speech",
+                        "speechTtsModel": "gpt-4o-mini-tts", "speechTtsVoice": "coral",
+                        "speechTtsApiKeyConfigured": False, "speechTtsFirstAudioMs": -1,
+                        "ttsBenchmarkRunning": False, "ttsBenchmarkRestoring": False})
+    fake.changed.emit()
+    _pump(100)
+    refresh_main_window("OpenAI-compatible TTS settings")
+    speech_backend = _find_visible_scoped(ai_page, "ttsBackendCombo")
+    speech_endpoint = _find_visible_scoped(ai_page, "speechTtsEndpointField")
+    speech_model = _find_visible_scoped(ai_page, "speechTtsModelField")
+    speech_voice = _find_visible_scoped(ai_page, "speechTtsVoiceField")
+    speech_key = _find_visible_scoped(ai_page, "speechTtsApiKeyField")
+    save_speech = _find_visible_scoped(ai_page, "saveSpeechTtsButton")
+    clear_speech_key = _find_visible_scoped(ai_page, "clearSpeechTtsKeyButton")
+    speech_preview = _find_visible_scoped(ai_page, "previewSpeechTtsButton")
+    speech_benchmark = _find_visible_scoped(ai_page, "ttsBenchmarkPanel", required=False)
+    if (speech_endpoint.property("text"), speech_model.property("text"), speech_voice.property("text")) != (
+            "https://api.openai.com/v1/audio/speech", "gpt-4o-mini-tts", "coral"):
+        raise AssertionError("OpenAI-compatible TTS form did not load the saved endpoint/model/voice defaults")
+    if int(_qml_item_value(engine, speech_key, "echoMode")) != 2:
+        raise AssertionError("OpenAI-compatible TTS API key must remain a password field")
+    if clear_speech_key.isEnabled() or not speech_preview.isEnabled() or _visible(speech_benchmark):
+        raise AssertionError("Speech TTS should hide the local benchmark, disable key clear without a key, and allow disconnected preview")
+    if speech_backend.property("currentIndex") != 2:
+        raise AssertionError("Speech TTS tab did not retain the selected OpenAI-compatible backend")
+
+    preview_calls_before_saves = _call_count(fake, "previewTtsVoice")
+    speech_settings_notifications = QSignalSpy(fake.speechTtsSettingsChanged)
+    _replace_text(root, speech_model, "speech-test-model")
+    _replace_text(root, speech_voice, "nova")
+    _replace_text(root, speech_key, "speech-test-secret")
+    before = len(fake.calls)
+    _click(root, save_speech)
+    expected_speech_config = ("https://api.openai.com/v1/audio/speech", "speech-test-model", "nova", "speech-test-secret")
+    _assert_call_delta(fake, "configureSpeechTts", before, expected_speech_config)
+    if speech_settings_notifications.count() != 1:
+        raise AssertionError(f"Speech TTS save should emit one settings notification, got {speech_settings_notifications.count()}")
+    if (fake.values["speechTtsEndpoint"], fake.values["speechTtsModel"], fake.values["speechTtsVoice"],
+            fake._speech_tts_api_key, fake.values["speechTtsApiKeyConfigured"]) != (*expected_speech_config[:3], "speech-test-secret", True):
+        raise AssertionError("Speech TTS save did not persist its endpoint/model/voice and private API key state")
+    if speech_key.property("text") != "" or _call_count(fake, "previewTtsVoice") != preview_calls_before_saves:
+        raise AssertionError("Speech TTS save should clear the key field without autoplaying audio")
+
+    _replace_text(root, speech_model, "speech-test-model-2")
+    _replace_text(root, speech_voice, "shimmer")
+    before = len(fake.calls)
+    _click(root, save_speech)
+    _assert_call_delta(fake, "configureSpeechTts", before,
+                       ("https://api.openai.com/v1/audio/speech", "speech-test-model-2", "shimmer", ""))
+    if speech_settings_notifications.count() != 2:
+        raise AssertionError(f"Same-endpoint Speech TTS save should emit one settings notification, got {speech_settings_notifications.count()}")
+    if fake._speech_tts_api_key != "speech-test-secret" or not fake.values["speechTtsApiKeyConfigured"]:
+        raise AssertionError("Blank key on the same Speech API endpoint should preserve the saved key")
+    if speech_key.property("text") != "" or _call_count(fake, "previewTtsVoice") != preview_calls_before_saves:
+        raise AssertionError("Speech TTS settings save triggered audio or left a key draft visible")
+
+    alternate_speech_endpoint = "https://tts.example.test/v1/audio/speech"
+    _replace_text(root, speech_endpoint, alternate_speech_endpoint)
+    _replace_text(root, speech_model, "alternate-speech-model")
+    _replace_text(root, speech_voice, "alloy")
+    before = len(fake.calls)
+    _click(root, save_speech)
+    _assert_call_delta(fake, "configureSpeechTts", before,
+                       (alternate_speech_endpoint, "alternate-speech-model", "alloy", ""))
+    if speech_settings_notifications.count() != 3:
+        raise AssertionError(f"Changed-endpoint Speech TTS save should emit one settings notification, got {speech_settings_notifications.count()}")
+    if fake._speech_tts_api_key or fake.values["speechTtsApiKeyConfigured"] or clear_speech_key.isEnabled():
+        raise AssertionError("Changing Speech API endpoint without a new key must clear the old credential")
+
+    _replace_text(root, speech_key, "replacement-speech-secret")
+    before = len(fake.calls)
+    _click(root, save_speech)
+    _assert_call_delta(fake, "configureSpeechTts", before,
+                       (alternate_speech_endpoint, "alternate-speech-model", "alloy", "replacement-speech-secret"))
+    if speech_settings_notifications.count() != 4:
+        raise AssertionError(f"Speech TTS key replacement should emit one settings notification, got {speech_settings_notifications.count()}")
+    if not clear_speech_key.isEnabled() or fake._speech_tts_api_key != "replacement-speech-secret":
+        raise AssertionError("Speech TTS replacement key was not saved or the clear action stayed disabled")
+    before = len(fake.calls)
+    _click(root, clear_speech_key)
+    _assert_call_delta(fake, "clearSpeechTtsApiKey", before, ())
+    if speech_settings_notifications.count() != 5:
+        raise AssertionError(f"Speech TTS key clear should emit one settings notification, got {speech_settings_notifications.count()}")
+    if fake._speech_tts_api_key or fake.values["speechTtsApiKeyConfigured"] or clear_speech_key.isEnabled():
+        raise AssertionError("Explicit Speech TTS key clear did not remove the key and disable Clear")
+    if _call_count(fake, "previewTtsVoice") != preview_calls_before_saves:
+        raise AssertionError("Speech TTS form actions triggered preview audio without an explicit click")
+    if fake.values["ttsBackend"] != "OpenAI-compatible TTS" or not speech_preview.isEnabled():
+        raise AssertionError("Speech TTS preview should remain available while disconnected and selected")
+    _click(root, speech_preview)
+    if _call_count(fake, "previewTtsVoice") != preview_calls_before_saves + 1:
+        raise AssertionError("Speech TTS preview button did not issue exactly one explicit preview request")
+
+    _route_to(engine, root, 2, direct=True)
+    refresh_main_window("Engineer route from TTS", expected_page=2)
+    _route_to(engine, root, 4, direct=True)
+    refresh_main_window("AI route after TTS", expected_page=4)
+    _pump(80)
+    ai_tabs = _find_visible_scoped(ai_page, "aiVoiceSectionTabs")
+    if int(ai_page.property("sectionIndex")) != 3:
+        raise AssertionError("Navigating back to AI lost the active TTS-other section")
+    retained_speech = (_find_visible_scoped(ai_page, "speechTtsEndpointField").property("text"),
+                       _find_visible_scoped(ai_page, "speechTtsModelField").property("text"),
+                       _find_visible_scoped(ai_page, "speechTtsVoiceField").property("text"))
+    if retained_speech != (alternate_speech_endpoint, "alternate-speech-model", "alloy"):
+        raise AssertionError(f"Saved Speech TTS endpoint/model/voice did not survive route navigation: {retained_speech}")
+    if _find_visible_scoped(ai_page, "speechTtsApiKeyField").property("text") != "":
+        raise AssertionError("Saved Speech TTS key should stay out of the UI field after route navigation")
+
     # Switch back to Google through the visible section selector before opening
     # the single Main-owned prompt/WAV dialog.
     _select_tab_with_mouse(ai_tabs, 2)
@@ -2856,7 +3037,7 @@ def _test_forms_and_setup(engine: QQmlApplicationEngine, root: Any, fake: Any) -
 
     return {"llm_form": {"test_connection_args": list(test_calls[-1]),
                           "save_ai_settings_args": list(save_calls[-1]),
-                          "password_fields": ["apiKeyField", "googleTtsApiKey"],
+                          "password_fields": ["apiKeyField", "googleTtsApiKey", "speechTtsApiKeyField"],
                           "temperature_range": [0, 1], "maximum_tokens_range": [16, 128],
                           "reasoning_setter": list(reasoning_calls[-1]),
                           "clean_form_refresh_on_apiSettingsChanged": list(refreshed),
@@ -2868,6 +3049,15 @@ def _test_forms_and_setup(engine: QQmlApplicationEngine, root: Any, fake: Any) -
                     "google_model_setter": list(model_calls[-1]),
                     "google_voice_setter": list(google_voice_calls[-1]),
                     "google_key_setter": list(google_key_calls[-1]),
+                    "speech_backend_setter": ["OpenAI-compatible TTS"],
+                    "speech_tts_configuration": list(expected_speech_config),
+                    "speech_tts_blank_key_same_endpoint_preserved": True,
+                    "speech_tts_endpoint_change_cleared_old_key": True,
+                    "speech_tts_explicit_key_clear": True,
+                    "speech_tts_preview_disconnected": True,
+                    "speech_tts_saves_do_not_autoplay": True,
+                    "speech_tts_route_navigation_retained_settings": True,
+                    "speech_tts_settings_notifications": speech_settings_notifications.count(),
                     "benchmark_start_cancel": True,
                     "thread_gates": ["connected", "voiceStatus != Idle", "benchmark running/restoring", "external override"]},
             "google_voice_dialog": {"shared_ai_setup_host": True,
@@ -2890,6 +3080,7 @@ def _test_forms_and_setup(engine: QQmlApplicationEngine, root: Any, fake: Any) -
                               "hide_restore_state": {"hidden_state": minimized_state,
                                                      "restored_visibility": restored_visibility,
                                                      "draft_preserved": True}},
+            "main_window_wrapper_reacquisitions": root_wrapper_reacquisitions,
             "hidden_ai_route_disables_form": True}
 
 

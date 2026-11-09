@@ -12,6 +12,9 @@ public:
     [[nodiscard]] static QString readGoogleTtsApiKey();
     static bool writeGoogleTtsApiKey(const QString& apiKey);
     static bool clearGoogleTtsApiKey();
+    [[nodiscard]] static QString readSpeechTtsApiKey();
+    static bool writeSpeechTtsApiKey(const QString& apiKey);
+    static bool clearSpeechTtsApiKey();
     [[nodiscard]] static QString readRaceDataShareToken();
     static bool writeRaceDataShareToken(const QString& token);
     static bool clearRaceDataShareToken();

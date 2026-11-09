@@ -23,8 +23,8 @@ import run_ui as ui  # noqa: E402
 
 
 ROOT = ui.ROOT
-OUT = ui.VALIDATION_DIR / "review-gallery"
-TYRE_TILE_OUT = ui.VALIDATION_DIR / "tyre-tile-closeups"
+OUT = Path(os.environ.get("RACEENGINEER_UI_CAPTURE_DIR", ui.VALIDATION_DIR / "review-gallery")).resolve()
+TYRE_TILE_OUT = OUT / "tyre-tile-closeups"
 
 
 def _fixture(fake: object) -> None:
@@ -276,7 +276,8 @@ def run() -> dict[str, object]:
     ai_page = ui._find(root, "aiVoicePage")
     for section, label, backend in ((0, "ai-connection", "Google Gemini API"),
                                     (1, "ai-local-voice", "VieNeu-TTS"),
-                                    (2, "ai-google-tts", "Google Gemini API")):
+                                    (2, "ai-google-tts", "Google Gemini API"),
+                                    (3, "ai-speech-tts", "OpenAI-compatible TTS")):
         ai_page.setProperty("sectionIndex", section)
         fake.values.update({"ttsBackend": backend, "connected": section != 1,
                             "voiceStatus": "Idle", "ttsBenchmarkRunning": False,
@@ -291,6 +292,28 @@ def run() -> dict[str, object]:
             record.update({"route": 4, "section": section, "logical_size": list(size),
                            "tts_backend": backend, "page_bounds": list(map(round, page_bounds))})
             records.append(record)
+
+    # Capture the saved low-resource control in each supported UI viewport,
+    # scrolling it into view in the compact case.
+    ui._route_to(engine, root, 5, direct=True)
+    system_page = ui._find(root, "systemDevicesPage")
+    low_resource = ui._find_scoped(system_page, "lowResourceToggle")
+    for size in ui.SIZES:
+        root.resize(*size)
+        ui._pump(100)
+        low_resource = ui._find_scoped(system_page, "lowResourceToggle")
+        ui._scroll_item_into_view(root, low_resource)
+        ui._pump(80)
+        page_bounds = ui._scene_rect(system_page)
+        switch_bounds = ui._scene_rect(low_resource)
+        ui._assert_inside(switch_bounds, page_bounds, f"Low-resource toggle at {size[0]}x{size[1]}")
+        title = ui._find_visible_text_item(system_page, "Chế độ nhẹ — ưu tiên game")
+        record = ui._capture(root, OUT / f"low-resource-mode-{size[0]}x{size[1]}.png")
+        record.update({"route": 5, "logical_size": list(size), "low_resource_toggle_bounds": list(map(round, switch_bounds)),
+                       "low_resource_title_bounds": list(map(round, ui._scene_rect(title))),
+                       "low_resource_enabled": bool(low_resource.property("checked")),
+                       "page_bounds": list(map(round, page_bounds))})
+        records.append(record)
 
     ui._route_to(engine, root, 1, direct=True)
     strategy_page = ui._find(root, "fuelStrategyPage")

@@ -279,7 +279,7 @@ def _api_status_cases(engine: Any, root: Any, fake: Any) -> dict[str, Any]:
 
 
 def _voice_case_for_backend(backend_name: str) -> dict[str, Any]:
-    expected = 2 if backend_name == "Google Gemini API" else 1
+    expected = {"Google Gemini API": 2, "OpenAI-compatible TTS": 3}.get(backend_name, 1)
     engine, root, fake, qml_warnings = _start_engine(backend_name)
     VOICE_WARNINGS.extend(qml_warnings)
     loader = ui._find(root, "workspaceAiVoice")
@@ -294,6 +294,11 @@ def _voice_case_for_backend(backend_name: str) -> dict[str, Any]:
     first_index = int(ai.property("sectionIndex"))
     if int(root.property("currentPage")) != 4 or first_index != expected:
         raise AssertionError(f"First voice shortcut for {backend_name} selected tab {first_index}; expected {expected}")
+    speech_controls_visible = None
+    if backend_name == "OpenAI-compatible TTS":
+        speech_controls_visible = ui._find_visible_scoped(ai, "speechTtsEndpointField").isVisible()
+        if not speech_controls_visible:
+            raise AssertionError("OpenAI-compatible voice shortcut did not expose the Speech API settings")
     first_shot = _capture(root, f"voice-shortcut-first-{expected}-{backend_name.replace(' ', '-')}.png")
 
     ai.setProperty("sectionIndex", 0)
@@ -312,6 +317,8 @@ def _voice_case_for_backend(backend_name: str) -> dict[str, Any]:
     loaded_index = int(ai.property("sectionIndex"))
     if int(root.property("currentPage")) != 4 or loaded_index != expected:
         raise AssertionError(f"Cached voice shortcut for {backend_name} selected tab {loaded_index}; expected {expected}")
+    if backend_name == "OpenAI-compatible TTS" and not ui._find_visible_scoped(ai, "speechTtsEndpointField").isVisible():
+        raise AssertionError("Cached OpenAI-compatible voice shortcut hid the Speech API settings")
     ai.setProperty("sectionIndex", 0)
     ui._pump(20)
     if _text(endpoint) != draft:
@@ -322,13 +329,14 @@ def _voice_case_for_backend(backend_name: str) -> dict[str, Any]:
     return {"backend": backend_name, "expected_section": expected,
             "first_entry_section": first_index, "cached_entry_section": loaded_index,
             "first_ai_page_was_lazy": True, "cached_endpoint_draft_preserved": draft,
+            "speech_controls_visible": speech_controls_visible,
             "first_visit_screenshot": first_shot, "cached_visit_screenshot": loaded_shot,
             "qml_warnings": qml_warnings}
 
 
 def _voice_shortcuts() -> dict[str, Any]:
     return {backend: _voice_case_for_backend(backend)
-            for backend in ("VieNeu-TTS", "Google Gemini API")}
+            for backend in ("VieNeu-TTS", "Google Gemini API", "OpenAI-compatible TTS")}
 
 
 def _write_report(qml_warnings: list[str]) -> dict[str, Any]:

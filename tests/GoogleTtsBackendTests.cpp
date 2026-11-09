@@ -1,4 +1,5 @@
 #include "tts/GoogleTtsBackend.h"
+#include "tts/OpenAiTtsBackend.h"
 #include "llm/providers/OpenAICompatibleProvider.h"
 #include "utils/ApiRetry.h"
 
@@ -62,6 +63,9 @@ public:
     [[nodiscard]] const QByteArray& request() const noexcept { return request_; }
     [[nodiscard]] int requestCount() const { return requestCount_; }
     void setStatuses(QList<int> statuses) { statuses_ = std::move(statuses); }
+    void setContentType(QByteArray type) { contentType_ = std::move(type); }
+    void setSplitDelay(int milliseconds) { splitDelay_ = milliseconds; }
+    bool responseFinished() const { return responseFinished_; }
 
 private:
     void acceptRequest()
@@ -88,11 +92,12 @@ private:
             const QByteArray reason = status == 200 ? "OK" : status == 401 ? "Unauthorized"
                 : status == 403 ? "Forbidden" : status == 429 ? "Too Many Requests" : "Error";
             const QByteArray header = "HTTP/1.1 " + QByteArray::number(status) + ' ' + reason
-                + "\r\nContent-Type: application/json\r\nContent-Length: "
+                + "\r\nContent-Type: " + contentType_ + "\r\nContent-Length: "
                 + QByteArray::number(body_.size()) + "\r\nConnection: close\r\n\r\n";
             socket->write(header);
             if (!splitResponse_) {
                 socket->write(body_);
+                responseFinished_ = true;
                 socket->disconnectFromHost();
                 return;
             }
@@ -100,8 +105,9 @@ private:
             const QByteArray first = body_.left(body_.size() / 2);
             const QByteArray second = body_.mid(body_.size() / 2);
             QTimer::singleShot(5, socket, [socket, first] { socket->write(first); });
-            QTimer::singleShot(15, socket, [socket, second] {
+            QTimer::singleShot(splitDelay_, socket, [this, socket, second] {
                 socket->write(second);
+                responseFinished_ = true;
                 socket->disconnectFromHost();
             });
         };
@@ -116,6 +122,9 @@ private:
     int requestCount_{0};
     QList<int> statuses_;
     QByteArray request_;
+    QByteArray contentType_{"application/json"};
+    int splitDelay_{15};
+    bool responseFinished_{false};
 };
 
 QByteArray pcmWav(const int seconds)
@@ -176,6 +185,60 @@ void testHttpFailures()
         expect(requestLineEnd > 0 && !mock.request().left(requestLineEnd).contains('?'),
             "does not put API key in URL");
     }
+}
+
+void testCompatibleSpeechApi()
+{
+    using raceengineer::OpenAiTtsBackend;
+    expect(!GoogleTtsBackend::validSpeechEndpoint(QUrl("http://api.example.com/audio/speech")),
+        "remote speech credentials require TLS");
+    expect(!GoogleTtsBackend::validSpeechEndpoint(QUrl("https://key@example.com/audio/speech")),
+        "speech endpoint cannot persist embedded credentials");
+    expect(!GoogleTtsBackend::validSpeechEndpoint(QUrl("https://example.com/audio/speech?key=secret")),
+        "speech endpoint cannot persist a key in query parameters");
+    {
+        HttpMock mock(401, QByteArrayLiteral("{\"error\":\"unauthorized\"}"));
+        OpenAiTtsBackend backend(mock.endpoint("/v1/audio/speech"));
+        expect(backend.isAvailable(), "loopback compatible services can run without credentials");
+        expect(backend.configureSpeechApi(mock.endpoint("/v1/audio/speech"), "test-model", "test-voice"),
+            "compatible speech accepts provider-specific model/voice");
+        backend.setApiKey("speech-test-key");
+        int firstAudio = 0;
+        QObject::connect(&backend, &GoogleTtsBackend::firstAudioReceived, &backend, [&](qint64) { ++firstAudio; });
+        const auto error = awaitError(backend, [&] { backend.speak("Test radio"); });
+        expect(error.contains("authentication"), "compatible speech reports auth failures");
+        expect(firstAudio == 0, "JSON error bodies are never played as PCM");
+        const auto request = mock.request();
+        const auto body = QJsonDocument::fromJson(request.mid(request.indexOf("\r\n\r\n") + 4)).object();
+        expect(request.startsWith("POST /v1/audio/speech "), "uses the configured speech endpoint");
+        expect(request.toLower().contains("authorization: bearer speech-test-key"), "speech API sends its separate Bearer credential");
+        expect(!request.contains("x-goog-api-key"), "speech API never sends Google authentication");
+        expect(body.value("input").toString() == "Test radio" && body.value("model").toString() == "test-model"
+            && body.value("voice").toString() == "test-voice" && body.value("response_format").toString() == "pcm",
+            "compatible request uses plain-text input and raw PCM output");
+        expect(!body.contains("generation_config"), "compatible requests do not contain Google-only options");
+    }
+    {
+        HttpMock mock(200, QByteArrayLiteral("{\"audio\":\"not PCM\"}"), true);
+        OpenAiTtsBackend backend(mock.endpoint("/speech"));
+        const auto error = awaitError(backend, [&] { backend.speak("Test"); });
+        expect(error.contains("raw 24 kHz"), "successful JSON/WAV/MP3 responses cannot be mistaken for raw PCM");
+    }
+    {
+        HttpMock mock(503, QByteArrayLiteral("{}"));
+        OpenAiTtsBackend backend(mock.endpoint("/speech"));
+        const auto error = awaitError(backend, [&] { backend.speak("Unavailable"); });
+        expect(error.contains("network request failed") && mock.requestCount() == 3,
+            "compatible speech retries transient failures before any audio");
+    }
+    {
+        HttpMock mock(200, QByteArray(1, '\1'), true);
+        mock.setContentType("audio/pcm");
+        OpenAiTtsBackend backend(mock.endpoint("/speech"));
+        const auto error = awaitError(backend, [&] { backend.speak("Truncated PCM"); });
+        expect(error.contains("incomplete 16-bit sample"), "compatible PCM rejects a truncated sample at end of stream");
+    }
+    std::cout << "Compatible Speech API checks completed\n";
 }
 
 void testSplitStreamError()
@@ -399,13 +462,56 @@ void waitMs(int milliseconds)
     loop.exec();
 }
 
-void testInterruptedPlayback(const QString& description)
+void waitForPlayback(const std::function<bool()>& complete)
+{
+    // Drivers and virtual sinks can add output latency; wait for the state transition,
+    // retaining a deadline and all completion-count/position/no-replay assertions.
+    QElapsedTimer clock;
+    clock.start();
+    while (!complete() && clock.elapsed() < 6000) waitMs(20);
+}
+
+void testCompatibleDevicePlayback(const QString& description)
+{
+    HttpMock mock(200, QByteArray(72002, '\0'), true); // Odd-sized chunks cross a 16-bit sample boundary.
+    mock.setContentType("audio/pcm");
+    mock.setSplitDelay(500);
+    raceengineer::OpenAiTtsBackend backend(mock.endpoint("/v1/audio/speech"));
+    backend.setVolume(0);
+    backend.setAudioOutputDevice(description);
+    QEventLoop loop;
+    int firstAudio = 0;
+    qint64 firstAudioMs = -1;
+    bool finished = false, startedBeforeTail = false;
+    QString error;
+    QObject::connect(&backend, &GoogleTtsBackend::firstAudioReceived, &loop,
+        [&](qint64 ms) { ++firstAudio; firstAudioMs = ms; startedBeforeTail = !mock.responseFinished(); });
+    QObject::connect(&backend, &GoogleTtsBackend::errorOccurred, &loop,
+        [&](const QString& message) { error = message; });
+    QObject::connect(&backend, &GoogleTtsBackend::speakingFinished, &loop,
+        [&] { finished = true; loop.quit(); });
+    QTimer::singleShot(6000, &loop, &QEventLoop::quit);
+    backend.speak("Offline compatible speech playback");
+    loop.exec();
+    if (!error.isEmpty()) std::cerr << error.toStdString() << '\n';
+    expect(firstAudio == 1 && startedBeforeTail,
+        "compatible PCM playback starts before the HTTP response completes");
+    expect(finished && error.isEmpty() && mock.requestCount() == 1,
+        "compatible PCM stream drains and completes without retry or duplicate synthesis");
+    std::cout << "Compatible PCM first audio (local mock): " << firstAudioMs << " ms\n";
+}
+
+void testInterruptedPlayback(const QString& description, const bool compatible = false)
 {
     const auto encoded = QByteArray(96000, '\0').toBase64();
     const auto body = QByteArrayLiteral("data: {\"delta\":{\"type\":\"audio\",\"mime_type\":\"audio/l16\",\"data\":\"")
         + encoded + QByteArrayLiteral("\"}}\n\n");
-    HttpMock mock(200, body, true);
-    GoogleTtsBackend backend(mock.endpoint("/interactions"), mock.endpoint("/voices"));
+    HttpMock mock(200, compatible ? QByteArray(96000, '\0') : body, true);
+    mock.setContentType(compatible ? "audio/pcm" : "text/event-stream");
+    std::unique_ptr<GoogleTtsBackend> implementation = compatible
+        ? std::unique_ptr<GoogleTtsBackend>(new raceengineer::OpenAiTtsBackend(mock.endpoint("/speech")))
+        : std::make_unique<GoogleTtsBackend>(mock.endpoint("/interactions"), mock.endpoint("/voices"));
+    auto& backend = *implementation;
     backend.setApiKey("offline-test-key");
     backend.setVolume(0);
     backend.setAudioOutputDevice(description);
@@ -426,10 +532,10 @@ void testInterruptedPlayback(const QString& description)
         "original sink suspends for interruption");
     expect(original->processedUSecs() == position, "paused PCM position stays unchanged");
     backend.speak("Higher-priority speech on the same Google backend");
-    waitMs(2600);
+    waitForPlayback([&] { return finished == 1; });
     expect(finished == 1, "only urgent speech finishes while conversation is paused");
     expect(backend.resumeSpeech(token), "original conversation resumes");
-    waitMs(2800);
+    waitForPlayback([&] { return finished == 2; });
     expect(finished == 2 && mock.requestCount() == 2,
         "resume completes original audio without another synthesis request");
     expect(error.isEmpty(), "interrupt/resume has no audio or stream error");
@@ -438,7 +544,7 @@ void testInterruptedPlayback(const QString& description)
     waitMs(250);
     expect(finished == 2, "paused stream receiving audio does not finish active radio state");
     expect(backend.resumeSpeech(beforeAudio), "paused incoming stream is retained");
-    waitMs(2600);
+    waitForPlayback([&] { return finished == 3; });
     expect(finished == 3 && mock.requestCount() == 3, "suspended incoming stream resumes without replay");
     backend.speak("Cancelled continuation");
     const auto cancelled = backend.pauseSpeech();
@@ -578,9 +684,12 @@ int main(int argc, char* argv[])
         const auto description = app.arguments().value(app.arguments().indexOf(QStringLiteral("--playback-device")) + 1);
         testDevicePlayback(description);
         testInterruptedPlayback(description);
+        testCompatibleDevicePlayback(description);
+        testInterruptedPlayback(description, true);
         return failures == 0 ? 0 : 1;
     }
     testHttpFailures();
+    testCompatibleSpeechApi();
     testSplitStreamError();
     testRaceEngineerVoiceStyle();
     testVoiceReplication();

@@ -23,7 +23,8 @@ namespace raceengineer {
 // PCM samples may cross streaming chunk boundaries; retain at most one byte.
 bool decodeGooglePcmChunk(const QByteArray& encoded, QByteArray& remainder, QByteArray& pcm);
 
-class GoogleTtsBackend final : public ITtsBackend {
+// Shared streaming PCM playback also serves the OpenAI speech API subclass.
+class GoogleTtsBackend : public ITtsBackend {
     Q_OBJECT
 
 public:
@@ -31,8 +32,8 @@ public:
     GoogleTtsBackend(QUrl interactionsEndpoint, QUrl voicesEndpoint, QObject* parent = nullptr);
     ~GoogleTtsBackend() override;
 
-    [[nodiscard]] bool isAvailable() const override { return !apiKey_.trimmed().isEmpty(); }
-    [[nodiscard]] QString backendName() const override { return QStringLiteral("Google Gemini TTS API"); }
+    [[nodiscard]] bool isAvailable() const override;
+    [[nodiscard]] QString backendName() const override;
     quint64 pauseSpeech() override;
     bool resumeSpeech(quint64 token) override;
     void discardSpeech(quint64 token) override;
@@ -41,6 +42,8 @@ public:
     void setVoice(QString voice, QString voiceId = {});
     [[nodiscard]] static QStringList builtInVoices();
     [[nodiscard]] static QString bonoVoiceDescription();
+    [[nodiscard]] static bool validSpeechEndpoint(const QUrl& endpoint);
+    bool configureSpeechApi(const QUrl& endpoint, const QString& model, const QString& voice);
 
 public slots:
     void warmUp() override;
@@ -64,6 +67,9 @@ private slots:
     void readStream();
     void finishStream();
     void playbackTick();
+
+protected:
+    GoogleTtsBackend(bool openAiSpeech, QUrl endpoint, QObject* parent);
 
 private:
     void consumeEvents(bool finalChunk = false);
@@ -122,6 +128,7 @@ private:
     int recoveryAttempts_{0};
     quint64 nextRequestId_{1};
     bool voiceOperationActive_{false};
+    bool openAiSpeech_{false};
 };
 
 } // namespace raceengineer

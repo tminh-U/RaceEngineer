@@ -31,6 +31,8 @@ ApplicationWindow {
     UiTheme { id: theme }
     readonly property var designTheme: theme
     readonly property bool liveWindow: root.visible && root.visibility !== Window.Minimized
+    onLiveWindowChanged: backend.setUiActive(liveWindow)
+    Component.onCompleted: backend.setUiActive(liveWindow)
     readonly property real ui: 1
     readonly property string uiFontFamily: theme.uiFont
     // Fixed wordmark/navigation budgets avoid feeding compactHeader geometry back into itself.
@@ -371,7 +373,7 @@ ApplicationWindow {
         controller: backend; theme: root.designTheme; live: root.currentPage === 2 && root.liveWindow
         onOpenAiVoiceRequested: {
             root.openPage(4)
-            aiVoiceLoader.item.sectionIndex = backend.ttsBackend === "Google Gemini API" ? 2 : 1
+            aiVoiceLoader.item.sectionIndex = backend.ttsBackend === "Google Gemini API" ? 2 : backend.ttsBackend === "OpenAI-compatible TTS" ? 3 : 1
         }
     } }
     Component { id: aiVoiceWorkspace; AiVoicePage { controller: backend; theme: root.designTheme; live: root.currentPage === 4 && root.liveWindow; onOpenGoogleVoiceDialogRequested: root.openGoogleVoiceDialogFromAi() } }

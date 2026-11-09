@@ -141,12 +141,14 @@ LocalAiRuntimeSelection LocalAiRuntime::resolve(const QString& requestedDeviceId
         selection.requestedDeviceId = QStringLiteral("auto");
     }
 
-    const auto devices = vulkanDevices();
     if (selection.requestedDeviceId.compare(QStringLiteral("cpu"),
             Qt::CaseInsensitive) == 0) {
         useCpu(selection);
         return selection;
     }
+
+    // CPU-only use must not initialize Vulkan just to ignore its device list.
+    const auto devices = vulkanDevices();
 
     if (selection.requestedDeviceId.compare(QStringLiteral("auto"),
             Qt::CaseInsensitive) == 0) {

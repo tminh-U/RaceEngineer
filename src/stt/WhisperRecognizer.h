@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 #include <atomic>
 #include <vector>
@@ -19,6 +20,7 @@ class WhisperRecognizer final : public QObject {
 public:
     explicit WhisperRecognizer(QString modelPath,
         LocalAiRuntimeSelection runtimeSelection,
+        bool lowResourceMode = false,
         QObject* parent = nullptr);
     ~WhisperRecognizer() override;
 
@@ -37,6 +39,7 @@ signals:
     void recognitionFinished();
 
 private:
+    void releaseIdleModel();
     bool ensureModelLoaded(QString* error = nullptr);
     bool warmUpInference(QString* error);
     bool retryOnCpu(const QString& reason, QString* error);
@@ -47,11 +50,13 @@ private:
     whisper_context* context_{nullptr};
     std::atomic_bool cancelRequested_{false};
     std::vector<float> samples_;
-    int threadCount_{8};
+    int threadCount_{2};
     int maxTokens_{48};
     bool useGpu_{true};
     bool flashAttention_{true};
     bool warmupComplete_{false};
+    bool lowResourceMode_{false};
+    QTimer* idleTimer_{nullptr};
 };
 
 } // namespace raceengineer

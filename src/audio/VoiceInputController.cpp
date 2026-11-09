@@ -3,11 +3,13 @@
 #include "audio/AudioCapture.h"
 
 #include <utility>
+#include <algorithm>
 
 namespace raceengineer {
 namespace {
 
 constexpr qsizetype kPreRollBytes = 16'000 * 2 * 80 / 1000;
+constexpr qsizetype kMaximumUtteranceBytes = 30 * 16'000 * 2;
 
 } // namespace
 
@@ -81,7 +83,9 @@ void VoiceInputController::endPushToTalk()
 void VoiceInputController::onPcm16k(const QByteArray& pcm)
 {
     if (pushToTalk_) {
-        recording_.append(pcm);
+        const auto remaining = kMaximumUtteranceBytes - recording_.size();
+        recording_.append(pcm.constData(), std::min(remaining, pcm.size()));
+        if (recording_.size() >= kMaximumUtteranceBytes) endPushToTalk();
         return;
     }
     preRoll_.append(pcm);

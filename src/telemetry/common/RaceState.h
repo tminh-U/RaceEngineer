@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <optional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -105,6 +106,10 @@ struct RaceState final {
     std::optional<PitState> pitState;
     std::vector<OpponentState> opponents;
 };
+
+// One immutable sample is shared across the worker/GUI queue and retained by the facade.
+// The provider still owns its mutable current state; publishing creates an independent sample.
+using RaceStateSnapshot = std::shared_ptr<const RaceState>;
 
 [[nodiscard]] const char* simulatorName(Simulator simulator) noexcept;
 [[nodiscard]] const char* sessionTypeName(SessionType session) noexcept;

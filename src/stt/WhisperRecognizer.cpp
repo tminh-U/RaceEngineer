@@ -18,16 +18,26 @@ namespace raceengineer {
 
 WhisperRecognizer::WhisperRecognizer(QString modelPath,
     LocalAiRuntimeSelection runtimeSelection,
+    const bool lowResourceMode,
     QObject* const parent)
     : QObject(parent)
     , modelPath_(std::move(modelPath))
     , runtimeSelection_(std::move(runtimeSelection))
+    , lowResourceMode_(lowResourceMode)
 {
-    samples_.reserve(30 * 16'000);
+    idleTimer_ = new QTimer(this);
+    idleTimer_->setSingleShot(true);
+    idleTimer_->setInterval(60'000);
+    connect(idleTimer_, &QTimer::timeout, this, &WhisperRecognizer::releaseIdleModel);
+    connect(this, &WhisperRecognizer::recognitionFinished, this, [this] {
+        if (lowResourceMode_) idleTimer_->start();
+    });
+    if (!lowResourceMode_) samples_.reserve(30 * 16'000);
     const int requestedThreads = qEnvironmentVariableIntValue("RACEENGINEER_STT_THREADS");
-    if (requestedThreads == 4 || requestedThreads == 6 || requestedThreads == 8) {
+    if (requestedThreads >= 1 && requestedThreads <= 8) {
         threadCount_ = requestedThreads;
     }
+    if (lowResourceMode_) threadCount_ = std::min(threadCount_, 2);
     const int requestedMaxTokens = qEnvironmentVariableIntValue("RACEENGINEER_STT_MAX_TOKENS");
     if (requestedMaxTokens >= 16 && requestedMaxTokens <= 64) {
         maxTokens_ = requestedMaxTokens;
@@ -46,6 +56,11 @@ WhisperRecognizer::~WhisperRecognizer()
 
 void WhisperRecognizer::warmUp()
 {
+    if (lowResourceMode_ && context_ == nullptr && QFileInfo::exists(modelPath_)) {
+        emit runtimeBackendChanged(QStringLiteral("Chờ PTT · chế độ nhẹ"), {});
+        emit warmUpFinished(true, {});
+        return;
+    }
     QString error;
     if (!ensureModelLoaded(&error)) {
         qCWarning(logStt).noquote() << "STT startup warm-up failed:" << error;
@@ -65,18 +80,19 @@ void WhisperRecognizer::warmUp()
 
 void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& language)
 {
+    idleTimer_->stop();
     QElapsedTimer totalTimer;
     totalTimer.start();
     cancelRequested_ = false;
     emit recognitionStarted();
-    QString loadError;
-    if (!ensureModelLoaded(&loadError)) {
-        emit recognitionError(loadError);
+    if (pcm16k.size() < 3200 || pcm16k.size() > 30 * 16'000 * 2 || pcm16k.size() % 2 != 0) {
+        emit recognitionError(QStringLiteral("Đoạn nói phải dài từ 0,1 đến 30 giây, PCM 16-bit hợp lệ."));
         emit recognitionFinished();
         return;
     }
-    if (pcm16k.size() < 3200 || pcm16k.size() % 2 != 0) {
-        emit recognitionError(QStringLiteral("Đoạn nói quá ngắn. Hãy giữ nút PTT trong lúc nói."));
+    QString loadError;
+    if (!ensureModelLoaded(&loadError)) {
+        emit recognitionError(loadError);
         emit recognitionFinished();
         return;
     }
@@ -204,6 +220,17 @@ void WhisperRecognizer::transcribe(const QByteArray& pcm16k, const QString& lang
         emit transcriptionReady(text, detected);
     }
     emit recognitionFinished();
+}
+
+void WhisperRecognizer::releaseIdleModel()
+{
+    if (context_) {
+        whisper_free(context_);
+        context_ = nullptr;
+    }
+    warmupComplete_ = false;
+    std::vector<float>().swap(samples_);
+    emit runtimeBackendChanged(QStringLiteral("Chờ PTT · đã giải phóng model"), {});
 }
 
 void WhisperRecognizer::setModelPath(const QString& modelPath)

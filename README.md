@@ -108,6 +108,7 @@ See the [detailed Quickstart and troubleshooting (Vietnamese)](docs/quickstart.m
 - [LLM prompts and tools](docs/architecture/llm-prompts-tools.md): conversation and feature controls.
 - [XGBoost and strategy](docs/architecture/strategy-xgboost.md): runtime approval gates, recording and research training.
 - [Build Guide](docs/build.md): development and release build instructions.
+- [Performance and TTS options](docs/performance.md): lightweight mode, 8 GB guidance, and online speech providers.
 - [Voice Training Guide](docs/training.md): training a custom VieNeu-TTS voice.
 - [Logging Guide](docs/logging-guide.md): preparing confirmed Race recordings for local training.
 - [Vietnamese README](docs/readme_vie.md)

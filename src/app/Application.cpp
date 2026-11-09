@@ -9,6 +9,7 @@
 #include "audio/MessageDispatcher.h"
 #include "audio/AudioDucker.h"
 #include "tts/GoogleTtsBackend.h"
+#include "tts/OpenAiTtsBackend.h"
 #include "tts/VieNeuTtsBackend.h"
 #include "tts/TtsBenchmark.h"
 #include "input/DInputButtonMonitor.h"
@@ -36,16 +37,17 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <string_view>
 #include <cmath>
 
 namespace raceengineer {
 namespace {
 
 template <typename T>
-void addOptional(QVariantMap& map, const char* key, const std::optional<T>& value)
+void addOptional(QVariantMap& map, const QString& key, const std::optional<T>& value)
 {
     if (value.has_value()) {
-        map.insert(QString::fromLatin1(key), QVariant::fromValue(*value));
+        map.insert(key, QVariant::fromValue(*value));
     }
 }
 
@@ -57,6 +59,19 @@ QVariantList wheelsToList(const WheelValues& wheels)
 QString utf8(const std::string& value)
 {
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
+}
+
+bool sameSessionMetadata(const RaceState& left, const RaceState& right) noexcept
+{
+    if (left.connected != right.connected) return false;
+    if (!right.connected) return true;
+    const auto text = [](const std::optional<std::string>& value) -> std::string_view {
+        return value ? std::string_view(*value) : std::string_view{};
+    };
+    return left.simulator == right.simulator && text(left.track) == text(right.track)
+        && text(left.carModel) == text(right.carModel)
+        && left.totalLaps.value_or(0) == right.totalLaps.value_or(0)
+        && left.sessionType.value_or(SessionType::Unknown) == right.sessionType.value_or(SessionType::Unknown);
 }
 
 QString stableAudioInputId(const QByteArray& id)
@@ -150,15 +165,17 @@ QString resolvePhoWhisperModelPath()
 Application::Application(const bool startWithMock, QObject* const parent)
     : QObject(parent)
     , aiRuntimeSelection_(LocalAiRuntime::resolveAndApply(
-          settingsManager_.localAi().deviceId()))
+          lowResourceAtStartup_ && settingsManager_.localAi().deviceId() == QStringLiteral("auto")
+              ? QStringLiteral("cpu") : settingsManager_.localAi().deviceId()))
     , telemetryManager_(new TelemetryManager)
     , voiceInput_(new VoiceInputController)
     , speechRecognizer_(new WhisperRecognizer(
-          resolvePhoWhisperModelPath(), aiRuntimeSelection_))
+          resolvePhoWhisperModelPath(), aiRuntimeSelection_, lowResourceAtStartup_))
     , vieNeuTtsBackend_(new VieNeuTtsBackend(
           resolveVieNeuModelPath(), settingsManager_.tts().voice, aiRuntimeSelection_,
         settingsManager_.tts().cpuThreads, this))
     , googleTtsBackend_(new GoogleTtsBackend(this))
+    , speechTtsBackend_(new OpenAiTtsBackend(this))
     , ttsBackend_(vieNeuTtsBackend_)
     , directInput_(new DInputButtonMonitor)
     , pttSoundPlayer_(new QMediaPlayer(this))
@@ -170,6 +187,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
     , audioDucker_(std::make_unique<AudioDucker>(this))
 {
     qRegisterMetaType<RaceState>();
+    qRegisterMetaType<RaceStateSnapshot>();
     setupVisible_ = !settingsManager_.setupCompleted();
     benchmarkFingerprint_ = ttsBenchmarkFingerprint(resolveVieNeuModelPath(),
         settingsManager_.tts().voice, selectedAiComputeDevice());
@@ -183,8 +201,10 @@ Application::Application(const bool startWithMock, QObject* const parent)
                     "--device", aiRuntimeSelection_.requestedDeviceId});
         } else if (ttsBackend_ == vieNeuTtsBackend_) {
             vieNeuTtsBackend_->setCpuThreads(settingsManager_.tts().cpuThreads);
-            localContextReleased_ = false;
-            vieNeuTtsBackend_->warmUp();
+            if (!lowResourceAtStartup_ || ttsBenchmarkRestoring_) {
+                localContextReleased_ = false;
+                vieNeuTtsBackend_->warmUp();
+            }
         }
     });
     connect(ttsBenchmark_.get(), &TtsBenchmark::finished, this, [this](int selected) {
@@ -309,7 +329,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
         this, &Application::onVoiceStatusChanged, Qt::QueuedConnection);
     connect(voiceInput_, &VoiceInputController::levelChanged, this, [this](const float level) {
         microphoneLevel_ = level;
-        emit microphoneLevelChanged();
+        if (uiActive_) emit microphoneLevelChanged();
     }, Qt::QueuedConnection);
     connect(voiceInput_, &VoiceInputController::microphoneChanged, this, [this](const QString& name) {
         microphoneName_ = name;
@@ -414,6 +434,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
         });
 
     const auto& ttsSettings = settingsManager_.tts();
+    vieNeuTtsBackend_->setLowResourceMode(lowResourceAtStartup_);
     const QString googleKey = CredentialStore::readGoogleTtsApiKey();
     googleTtsApiKeyConfigured_ = !googleKey.trimmed().isEmpty();
     googleTtsBackend_->setApiKey(googleKey);
@@ -421,13 +442,22 @@ Application::Application(const bool startWithMock, QObject* const parent)
     googleTtsBackend_->setVoice(ttsSettings.googleVoice, ttsSettings.googleVoiceId);
     googleTtsBackend_->setAudioOutputDevice(ttsSettings.outputDevice);
     googleTtsBackend_->setVolume(ttsSettings.volume);
+    const bool speechConfigured = speechTtsBackend_->configureSpeechApi(
+        QUrl(ttsSettings.speechEndpoint), ttsSettings.speechModel, ttsSettings.speechVoice);
+    const QString speechKey = CredentialStore::readSpeechTtsApiKey();
+    speechTtsApiKeyConfigured_ = !speechKey.isEmpty();
+    speechTtsBackend_->setApiKey(speechConfigured ? speechKey : QString{});
+    speechTtsBackend_->setAudioOutputDevice(ttsSettings.outputDevice);
+    speechTtsBackend_->setVolume(ttsSettings.volume);
     vieNeuTtsBackend_->setVoice(ttsSettings.voice);
     vieNeuTtsBackend_->setAudioOutputDevice(ttsSettings.outputDevice);
     vieNeuTtsBackend_->setVolume(ttsSettings.volume);
     messageDispatcher_->setLocalBackend(vieNeuTtsBackend_);
     ttsBackend_ = ttsSettings.backend == QStringLiteral("Google Gemini API")
         ? static_cast<ITtsBackend*>(googleTtsBackend_)
-        : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
+        : ttsSettings.backend == QStringLiteral("OpenAI-compatible TTS")
+            ? static_cast<ITtsBackend*>(speechTtsBackend_)
+            : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
     messageDispatcher_->setBackend(ttsBackend_);
 
     const auto connectWarmUp = [this](ITtsBackend* const backend) {
@@ -438,6 +468,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
     };
     connectWarmUp(vieNeuTtsBackend_);
     connectWarmUp(googleTtsBackend_);
+    connectWarmUp(speechTtsBackend_);
     connect(vieNeuTtsBackend_, &VieNeuTtsBackend::runtimeBackendChanged, this,
         [this](const QString& backend, const QString& fallbackReason) {
             vieNeuComputeBackend_ = backend;
@@ -491,6 +522,20 @@ Application::Application(const bool startWithMock, QObject* const parent)
     };
     connectBackendError(vieNeuTtsBackend_);
     connectBackendError(googleTtsBackend_);
+    connectBackendError(speechTtsBackend_);
+    connect(speechTtsBackend_, &GoogleTtsBackend::firstAudioReceived, this, [this](qint64 milliseconds) {
+        speechTtsFirstAudioMs_ = milliseconds;
+        if (ttsBackend_ == speechTtsBackend_) {
+            ttsStatus_ = QStringLiteral("Đang phát · OpenAI-compatible TTS");
+            emit ttsStatusChanged();
+        }
+        emit speechTtsSettingsChanged();
+    });
+    connect(speechTtsBackend_, &GoogleTtsBackend::retryScheduled, this, [this](int attempt, int delayMs) {
+        if (ttsBackend_ != speechTtsBackend_) return;
+        ttsStatus_ = QStringLiteral("TTS đang thử kết nối lại %1/2 sau %2 ms…").arg(attempt).arg(delayMs);
+        emit ttsStatusChanged();
+    });
     connect(googleTtsBackend_, &GoogleTtsBackend::speakingStarted, this,
         [this](const QString&) { googleTtsFailureAnnounced_ = false; }, Qt::QueuedConnection);
     connect(googleTtsBackend_, &GoogleTtsBackend::voiceCreated, this,
@@ -565,7 +610,7 @@ Application::Application(const bool startWithMock, QObject* const parent)
     audioThread_.setObjectName(QStringLiteral("AudioCaptureWorker"));
     audioThread_.start(QThread::LowPriority);
     sttThread_.setObjectName(QStringLiteral("SpeechRecognitionWorker"));
-    sttThread_.start(QThread::NormalPriority);
+    sttThread_.start(QThread::LowPriority);
     inputThread_.setObjectName(QStringLiteral("DirectInputWorker"));
     inputThread_.start(QThread::LowPriority);
     QCoreApplication::instance()->installEventFilter(this);
@@ -585,7 +630,7 @@ Application::~Application()
 {
     ttsBenchmark_->disconnect(this);
     ttsBenchmark_.reset(); // Stop the child before restoring/freeing the application's native backend.
-    if (latestState_.sessionType == SessionType::Race && strategyRecordedLap_ > 0)
+    if (latestState().sessionType == SessionType::Race && strategyRecordedLap_ > 0)
         strategyRecorder_.finishSession(strategySessionId_);
     QCoreApplication::instance()->removeEventFilter(this);
     if (audioDucker_) {
@@ -748,14 +793,17 @@ void Application::setTtsBackend(const QString& backend)
     if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
     ITtsBackend* const selected = backend == QStringLiteral("Google Gemini API")
         ? static_cast<ITtsBackend*>(googleTtsBackend_)
-        : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
+        : backend == QStringLiteral("OpenAI-compatible TTS")
+            ? static_cast<ITtsBackend*>(speechTtsBackend_)
+            : static_cast<ITtsBackend*>(vieNeuTtsBackend_);
     if (selected == ttsBackend_) return;
     auto settings = settingsManager_.tts();
     settings.backend = selected == googleTtsBackend_
-        ? QStringLiteral("Google Gemini API") : QStringLiteral("VieNeu-TTS");
+        ? QStringLiteral("Google Gemini API") : selected == speechTtsBackend_
+            ? QStringLiteral("OpenAI-compatible TTS") : QStringLiteral("VieNeu-TTS");
     settingsManager_.setTts(settings);
     messageDispatcher_->setBackend(selected);
-    const bool switchingToGoogle = selected == googleTtsBackend_;
+    const bool switchingOnline = selected != vieNeuTtsBackend_;
     ttsBackend_ = selected;
     ttsAvailable_ = ttsBackend_->isAvailable();
     ttsWarmUpReady_ = false;
@@ -763,9 +811,9 @@ void Application::setTtsBackend(const QString& backend)
     ttsStatus_ = ttsAvailable_
         ? QStringLiteral("%1 sẵn sàng").arg(ttsBackend_->backendName())
         : QStringLiteral("Thiếu cấu hình/runtime %1").arg(ttsBackend_->backendName());
-    if (switchingToGoogle) {
+    if (switchingOnline) {
         vieNeuTtsBackend_->releaseModel();
-        googleTtsBackend_->warmUp();
+        selected->warmUp();
     } else {
         vieNeuTtsBackend_->warmUp();
     }
@@ -774,6 +822,55 @@ void Application::setTtsBackend(const QString& backend)
     emit googleTtsSettingsChanged();
     emit startupChanged();
     emit ttsBenchmarkChanged();
+}
+
+void Application::configureSpeechTts(const QString& endpoint, const QString& model,
+    const QString& voice, const QString& apiKey)
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    const QUrl url(endpoint.trimmed(), QUrl::StrictMode);
+    if (endpoint.size() > 2048 || !GoogleTtsBackend::validSpeechEndpoint(url)
+        || model.trimmed().isEmpty() || model.size() > 256 || voice.trimmed().isEmpty()
+        || voice.size() > 256 || apiKey.size() > 4096 || apiKey.contains('\n') || apiKey.contains('\r')) {
+        ttsStatus_ = QStringLiteral("TTS: nhập endpoint HTTPS, model và voice hợp lệ. HTTP chỉ dùng cho localhost.");
+        emit ttsStatusChanged();
+        return;
+    }
+    auto settings = settingsManager_.tts();
+    const bool endpointChanged = QUrl(settings.speechEndpoint) != url;
+    // Never forward a saved provider credential to a newly entered endpoint.
+    if (!apiKey.trimmed().isEmpty() || (endpointChanged && speechTtsApiKeyConfigured_)) {
+        if (!CredentialStore::writeSpeechTtsApiKey(apiKey.trimmed())) {
+            ttsStatus_ = QStringLiteral("Không lưu được key TTS trong Windows Credential Manager.");
+            emit ttsStatusChanged();
+            return;
+        }
+        speechTtsBackend_->setApiKey(apiKey.trimmed());
+        speechTtsApiKeyConfigured_ = !apiKey.trimmed().isEmpty();
+    }
+    speechTtsBackend_->configureSpeechApi(url, model, voice);
+    settings.speechEndpoint = url.toString();
+    settings.speechModel = model.trimmed();
+    settings.speechVoice = voice.trimmed();
+    settingsManager_.setTts(settings);
+    speechTtsFirstAudioMs_ = -1;
+    ++featureSettingsRevision_;
+    emit speechTtsSettingsChanged();
+    if (ttsBackend_ == speechTtsBackend_) speechTtsBackend_->warmUp();
+}
+
+void Application::clearSpeechTtsApiKey()
+{
+    if (ttsBenchmarkRunning() || ttsBenchmarkRestoring_) return;
+    if (!CredentialStore::clearSpeechTtsApiKey()) {
+        ttsStatus_ = QStringLiteral("Không xóa được key TTS trong Windows Credential Manager.");
+        emit ttsStatusChanged();
+        return;
+    }
+    speechTtsApiKeyConfigured_ = false;
+    speechTtsBackend_->setApiKey({});
+    emit speechTtsSettingsChanged();
+    if (ttsBackend_ == speechTtsBackend_) speechTtsBackend_->warmUp();
 }
 
 void Application::setGoogleTtsApiKey(const QString& apiKey)
@@ -959,11 +1056,11 @@ bool Application::ttsBenchmarkStale() const
 QString Application::ttsBenchmarkUnavailableReason() const
 {
     if (ttsBenchmarkRestoring_ && !ttsBenchmarkRunning()) return QStringLiteral("Đang khôi phục VieNeu…");
-    if (settingsManager_.tts().backend == QStringLiteral("Google Gemini API"))
+    if (settingsManager_.tts().backend != QStringLiteral("VieNeu-TTS"))
         return QStringLiteral("Không cần benchmark TTS local.");
     if (VieNeuTtsBackend::hasExternalThreadOverride())
         return QStringLiteral("OMP_NUM_THREADS bên ngoài đang ghi đè setting; tự chọn bị vô hiệu hóa.");
-    if (connected_ || latestState_.connected) return QStringLiteral("Ngắt kết nối AC / ACC trước khi đo.");
+    if (connected_ || latestState().connected) return QStringLiteral("Ngắt kết nối AC / ACC trước khi đo.");
     if (isSpeaking_ || pushToTalkPressed_ || voiceStatus_ != QStringLiteral("Idle"))
         return QStringLiteral("Chờ radio và hội thoại kết thúc trước khi đo.");
     if (aiComputeRestartRequired()) return QStringLiteral("Khởi động lại để áp dụng GPU đã chọn trước khi đo.");
@@ -1116,6 +1213,7 @@ void Application::setAudioOutputDevice(const QString& description)
     settingsManager_.setTts(settings);
     vieNeuTtsBackend_->setAudioOutputDevice(settings.outputDevice);
     googleTtsBackend_->setAudioOutputDevice(settings.outputDevice);
+    speechTtsBackend_->setAudioOutputDevice(settings.outputDevice);
     pttSoundOutput_->setDevice(QMediaDevices::defaultAudioOutput());
     for (const QAudioDevice& device : QMediaDevices::audioOutputs()) {
         if (device.description() == settings.outputDevice) {
@@ -1196,6 +1294,7 @@ void Application::setTtsVolume(const double volume)
     settingsManager_.setTts(settings);
     vieNeuTtsBackend_->setVolume(settings.volume);
     googleTtsBackend_->setVolume(settings.volume);
+    speechTtsBackend_->setVolume(settings.volume);
     emit ttsVolumeChanged();
 }
 
@@ -1269,6 +1368,23 @@ void Application::setGpuRendererEnabled(const bool enabled)
     if (settingsManager_.gpuRendererEnabled() == enabled) return;
     settingsManager_.setGpuRendererEnabled(enabled);
     emit generalSettingsChanged();
+}
+
+void Application::setLowResourceMode(const bool enabled)
+{
+    if (settingsManager_.lowResourceMode() == enabled) return;
+    settingsManager_.setLowResourceMode(enabled);
+    emit generalSettingsChanged();
+}
+
+void Application::setUiActive(const bool active)
+{
+    if (uiActive_ == active) return;
+    uiActive_ = active;
+    if (active) {
+        publishTelemetry();
+        emit microphoneLevelChanged();
+    }
 }
 
 void Application::retryStartup()
@@ -1509,7 +1625,7 @@ void Application::askText(const QString& text)
     appendConversationMessage(QStringLiteral("driver"), latestUserText_);
     onVoiceStatusChanged(QStringLiteral("Thinking"));
     emit interactionChanged();
-    llmManager_->ask(latestUserText_, latestState_, raceHistory_,
+    llmManager_->ask(latestUserText_, latestState(), raceHistory_,
         QStringLiteral("Vietnamese by default; use English only if the driver clearly writes in English"),
         pitStrategyToolData(), featureSettingsRevision_);
 }
@@ -1525,28 +1641,30 @@ void Application::resetConversation()
     emit interactionChanged();
 }
 
-void Application::onStateUpdated(const RaceState& state)
+void Application::onStateUpdated(const RaceStateSnapshot& snapshot)
 {
+    if (!snapshot) return;
+    const RaceState& state = *snapshot;
+    const bool sessionChanged = !sameSessionMetadata(latestState(), state)
+        || (state.currentLap && strategyLastTelemetryLap_ > 0 && *state.currentLap < strategyLastTelemetryLap_);
     if (state.connected && ttsBenchmarkRunning())
         ttsBenchmark_->cancel(QStringLiteral("Đã kết nối game; hủy benchmark và giữ cấu hình cũ."));
-    const bool previousWasRace = latestState_.sessionType == SessionType::Race;
+    const bool previousWasRace = latestState().sessionType == SessionType::Race;
     const QString previousSessionId = strategySessionId_;
     strategyRecorder_.setSimulatorConnected(state.connected);
     strategyRecorder_.setRaceActive(state.connected && state.sessionType == SessionType::Race);
-    latestState_ = state;
+    latestState_ = snapshot;
     updateLapSummaryStatus();
     updateSpotterStatus();
-    const QString sessionKey = state.connected
-        ? QStringLiteral("%1|%2|%3|%4|%5")
+    if (sessionChanged) {
+        const QString sessionKey = state.connected
+            ? QStringLiteral("%1|%2|%3|%4|%5")
               .arg(static_cast<int>(state.simulator))
               .arg(state.track ? utf8(*state.track) : QString{})
               .arg(state.carModel ? utf8(*state.carModel) : QString{})
               .arg(state.totalLaps.value_or(0))
               .arg(static_cast<int>(state.sessionType.value_or(SessionType::Unknown)))
-        : QString{};
-    const bool sessionChanged = sessionKey != strategySessionKey_
-        || (state.currentLap && strategyLastTelemetryLap_ > 0 && *state.currentLap < strategyLastTelemetryLap_);
-    if (sessionChanged) {
+            : QString{};
         eventEngine_.reset();
         spotterEngine_.reset();
         messageDispatcher_->cancelBySource(MessageSource::ProximitySpotter);
@@ -1649,10 +1767,21 @@ void Application::onStateUpdated(const RaceState& state)
     if (!events.empty()) {
         emit latestEventChanged();
     }
-    telemetry_ = toVariantMap(state);
+    // Race logic and Spotter above still process every sample. Only presentation is capped.
+    if (uiActive_ && (!uiPublishClock_.isValid()
+            || uiPublishClock_.elapsed() >= (lowResourceAtStartup_ ? 100 : 33)
+            || telemetry_.value(QStringLiteral("connected")).toBool() != state.connected)) {
+        publishTelemetry();
+    }
+}
+
+void Application::publishTelemetry()
+{
+    uiPublishClock_.restart();
+    telemetry_ = toVariantMap(latestState());
     if (const auto average = raceHistory_.averageFuelConsumption())
         telemetry_.insert(QStringLiteral("fuelPerLapLiters"), *average);
-    if (const auto remaining = raceHistory_.estimatedFuelLapsRemaining(state))
+    if (const auto remaining = raceHistory_.estimatedFuelLapsRemaining(latestState()))
         telemetry_.insert(QStringLiteral("estimatedFuelLaps"), *remaining);
     emit telemetryChanged();
 }
@@ -1674,7 +1803,7 @@ void Application::setStrategyEnabled(const bool enabled)
     if (enabled) {
         setStrategyState(QStringLiteral("Đang chờ dữ liệu"),
             QStringLiteral("Đang kiểm tra chiến thuật, race profile và telemetry."));
-        updateStrategy(latestState_);
+        updateStrategy(latestState());
     } else {
         setStrategyState(QStringLiteral("Đã tắt"),
             QStringLiteral("Bật để chọn vòng pit khi có dữ liệu chiến thuật đã duyệt."));
@@ -1768,19 +1897,19 @@ void Application::updateLapSummaryStatus()
     QString status;
     if (!settingsManager_.lapSummaryEnabled()) {
         status = QStringLiteral("Đã tắt");
-    } else if (!latestState_.connected) {
+    } else if (!latestState().connected) {
         status = QStringLiteral("Chờ AC / ACC");
-    } else if (latestState_.simulator != Simulator::AssettoCorsa
-        && latestState_.simulator != Simulator::AssettoCorsaCompetizione) {
+    } else if (latestState().simulator != Simulator::AssettoCorsa
+        && latestState().simulator != Simulator::AssettoCorsaCompetizione) {
         status = QStringLiteral("Chờ AC / ACC");
-    } else if (!latestState_.sessionType
-        || (*latestState_.sessionType != SessionType::Race
-            && *latestState_.sessionType != SessionType::Practice
-            && *latestState_.sessionType != SessionType::Qualifying
-            && *latestState_.sessionType != SessionType::Hotlap
-            && *latestState_.sessionType != SessionType::TimeAttack)) {
+    } else if (!latestState().sessionType
+        || (*latestState().sessionType != SessionType::Race
+            && *latestState().sessionType != SessionType::Practice
+            && *latestState().sessionType != SessionType::Qualifying
+            && *latestState().sessionType != SessionType::Hotlap
+            && *latestState().sessionType != SessionType::TimeAttack)) {
         status = QStringLiteral("Phiên này chưa có tổng kết vòng");
-    } else if (!latestState_.currentLap) {
+    } else if (!latestState().currentLap) {
         status = QStringLiteral("Chờ dữ liệu vòng");
     } else {
         status = QStringLiteral("Đang hoạt động");
@@ -1795,13 +1924,13 @@ void Application::updateSpotterStatus()
     QString status;
     if (!settingsManager_.spotterEnabled()) {
         status = QStringLiteral("Đã tắt");
-    } else if (!latestState_.connected) {
+    } else if (!latestState().connected) {
         status = QStringLiteral("Chờ kết nối Assetto Corsa");
-    } else if (latestState_.simulator != Simulator::AssettoCorsa) {
+    } else if (latestState().simulator != Simulator::AssettoCorsa) {
         status = QStringLiteral("Chưa có hình học xe cho simulator này");
-    } else if (latestState_.spotterGeometryStale) {
+    } else if (latestState().spotterGeometryStale) {
         status = QStringLiteral("Dữ liệu hình học AC đã cũ");
-    } else if (!latestState_.spotterGeometryFresh || !latestState_.spotterWheelContactPoints) {
+    } else if (!latestState().spotterGeometryFresh || !latestState().spotterWheelContactPoints) {
         status = QStringLiteral("Cần cập nhật AC companion");
     } else if (spotterEngine_.hasInvalidGeometry()
         && spotterEngine_.usableOpponentCount() == 0) {
@@ -1930,8 +2059,9 @@ QJsonObject Application::featureSettings() const
     append(QStringLiteral("damage_alerts"), damageAlertsEnabled(), true);
     append(QStringLiteral("lap_summary"), lapSummaryEnabled(), true);
     append(QStringLiteral("audio_ducking"), audioDuckingEnabled(), true);
-    append(QStringLiteral("tts_api"), ttsBackend_ == googleTtsBackend_,
-        googleTtsApiKeyConfigured_, googleTtsApiKeyConfigured_ ? QString{} : QStringLiteral("Cần lưu Google AI Studio API key."));
+    const bool onlineAvailable = googleTtsBackend_->isAvailable() || speechTtsBackend_->isAvailable();
+    append(QStringLiteral("tts_api"), ttsBackend_ != vieNeuTtsBackend_,
+        onlineAvailable, onlineAvailable ? QString{} : QStringLiteral("Cần cấu hình TTS trực tuyến."));
     append(QStringLiteral("pit_strategy"), strategyEnabled(), strategyAvailable(),
         strategyAvailable() ? QString{} : QStringLiteral("Chưa có model chiến thuật khả dụng."));
     append(QStringLiteral("ptt_keyboard"), keyboardPttEnabled(), true);
@@ -1971,7 +2101,7 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     else if (feature == QStringLiteral("damage_alerts")) label = QStringLiteral("cảnh báo hư hại");
     else if (feature == QStringLiteral("lap_summary")) label = QStringLiteral("tổng kết vòng");
     else if (feature == QStringLiteral("audio_ducking")) label = QStringLiteral("tự hạ âm game");
-    else if (feature == QStringLiteral("tts_api")) label = QStringLiteral("Google Gemini TTS");
+    else if (feature == QStringLiteral("tts_api")) label = QStringLiteral("TTS trực tuyến");
     else if (feature == QStringLiteral("pit_strategy")) label = QStringLiteral("chiến thuật Pit");
     else if (feature == QStringLiteral("ptt_keyboard")) label = QStringLiteral("PTT bàn phím");
     else if (feature == QStringLiteral("ptt_directinput")) label = QStringLiteral("PTT DirectInput");
@@ -2003,8 +2133,11 @@ QJsonObject Application::setFeatureEnabled(const QString& feature, const bool en
     else if (feature == QStringLiteral("damage_alerts")) setDamageAlertsEnabled(enabled);
     else if (feature == QStringLiteral("lap_summary")) setLapSummaryEnabled(enabled);
     else if (feature == QStringLiteral("audio_ducking")) setAudioDuckingEnabled(enabled);
-    else if (feature == QStringLiteral("tts_api"))
-        setTtsBackend(enabled ? QStringLiteral("Google Gemini API") : QStringLiteral("VieNeu-TTS"));
+    else if (feature == QStringLiteral("tts_api")) {
+        if (!enabled) setTtsBackend(QStringLiteral("VieNeu-TTS"));
+        else if (ttsBackend_ == vieNeuTtsBackend_) setTtsBackend(googleTtsBackend_->isAvailable()
+            ? QStringLiteral("Google Gemini API") : QStringLiteral("OpenAI-compatible TTS"));
+    }
     else if (feature == QStringLiteral("pit_strategy")) setStrategyEnabled(enabled);
     else if (feature == QStringLiteral("ptt_keyboard"))
         setPushToTalkOptions(enabled, directInputPttEnabled());
@@ -2059,7 +2192,7 @@ void Application::setStrategyState(const QString& status, const QString& detail,
 
 QJsonObject Application::pitStrategyToolData() const
 {
-    if (!settingsManager_.strategyEnabled() || !strategyAvailable() || !latestState_.connected
+    if (!settingsManager_.strategyEnabled() || !strategyAvailable() || !latestState().connected
         || strategyStatus_ != QStringLiteral("Sẵn sàng") || strategyPitLap_ <= 0)
         return {{QStringLiteral("available"), false},
             {QStringLiteral("status"), strategyStatus_},
@@ -2145,8 +2278,8 @@ void Application::updateStrategy(const RaceState& state)
         const QString status = strategyPredictor_->prepare(state, raceHistory_, stintLaps, revision,
             [this, session](StrategyDecision result) {
                 if (!settingsManager_.strategyEnabled() || session != strategySessionKey_
-                    || result.revision != strategyRevision_ || !latestState_.currentLap
-                    || result.currentLap != *latestState_.currentLap || strategyPitted_) return;
+                    || result.revision != strategyRevision_ || !latestState().currentLap
+                    || result.currentLap != *latestState().currentLap || strategyPitted_) return;
                 if (!result.error.isEmpty()) {
                     messageDispatcher_->cancelByPrefix(QStringLiteral("Chuẩn bị vào pit"));
                     messageDispatcher_->cancelByPrefix(QStringLiteral("Vào pit cuối vòng"));
@@ -2154,8 +2287,8 @@ void Application::updateStrategy(const RaceState& state)
                     setStrategyState(QStringLiteral("Lỗi chiến thuật"), result.error);
                     return;
                 }
-                if (!strategyPredictor_->stillLegal(latestState_, raceHistory_,
-                        *latestState_.currentLap - 1, result.pitLap)) {
+                if (!strategyPredictor_->stillLegal(latestState(), raceHistory_,
+                        *latestState().currentLap - 1, result.pitLap)) {
                     strategyRequestedLap_ = 0;
                     setStrategyState(QStringLiteral("Đang tính lại"),
                         QStringLiteral("Kết quả đã hết hạn do nhiên liệu hoặc trạng thái đua thay đổi."));
@@ -2185,7 +2318,7 @@ void Application::updateStrategy(const RaceState& state)
                             : QStringLiteral("Dự kiến vào pit cuối vòng %1 để giảm thời gian còn lại.").arg(result.pitLap))
                         : QStringLiteral("XGBoost Ranker chọn vào pit cuối vòng %1 theo profile điều kiện khô.").arg(result.pitLap),
                     result.pitLap);
-                updateStrategy(latestState_);
+                updateStrategy(latestState());
             });
         if (status == QStringLiteral("Đang tính chiến thuật")) {
             strategyRequestedLap_ = lap;
@@ -2247,6 +2380,9 @@ void Application::onVoiceStatusChanged(const QString& status)
 
 void Application::onUtteranceReady(const QByteArray& pcm16k)
 {
+    // The capture limit can finish PTT before the physical button is released.
+    // Clear ducking/pressed state through the same idempotent release path.
+    endPushToTalk();
     qCInfo(logAudio) << "PTT utterance complete:" << pcm16k.size() / 2 << "samples";
     onVoiceStatusChanged(QStringLiteral("Recognizing"));
     emit requestTranscription(pcm16k, QStringLiteral("vi"));
@@ -2267,7 +2403,7 @@ void Application::onTranscriptionReady(const QString& text, const QString& detec
         return;
     }
     onVoiceStatusChanged(QStringLiteral("Thinking"));
-    llmManager_->ask(text, latestState_, raceHistory_,
+    llmManager_->ask(text, latestState(), raceHistory_,
         detectedLanguage.startsWith(QStringLiteral("en"), Qt::CaseInsensitive)
             ? QStringLiteral("English") : QStringLiteral("Vietnamese"),
         pitStrategyToolData(), featureSettingsRevision_);
@@ -2307,33 +2443,33 @@ QVariantMap Application::toVariantMap(const RaceState& state)
     if (state.driverName) map.insert(QStringLiteral("driverName"), utf8(*state.driverName));
     if (state.sessionType) map.insert(QStringLiteral("sessionType"),
         QString::fromLatin1(sessionTypeName(*state.sessionType)));
-    addOptional(map, "sessionTimeSeconds", state.sessionTimeSeconds);
-    addOptional(map, "timeRemainingSeconds", state.timeRemainingSeconds);
-    addOptional(map, "currentLap", state.currentLap);
-    addOptional(map, "totalLaps", state.totalLaps);
-    addOptional(map, "lapsRemaining", state.lapsRemaining);
-    addOptional(map, "position", state.position);
-    addOptional(map, "speedKmh", state.speedKmh);
-    addOptional(map, "rpm", state.rpm);
-    addOptional(map, "gear", state.gear);
-    addOptional(map, "throttle", state.throttle);
-    addOptional(map, "brake", state.brake);
-    addOptional(map, "clutch", state.clutch);
-    addOptional(map, "steering", state.steering);
-    addOptional(map, "currentLapTimeSeconds", state.currentLapTimeSeconds);
-    addOptional(map, "previousLapTimeSeconds", state.previousLapTimeSeconds);
-    addOptional(map, "bestLapTimeSeconds", state.bestLapTimeSeconds);
-    addOptional(map, "currentDeltaSeconds", state.currentDeltaSeconds);
-    addOptional(map, "fuelLiters", state.fuelLiters);
-    addOptional(map, "fuelCapacityLiters", state.fuelCapacityLiters);
-    addOptional(map, "engineTemperatureCelsius", state.engineTemperatureCelsius);
-    addOptional(map, "oilTemperatureCelsius", state.oilTemperatureCelsius);
-    addOptional(map, "waterTemperatureCelsius", state.waterTemperatureCelsius);
-    addOptional(map, "pitLimiter", state.pitLimiter);
-    addOptional(map, "tractionControl", state.tractionControl);
-    addOptional(map, "abs", state.abs);
-    addOptional(map, "gapAheadSeconds", state.gapAheadSeconds);
-    addOptional(map, "gapBehindSeconds", state.gapBehindSeconds);
+    addOptional(map, QStringLiteral("sessionTimeSeconds"), state.sessionTimeSeconds);
+    addOptional(map, QStringLiteral("timeRemainingSeconds"), state.timeRemainingSeconds);
+    addOptional(map, QStringLiteral("currentLap"), state.currentLap);
+    addOptional(map, QStringLiteral("totalLaps"), state.totalLaps);
+    addOptional(map, QStringLiteral("lapsRemaining"), state.lapsRemaining);
+    addOptional(map, QStringLiteral("position"), state.position);
+    addOptional(map, QStringLiteral("speedKmh"), state.speedKmh);
+    addOptional(map, QStringLiteral("rpm"), state.rpm);
+    addOptional(map, QStringLiteral("gear"), state.gear);
+    addOptional(map, QStringLiteral("throttle"), state.throttle);
+    addOptional(map, QStringLiteral("brake"), state.brake);
+    addOptional(map, QStringLiteral("clutch"), state.clutch);
+    addOptional(map, QStringLiteral("steering"), state.steering);
+    addOptional(map, QStringLiteral("currentLapTimeSeconds"), state.currentLapTimeSeconds);
+    addOptional(map, QStringLiteral("previousLapTimeSeconds"), state.previousLapTimeSeconds);
+    addOptional(map, QStringLiteral("bestLapTimeSeconds"), state.bestLapTimeSeconds);
+    addOptional(map, QStringLiteral("currentDeltaSeconds"), state.currentDeltaSeconds);
+    addOptional(map, QStringLiteral("fuelLiters"), state.fuelLiters);
+    addOptional(map, QStringLiteral("fuelCapacityLiters"), state.fuelCapacityLiters);
+    addOptional(map, QStringLiteral("engineTemperatureCelsius"), state.engineTemperatureCelsius);
+    addOptional(map, QStringLiteral("oilTemperatureCelsius"), state.oilTemperatureCelsius);
+    addOptional(map, QStringLiteral("waterTemperatureCelsius"), state.waterTemperatureCelsius);
+    addOptional(map, QStringLiteral("pitLimiter"), state.pitLimiter);
+    addOptional(map, QStringLiteral("tractionControl"), state.tractionControl);
+    addOptional(map, QStringLiteral("abs"), state.abs);
+    addOptional(map, QStringLiteral("gapAheadSeconds"), state.gapAheadSeconds);
+    addOptional(map, QStringLiteral("gapBehindSeconds"), state.gapBehindSeconds);
     if (state.opponentAhead) map.insert(QStringLiteral("opponentAhead"), utf8(*state.opponentAhead));
     if (state.opponentBehind) map.insert(QStringLiteral("opponentBehind"), utf8(*state.opponentBehind));
     if (state.flag) map.insert(QStringLiteral("flag"), QString::fromLatin1(flagName(*state.flag)));

@@ -33,6 +33,9 @@ struct TtsSettings final {
     QString voice{QStringLiteral("Minh Đức")};
     QString googleModel{QStringLiteral("gemini-3.8-flash-lite-tts")};
     QString googleVoice{QStringLiteral("Kore")};
+    QString speechEndpoint{QStringLiteral("https://api.openai.com/v1/audio/speech")};
+    QString speechModel{QStringLiteral("gpt-4o-mini-tts")};
+    QString speechVoice{QStringLiteral("coral")};
     QString googleVoiceId;
     QString googleVoiceName;
     QJsonArray googleCustomVoices;
@@ -102,6 +105,8 @@ public:
     void setMinimizeOnClose(bool enabled);
     [[nodiscard]] bool gpuRendererEnabled() const noexcept { return gpuRendererEnabled_; }
     void setGpuRendererEnabled(bool enabled);
+    [[nodiscard]] bool lowResourceMode() const noexcept { return lowResourceMode_; }
+    void setLowResourceMode(bool enabled);
     QString strategyShareEndpoint() const { return strategyShareEndpoint_; }
     void setStrategyShareEndpoint(const QString& endpoint);
     [[nodiscard]] QString driverName() const noexcept { return driverName_; }
@@ -140,6 +145,7 @@ private:
     bool minimizeToTray_{false};
     bool minimizeOnClose_{false};
     bool gpuRendererEnabled_{true};
+    bool lowResourceMode_{true};
     QString strategyShareEndpoint_;
     QString driverName_{QStringLiteral("Minh Vũ")};
     QString responseStyle_{QStringLiteral("Tiêu chuẩn")};

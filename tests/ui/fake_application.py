@@ -119,6 +119,11 @@ def _default_for(name: str) -> Any:
         "ttsAvailable": False,
         "ttsBackend": "VieNeu-TTS",
         "ttsStatus": "Chưa sẵn sàng",
+        "speechTtsEndpoint": "https://api.openai.com/v1/audio/speech",
+        "speechTtsModel": "gpt-4o-mini-tts",
+        "speechTtsVoice": "coral",
+        "speechTtsApiKeyConfigured": False,
+        "speechTtsFirstAudioMs": -1,
         "googleTtsApiKeyConfigured": False,
         "googleTtsModel": "gemini-3.8-flash-lite-tts",
         "googleTtsVoice": "",
@@ -147,6 +152,8 @@ def _default_for(name: str) -> Any:
         "minimizeOnClose": False,
         "gpuRendererEnabled": False,
         "gpuRendererRestartRequired": False,
+        "lowResourceMode": True,
+        "lowResourceRestartRequired": False,
         "startupReady": True,
         "setupVisible": False,
         "setupStep": 0,
@@ -207,6 +214,15 @@ def _make_application_class(prop_names: set[str], methods: dict[str, set[int]],
                             native_signals: set[str]) -> type[QObject]:
     attrs: dict[str, Any] = {"changed": Signal()}
     attrs.update({name: Signal() for name in native_signals})
+    native_notify = {
+        "speechTtsEndpoint": "speechTtsSettingsChanged",
+        "speechTtsModel": "speechTtsSettingsChanged",
+        "speechTtsVoice": "speechTtsSettingsChanged",
+        "speechTtsApiKeyConfigured": "speechTtsSettingsChanged",
+        "speechTtsFirstAudioMs": "speechTtsSettingsChanged",
+        "lowResourceMode": "generalSettingsChanged",
+        "lowResourceRestartRequired": "generalSettingsChanged",
+    }
     for name in sorted(prop_names - set(methods)):
         default = _default_for(name)
         if name == "strategyData":
@@ -223,8 +239,9 @@ def _make_application_class(prop_names: set[str], methods: dict[str, set[int]],
             self.changed.emit()
 
         writable = name in {"audioDuckingEnabled", "driverName", "responseStyle"}
+        notify_name = native_notify.get(name, "changed")
         attrs[name] = Property("QVariant", getter, setter if writable else None,
-                               notify=attrs["changed"])
+                               notify=attrs[notify_name])
 
     for name, arities in methods.items():
         def invokable(self: QObject, *args: Any, _name: str = name) -> Any:
@@ -242,6 +259,25 @@ def _make_application_class(prop_names: set[str], methods: dict[str, set[int]],
             elif _name == "retryStartup":
                 self.values["startupReady"] = True
                 self.values["startupError"] = ""
+            elif _name == "setUiActive" and args:
+                self.ui_active = bool(args[0])
+            elif _name == "configureSpeechTts" and len(args) == 4:
+                endpoint, model, voice, api_key = args
+                endpoint = str(endpoint).strip()
+                normalized_key = str(api_key).strip()
+                endpoint_changed = endpoint != str(self.values["speechTtsEndpoint"])
+                self.values["speechTtsEndpoint"] = endpoint
+                self.values["speechTtsModel"] = str(model).strip()
+                self.values["speechTtsVoice"] = str(voice).strip()
+                if normalized_key:
+                    self._speech_tts_api_key = normalized_key
+                    self.values["speechTtsApiKeyConfigured"] = True
+                elif endpoint_changed:
+                    self._speech_tts_api_key = ""
+                    self.values["speechTtsApiKeyConfigured"] = False
+            elif _name == "clearSpeechTtsApiKey":
+                self._speech_tts_api_key = ""
+                self.values["speechTtsApiKeyConfigured"] = False
             elif _name == "bonoVoiceDescription":
                 return "A calm, concise racing engineer voice with clear Vietnamese pronunciation."
             elif _name == "startTtsBenchmark":
@@ -273,12 +309,20 @@ def _make_application_class(prop_names: set[str], methods: dict[str, set[int]],
                 }.get(_name, _name[3:4].lower() + _name[4:])
                 if property_name in self.values:
                     self.values[property_name] = args[0]
+                    if _name == "setLowResourceMode":
+                        self.values["lowResourceRestartRequired"] = (
+                            bool(args[0]) != self._low_resource_at_startup)
                     if _name == "setApiReasoning":
                         self.apiSettingsChanged.emit()
             # Native testApiConnection changes apiState/voiceStatus signals,
             # but leaves apiSettingsChanged alone. Keeping this call quiet
             # preserves edits in bound TextFields just as the native object does.
-            if _name != "testApiConnection":
+            if _name == "setLowResourceMode":
+                self.generalSettingsChanged.emit()
+            elif _name in {"configureSpeechTts", "clearSpeechTtsApiKey"}:
+                self.speechTtsSettingsChanged.emit()
+            if _name not in {"testApiConnection", "setUiActive", "setLowResourceMode",
+                             "configureSpeechTts", "clearSpeechTtsApiKey"}:
                 self.changed.emit()
             return True if _name == "configureStrategySharing" else None
 
@@ -301,6 +345,9 @@ def _make_application_class(prop_names: set[str], methods: dict[str, set[int]],
         self.values["strategyData"] = strategy_data
         self.calls: list[tuple[str, tuple[Any, ...]]] = []
         self.ptt_depth = 0
+        self.ui_active = False
+        self._low_resource_at_startup = bool(self.values.get("lowResourceMode", True))
+        self._speech_tts_api_key = ""
 
     attrs["__init__"] = initialize
     return type("FakeApplication", (QObject,), attrs)

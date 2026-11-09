@@ -129,6 +129,48 @@ GoogleTtsBackend::GoogleTtsBackend(QUrl interactionsEndpoint, QUrl voicesEndpoin
     connect(recoveryTimer_, &QTimer::timeout, this, &GoogleTtsBackend::checkConnection);
 }
 
+GoogleTtsBackend::GoogleTtsBackend(const bool openAiSpeech, QUrl endpoint, QObject* parent)
+    : GoogleTtsBackend(std::move(endpoint), {}, parent)
+{
+    openAiSpeech_ = openAiSpeech;
+    model_ = QStringLiteral("gpt-4o-mini-tts");
+    voice_ = QStringLiteral("coral");
+}
+
+QString GoogleTtsBackend::backendName() const
+{
+    return openAiSpeech_ ? QStringLiteral("OpenAI-compatible TTS") : QStringLiteral("Google Gemini TTS API");
+}
+
+bool GoogleTtsBackend::validSpeechEndpoint(const QUrl& endpoint)
+{
+    const bool loopback = endpoint.host() == QStringLiteral("localhost")
+        || endpoint.host() == QStringLiteral("127.0.0.1") || endpoint.host() == QStringLiteral("::1");
+    return endpoint.isValid() && !endpoint.host().isEmpty() && endpoint.userInfo().isEmpty()
+        && !endpoint.hasQuery() && !endpoint.hasFragment() && !endpoint.path().isEmpty()
+        && (endpoint.scheme() == QStringLiteral("https")
+            || (endpoint.scheme() == QStringLiteral("http") && loopback));
+}
+
+bool GoogleTtsBackend::isAvailable() const
+{
+    if (!openAiSpeech_) return !apiKey_.trimmed().isEmpty();
+    return validSpeechEndpoint(interactionsEndpoint_) && !model_.isEmpty() && !voice_.isEmpty()
+        && (!apiKey_.trimmed().isEmpty() || interactionsEndpoint_.scheme() == QStringLiteral("http"));
+}
+
+bool GoogleTtsBackend::configureSpeechApi(const QUrl& endpoint, const QString& model, const QString& voice)
+{
+    if (!openAiSpeech_ || !validSpeechEndpoint(endpoint) || model.trimmed().isEmpty()
+        || voice.trimmed().isEmpty() || model.size() > 256 || voice.size() > 256) return false;
+    for (const auto token : pausedSpeech_.keys()) discardSpeech(token);
+    stop();
+    interactionsEndpoint_ = endpoint;
+    model_ = model.trimmed();
+    voice_ = voice.trimmed();
+    return true;
+}
+
 void GoogleTtsBackend::deleteSpeechTimers()
 {
     for (auto* timer : {speech_.timeout_, speech_.retryTimer_, speech_.playbackTimer_}) {
@@ -148,7 +190,7 @@ void GoogleTtsBackend::initializeSpeech(const quint64 token)
         withSpeech(token, [this] {
             if (speech_.activeRequestId_ != 0 && !retrySynthesis(speech_.activeRequestId_, 0,
                     QNetworkReply::TimeoutError, {}, true)) {
-                failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS request timed out."));
+                failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS request timed out."));
                 scheduleRecovery();
             }
         });
@@ -160,7 +202,7 @@ void GoogleTtsBackend::initializeSpeech(const quint64 token)
                 startSynthesisRequest(speech_.activeRequestId_);
         });
     });
-    speech_.playbackTimer_->setInterval(10);
+    speech_.playbackTimer_->setInterval(20);
     connect(speech_.playbackTimer_, &QTimer::timeout, this, [this, token] {
         withSpeech(token, [this] { playbackTick(); });
     });
@@ -263,7 +305,8 @@ QStringList GoogleTtsBackend::builtInVoices()
 void GoogleTtsBackend::warmUp()
 {
     if (!isAvailable()) {
-        const QString error = QStringLiteral("Google AI Studio TTS API key is not configured.");
+        const QString error = openAiSpeech_ ? QStringLiteral("TTS endpoint, model, voice or API key is not configured.")
+            : QStringLiteral("Google AI Studio TTS API key is not configured.");
         emit errorOccurred(error);
         emit warmUpFinished(false, error);
         return;
@@ -277,7 +320,8 @@ void GoogleTtsBackend::speak(const QString& text)
     if (trimmed.isEmpty()) return;
     stop();
     if (!isAvailable()) {
-        emit errorOccurred(QStringLiteral("Google AI Studio TTS API key is not configured."));
+        emit errorOccurred(openAiSpeech_ ? QStringLiteral("TTS endpoint, model, voice or API key is not configured.")
+            : QStringLiteral("Google AI Studio TTS API key is not configured."));
         if (!speech_.paused) emit speakingFinished();
         return;
     }
@@ -317,6 +361,11 @@ void GoogleTtsBackend::speak(const QString& text)
                 {QStringLiteral("voice"), voice}}}}}},
         {QStringLiteral("stream"), true},
     };
+    if (openAiSpeech_) {
+        speech_.activeBody_ = {{QStringLiteral("model"), model_},
+            {QStringLiteral("input"), trimmed}, {QStringLiteral("voice"), voice_},
+            {QStringLiteral("response_format"), QStringLiteral("pcm")}};
+    }
     startSynthesisRequest(requestId);
 }
 
@@ -325,10 +374,17 @@ void GoogleTtsBackend::startSynthesisRequest(const quint64 requestId)
     if (speech_.activeRequestId_ != requestId || speech_.reply_) return;
     QNetworkRequest request(interactionsEndpoint_);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    request.setRawHeader("x-goog-api-key", apiKey_.toUtf8());
-    request.setRawHeader("Accept", "text/event-stream");
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+    if (openAiSpeech_) {
+        if (!apiKey_.isEmpty()) request.setRawHeader("Authorization", "Bearer " + apiKey_.toUtf8());
+        request.setRawHeader("Accept", "audio/pcm, application/octet-stream");
+    } else {
+        request.setRawHeader("x-goog-api-key", apiKey_.toUtf8());
+        request.setRawHeader("Accept", "text/event-stream");
+    }
     speech_.reply_ = network_->post(request, QJsonDocument(speech_.activeBody_).toJson(QJsonDocument::Compact));
     QNetworkReply* const activeReply = speech_.reply_;
+    activeReply->setReadBufferSize(65536);
     connect(activeReply, &QIODevice::readyRead, this, [this, activeReply, requestId] {
         withSpeech(requestId, [this, activeReply, requestId] {
             if (speech_.reply_ != activeReply || speech_.activeRequestId_ != requestId) return;
@@ -348,9 +404,30 @@ void GoogleTtsBackend::startSynthesisRequest(const quint64 requestId)
 void GoogleTtsBackend::readStream()
 {
     if (!speech_.reply_ || speech_.activeRequestId_ == 0) return;
+    if (openAiSpeech_) {
+        const auto status = speech_.reply_->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray bytes = speech_.reply_->readAll();
+        // Error bodies must never be played as PCM, and are not retained in memory.
+        if (status < 200 || status >= 300) return;
+        const auto mime = speech_.reply_->header(QNetworkRequest::ContentTypeHeader)
+                              .toString().section(';', 0, 0).trimmed().toLower();
+        if (mime != QStringLiteral("audio/pcm") && mime != QStringLiteral("application/octet-stream")
+            && mime != QStringLiteral("audio/octet-stream") && mime != QStringLiteral("audio/raw")) {
+            failRequest(speech_.activeRequestId_, QStringLiteral("TTS endpoint must return raw 24 kHz mono PCM, not JSON, MP3 or WAV."));
+            return;
+        }
+        QByteArray pcm = speech_.pcmRemainder_ + bytes;
+        speech_.pcmRemainder_.clear();
+        if (pcm.size() & 1) {
+            speech_.pcmRemainder_ = pcm.right(1);
+            pcm.chop(1);
+        }
+        if (!pcm.isEmpty()) appendPcm(pcm);
+        return;
+    }
     speech_.eventBuffer_.append(speech_.reply_->readAll());
     if (speech_.eventBuffer_.size() > kMaximumEventBufferBytes) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS stream exceeded the event buffer limit."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS stream exceeded the event buffer limit."));
         return;
     }
     consumeEvents();
@@ -390,14 +467,14 @@ bool GoogleTtsBackend::consumeEvent(const QByteArray& eventData)
     const QJsonObject audio = audioDelta(event);
     const auto mime = audio.value(QStringLiteral("mime_type")).toString();
     if (!mime.isEmpty() && mime.section(';', 0, 0).trimmed().toLower() != QStringLiteral("audio/l16")) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS returned an unsupported audio format; expected raw PCM audio/l16."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS returned an unsupported audio format; expected raw PCM audio/l16."));
         return false;
     }
     const QByteArray encoded = audio.value(QStringLiteral("data")).toString().toLatin1();
     if (!encoded.isEmpty()) {
         QByteArray pcm;
         if (!decodeGooglePcmChunk(encoded, speech_.pcmRemainder_, pcm)) {
-            failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS returned invalid base64 audio."));
+            failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS returned invalid base64 audio."));
             return false;
         }
         if (!pcm.isEmpty() && !appendPcm(pcm)) return false;
@@ -411,7 +488,7 @@ bool GoogleTtsBackend::consumeEvent(const QByteArray& eventData)
         if (state == QStringLiteral("UNAVAILABLE")) code = 503;
         if (state == QStringLiteral("RESOURCE_EXHAUSTED")) code = 429;
         if (retrySynthesis(speech_.activeRequestId_, code, QNetworkReply::NoError)) return false;
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS request failed."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS request failed."));
         if (code != 429 && transientApiFailure(code, QNetworkReply::NoError)) scheduleRecovery();
         return false;
     }
@@ -421,11 +498,11 @@ bool GoogleTtsBackend::consumeEvent(const QByteArray& eventData)
 bool GoogleTtsBackend::appendPcm(const QByteArray& pcm)
 {
     if (speech_.totalPcmBytes_ + static_cast<quint64>(pcm.size()) > kMaximumAudioBytes) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS audio exceeded the 8 MiB limit."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS audio exceeded the 8 MiB limit."));
         return false;
     }
     if (speech_.pendingPcm_.size() + pcm.size() > (speech_.wasPaused ? kMaximumAudioBytes : kMaximumPendingPcmBytes)) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS playback buffer exceeded the 2 MiB limit."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS playback buffer exceeded the 2 MiB limit."));
         return false;
     }
     if (!speech_.audioSink_ && !startPcmPlayback()) return false;
@@ -443,22 +520,23 @@ bool GoogleTtsBackend::startPcmPlayback()
     format.setSampleFormat(QAudioFormat::Int16);
     const QAudioDevice device = audioDevice_.isNull() ? QMediaDevices::defaultAudioOutput() : audioDevice_;
     if (device.isNull()) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("No audio output device is available for Google TTS."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("No audio output device is available for online TTS."));
         return false;
     }
     // Qt's Windows audio sink resamples input to the WASAPI mix format, as in VieNeu playback.
     // isFormatSupported() describes device capabilities, not the sink's conversion capabilities.
-    qCInfo(logTts) << "Google TTS audio output:" << device.description()
+    qCInfo(logTts) << backendName() << "audio output:" << device.description()
                   << "preferred format:" << device.preferredFormat()
                   << "native 24 kHz mono support:" << device.isFormatSupported(format);
     speech_.audioSink_ = new QAudioSink(device, format, this);
     speech_.audioSink_->setVolume(volume_);
-    speech_.audioSink_->setBufferSize(48000);
+    // 200 ms of PCM, rather than asking the device to buffer a full second.
+    speech_.audioSink_->setBufferSize(9600);
     speech_.audioOutput_ = speech_.audioSink_->start();
     if (!speech_.audioOutput_) {
         speech_.audioSink_->deleteLater();
         speech_.audioSink_ = nullptr;
-        failRequest(speech_.activeRequestId_, QStringLiteral("Could not start Google TTS audio output."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Could not start online TTS audio output."));
         return false;
     }
     connect(speech_.audioSink_, &QAudioSink::stateChanged, this,
@@ -466,14 +544,14 @@ bool GoogleTtsBackend::startPcmPlayback()
             withSpeech(requestId, [this, sink, requestId, state] {
                 if (speech_.activeRequestId_ != requestId || speech_.audioSink_ != sink) return;
                 if (state == QAudio::StoppedState && sink->error() != QAudio::NoError)
-                    failRequest(requestId, QStringLiteral("Google TTS audio output stopped with device error %1.")
+                    failRequest(requestId, QStringLiteral("Online TTS audio output stopped with device error %1.")
                         .arg(static_cast<int>(sink->error())));
             });
         }, Qt::QueuedConnection);
     if (speech_.paused) speech_.audioSink_->suspend();
     speech_.started_ = true;
     recoveryAttempts_ = 0;
-    qCInfo(logTts) << "Google TTS first audio playback began after" << speech_.requestTimer_.elapsed() << "ms";
+    qCInfo(logTts) << backendName() << "first audio playback began after" << speech_.requestTimer_.elapsed() << "ms";
     if (!speech_.paused) emit speakingStarted({});
     emit firstAudioReceived(speech_.requestTimer_.elapsed());
     if (!speech_.paused) speech_.playbackTimer_->start();
@@ -485,7 +563,7 @@ void GoogleTtsBackend::drainPcm()
     if (speech_.paused || !speech_.audioOutput_ || speech_.pendingPcm_.isEmpty()) return;
     const qint64 written = speech_.audioOutput_->write(speech_.pendingPcm_.constData(), speech_.pendingPcm_.size());
     if (written < 0) {
-        failRequest(speech_.activeRequestId_, QStringLiteral("Google TTS audio output failed."));
+        failRequest(speech_.activeRequestId_, QStringLiteral("Online TTS audio output failed."));
     } else if (written > 0) {
         speech_.pendingPcm_.remove(0, static_cast<qsizetype>(written));
     }
@@ -494,6 +572,10 @@ void GoogleTtsBackend::drainPcm()
 void GoogleTtsBackend::finishStream()
 {
     if (!speech_.reply_) return;
+    if (openAiSpeech_) {
+        readStream();
+        if (!speech_.reply_) return;
+    }
     QNetworkReply* const finishedReply = speech_.reply_;
     speech_.reply_ = nullptr;
     const quint64 requestId = speech_.activeRequestId_;
@@ -501,8 +583,10 @@ void GoogleTtsBackend::finishStream()
         finishedReply->deleteLater();
         return;
     }
-    speech_.eventBuffer_.append(finishedReply->readAll());
-    consumeEvents(true);
+    if (!openAiSpeech_) {
+        speech_.eventBuffer_.append(finishedReply->readAll());
+        consumeEvents(true);
+    }
     const int status = finishedReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const bool failed = finishedReply->error() != QNetworkReply::NoError || status < 200 || status >= 300;
     const auto networkError = finishedReply->error();
@@ -513,22 +597,22 @@ void GoogleTtsBackend::finishStream()
     if (failed) {
         if (retrySynthesis(requestId, status, networkError, retryAfter)) return;
         failRequest(requestId, status == 401 || status == 403
-            ? QStringLiteral("Google TTS authentication failed; check the AI Studio API key.")
-            : status == 429 ? QStringLiteral("Google TTS quota or rate limit reached.")
-            : QStringLiteral("Google TTS network request failed (HTTP %1).").arg(status));
+            ? QStringLiteral("Online TTS authentication failed; check the configured TTS API key.")
+            : status == 429 ? QStringLiteral("Online TTS quota or rate limit reached.")
+            : QStringLiteral("Online TTS network request failed (HTTP %1).").arg(status));
         if (status != 429 && transientApiFailure(status, networkError)) scheduleRecovery();
         return;
     }
     if (speech_.totalPcmBytes_ == 0) {
         if (!speech_.pcmRemainder_.isEmpty()) {
-            failRequest(requestId, QStringLiteral("Google TTS PCM stream ended with an incomplete 16-bit sample."));
+            failRequest(requestId, QStringLiteral("Online TTS PCM stream ended with an incomplete 16-bit sample."));
             return;
         }
-        failRequest(requestId, QStringLiteral("Google TTS returned no audio."));
+        failRequest(requestId, QStringLiteral("Online TTS returned no audio."));
         return;
     }
     if (!speech_.pcmRemainder_.isEmpty()) {
-        failRequest(requestId, QStringLiteral("Google TTS PCM stream ended with an incomplete 16-bit sample."));
+        failRequest(requestId, QStringLiteral("Online TTS PCM stream ended with an incomplete 16-bit sample."));
         return;
     }
     speech_.responseFinished_ = true;
@@ -554,7 +638,7 @@ void GoogleTtsBackend::playbackTick()
 void GoogleTtsBackend::finishRequest(const quint64 requestId)
 {
     if (requestId == 0 || speech_.activeRequestId_ != requestId) return;
-    qCInfo(logTts) << "Google TTS request and playback completed in" << speech_.requestTimer_.elapsed() << "ms";
+    qCInfo(logTts) << backendName() << "request and playback completed in" << speech_.requestTimer_.elapsed() << "ms";
     speech_.activeRequestId_ = 0;
     speech_.retryTimer_->stop();
     speech_.timeout_->stop();
@@ -613,7 +697,7 @@ bool GoogleTtsBackend::retrySynthesis(const quint64 requestId, int status, int n
     ++speech_.retryCount_;
     speech_.retryTimer_->start(delay);
     emit retryScheduled(speech_.retryCount_, delay);
-    qCInfo(logTts) << "Retrying Google TTS" << speech_.retryCount_ << "/2 in" << delay << "ms";
+    qCInfo(logTts) << "Retrying" << backendName() << speech_.retryCount_ << "/2 in" << delay << "ms";
     return true;
 }
 
@@ -641,6 +725,8 @@ void GoogleTtsBackend::stop()
 
 void GoogleTtsBackend::scheduleRecovery()
 {
+    // A compatible service need not implement Google's models probe.
+    if (openAiSpeech_) return;
     if (!isAvailable()) return;
     const int delay = 15000 << std::min(recoveryAttempts_, 2);
     recoveryAttempts_ = std::min(recoveryAttempts_ + 1, 2);

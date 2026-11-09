@@ -10,7 +10,7 @@ ColumnLayout {
     required property var controller
     required property UiTheme theme
     required property bool live
-    property string contentMode: "all" // all, local, google
+    property string contentMode: "all" // all, local, google, speech
     signal backendSelectionChanged(string backendName)
     signal addGoogleVoiceRequested()
     readonly property bool controlsAvailable: live && !controller.ttsBenchmarkRunning && !controller.ttsBenchmarkRestoring
@@ -125,11 +125,11 @@ ColumnLayout {
             Layout.minimumWidth: 160
             Layout.preferredWidth: 320
             Layout.maximumWidth: 370
-            model: ["VieNeu local", "Google Gemini API"]
-            currentIndex: settings.controller.ttsBackend === "Google Gemini API" ? 1 : 0
+            model: ["VieNeu local", "Google Gemini API", "OpenAI-compatible TTS"]
+            currentIndex: settings.controller.ttsBackend === "Google Gemini API" ? 1 : settings.controller.ttsBackend === "OpenAI-compatible TTS" ? 2 : 0
             Accessible.name: "Backend giọng kỹ sư"
             onActivated: function(index) {
-                var backendName = index === 1 ? "Google Gemini API" : "VieNeu-TTS"
+                var backendName = index === 1 ? "Google Gemini API" : index === 2 ? "OpenAI-compatible TTS" : "VieNeu-TTS"
                 settings.controller.setTtsBackend(backendName)
                 settings.backendSelectionChanged(backendName)
             }
@@ -184,7 +184,7 @@ ColumnLayout {
                 onActivated: settings.controller.setTtsCpuThreads(Number(currentText))
             }
         }
-        MutedText { text: "Áp dụng ngay; tùy chọn gồm 2, 3 hoặc 4 luồng CPU."; Layout.fillWidth: true }
+        MutedText { text: settings.controller.lowResourceMode ? "Chế độ nhẹ giới hạn tối đa 2 luồng; OMP_NUM_THREADS tùy chỉnh được ưu tiên." : "Áp dụng ngay; tùy chọn gồm 2, 3 hoặc 4 luồng CPU."; Layout.fillWidth: true }
         BodyText { text: settings.controller.ttsStatus; Layout.fillWidth: true }
     }
 
@@ -253,6 +253,86 @@ ColumnLayout {
         MutedText {
             visible: settings.controller.googleTtsFirstAudioMs >= 0
             text: "Lượt gần nhất — audio đầu tiên: " + (settings.controller.googleTtsFirstAudioMs / 1000).toFixed(2) + " giây"
+            Layout.fillWidth: true
+        }
+    }
+
+    ColumnLayout {
+        visible: settings.controller.ttsBackend === "OpenAI-compatible TTS" && (settings.contentMode === "all" || settings.contentMode === "speech")
+        Layout.fillWidth: true
+        spacing: 10
+        BodyText { text: "Endpoint Speech API"; Layout.fillWidth: true }
+        Field {
+            id: speechEndpoint
+            objectName: "speechTtsEndpointField"
+            Layout.fillWidth: true
+            text: settings.controller.speechTtsEndpoint
+            maximumLength: 2048
+            Accessible.name: "Endpoint Speech API"
+            selectByMouse: true
+        }
+        BodyText { text: "Model"; Layout.fillWidth: true }
+        Field {
+            id: speechModel
+            objectName: "speechTtsModelField"
+            Layout.fillWidth: true
+            text: settings.controller.speechTtsModel
+            maximumLength: 256
+            Accessible.name: "Model TTS"
+        }
+        BodyText { text: "Voice"; Layout.fillWidth: true }
+        Field {
+            id: speechVoice
+            objectName: "speechTtsVoiceField"
+            Layout.fillWidth: true
+            text: settings.controller.speechTtsVoice
+            maximumLength: 256
+            Accessible.name: "Voice TTS"
+        }
+        Field {
+            id: speechKey
+            objectName: "speechTtsApiKeyField"
+            Layout.fillWidth: true
+            echoMode: TextInput.Password
+            maximumLength: 4096
+            placeholderText: settings.controller.speechTtsApiKeyConfigured ? "Đã lưu key riêng cho TTS; nhập để thay thế" : "API key của dịch vụ TTS"
+            Accessible.name: "API key TTS tương thích OpenAI"
+        }
+        MutedText {
+            text: "Dùng HTTPS; HTTP chỉ dành cho localhost. Để trống key để giữ key hiện tại nếu endpoint không đổi. Đổi endpoint sẽ xóa key cũ nếu không nhập key mới."
+            Layout.fillWidth: true
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            ActionButton {
+                objectName: "saveSpeechTtsButton"
+                text: "Lưu cấu hình"
+                onClicked: {
+                    settings.controller.configureSpeechTts(speechEndpoint.text, speechModel.text, speechVoice.text, speechKey.text)
+                    speechKey.clear()
+                }
+            }
+            ActionButton {
+                objectName: "clearSpeechTtsKeyButton"
+                text: "Xóa key"
+                enabled: settings.controlsAvailable && settings.controller.speechTtsApiKeyConfigured
+                onClicked: settings.controller.clearSpeechTtsApiKey()
+            }
+        }
+        ActionButton {
+            objectName: "previewSpeechTtsButton"
+            text: "Nghe thử"
+            enabled: settings.controlsAvailable && !settings.controller.connected
+            onClicked: settings.controller.previewTtsVoice()
+        }
+        MutedText {
+            text: "OpenAI: gpt-4o-mini-tts / coral. Máy chủ khác phải hỗ trợ POST Speech API và trả PCM 24 kHz mono 16-bit; không phải mọi dịch vụ TTS đều dùng chung API. Giọng đọc là giọng AI. Có thể phát sinh phí."
+            Layout.fillWidth: true
+        }
+        BodyText { text: settings.controller.ttsStatus; Layout.fillWidth: true }
+        MutedText {
+            visible: settings.controller.speechTtsFirstAudioMs >= 0
+            text: "Audio đầu tiên: " + (settings.controller.speechTtsFirstAudioMs / 1000).toFixed(2) + " giây"
             Layout.fillWidth: true
         }
     }

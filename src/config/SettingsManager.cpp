@@ -66,7 +66,8 @@ void SettingsManager::setTts(const TtsSettings& settings)
 {
     tts_ = settings;
     normalizeGoogleVoices(tts_);
-    if (tts_.backend != QStringLiteral("Google Gemini API")) {
+    if (tts_.backend != QStringLiteral("Google Gemini API")
+        && tts_.backend != QStringLiteral("OpenAI-compatible TTS")) {
         tts_.backend = QStringLiteral("VieNeu-TTS");
     }
     if (tts_.googleModel != QStringLiteral("gemini-3.8-flash-tts")) {
@@ -131,6 +132,12 @@ void SettingsManager::setLocalAi(const LocalAiSettings& settings)
         return;
     }
     localAi_ = normalized;
+    save();
+}
+
+void SettingsManager::setLowResourceMode(const bool enabled)
+{
+    lowResourceMode_ = enabled;
     save();
 }
 
@@ -364,11 +371,15 @@ void SettingsManager::load()
     tts_.voice = tts.value(QStringLiteral("voice")).toString(tts_.voice);
     tts_.googleModel = tts.value(QStringLiteral("google_model")).toString(tts_.googleModel);
     tts_.googleVoice = tts.value(QStringLiteral("google_voice")).toString(tts_.googleVoice);
+    tts_.speechEndpoint = tts.value(QStringLiteral("speech_endpoint")).toString(tts_.speechEndpoint);
+    tts_.speechModel = tts.value(QStringLiteral("speech_model")).toString(tts_.speechModel);
+    tts_.speechVoice = tts.value(QStringLiteral("speech_voice")).toString(tts_.speechVoice);
     tts_.googleVoiceId = tts.value(QStringLiteral("google_voice_id")).toString();
     tts_.googleVoiceName = tts.value(QStringLiteral("google_voice_name")).toString();
     tts_.googleCustomVoices = tts.value(QStringLiteral("google_custom_voices")).toArray();
     normalizeGoogleVoices(tts_);
-    tts_.cpuThreads = tts.value(QStringLiteral("cpu_threads")).toInt(4);
+    tts_.cpuThreads = tts.value(QStringLiteral("cpu_threads")).toInt(tts_.cpuThreads);
+    lowResourceMode_ = root.value(QStringLiteral("low_resource_mode")).toBool(true);
     bool shouldSave = false;
     if (tts_.voice.trimmed().isEmpty()) {
         tts_.voice = QStringLiteral("Minh Đức");
@@ -379,6 +390,8 @@ void SettingsManager::load()
     }
     if (tts_.backend.compare(QStringLiteral("Google Gemini API"), Qt::CaseInsensitive) == 0) {
         tts_.backend = QStringLiteral("Google Gemini API");
+    } else if (tts_.backend.compare(QStringLiteral("OpenAI-compatible TTS"), Qt::CaseInsensitive) == 0) {
+        tts_.backend = QStringLiteral("OpenAI-compatible TTS");
     } else {
         tts_.backend = QStringLiteral("VieNeu-TTS");
     }
@@ -450,6 +463,9 @@ void SettingsManager::save() const
         {QStringLiteral("voice"), tts_.voice},
         {QStringLiteral("google_model"), tts_.googleModel},
         {QStringLiteral("google_voice"), tts_.googleVoice},
+        {QStringLiteral("speech_endpoint"), tts_.speechEndpoint},
+        {QStringLiteral("speech_model"), tts_.speechModel},
+        {QStringLiteral("speech_voice"), tts_.speechVoice},
         {QStringLiteral("google_voice_id"), tts_.googleVoiceId},
         {QStringLiteral("google_voice_name"), tts_.googleVoiceName},
         {QStringLiteral("google_custom_voices"), tts_.googleCustomVoices},
@@ -472,6 +488,7 @@ void SettingsManager::save() const
             {QStringLiteral("tts"), tts},
         {QStringLiteral("audio_input"), audioInput},
             {QStringLiteral("local_ai"), localAi},
+            {QStringLiteral("low_resource_mode"), lowResourceMode_},
             {QStringLiteral("strategy_enabled"), strategyEnabled_},
             {QStringLiteral("spotter_enabled"), spotterEnabled_},
             {QStringLiteral("spotter_warning_gap_meters"), spotterWarningGapMeters_},

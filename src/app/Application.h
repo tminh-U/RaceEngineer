@@ -15,6 +15,7 @@
 #include <QJsonObject>
 #include <QByteArray>
 #include <QThread>
+#include <QElapsedTimer>
 #include <QVariantMap>
 #include <QStringList>
 
@@ -31,6 +32,7 @@ class WhisperRecognizer;
 class LLMManager;
 class ITtsBackend;
 class GoogleTtsBackend;
+class OpenAiTtsBackend;
 class VieNeuTtsBackend;
 class MessageDispatcher;
 class DInputButtonMonitor;
@@ -78,6 +80,11 @@ class Application final : public QObject {
     Q_PROPERTY(QString googleTtsVoice READ googleTtsVoice NOTIFY googleTtsSettingsChanged)
     Q_PROPERTY(QStringList googleTtsVoices READ googleTtsVoices NOTIFY googleTtsSettingsChanged)
     Q_PROPERTY(qint64 googleTtsFirstAudioMs READ googleTtsFirstAudioMs NOTIFY googleTtsSettingsChanged)
+    Q_PROPERTY(QString speechTtsEndpoint READ speechTtsEndpoint NOTIFY speechTtsSettingsChanged)
+    Q_PROPERTY(QString speechTtsModel READ speechTtsModel NOTIFY speechTtsSettingsChanged)
+    Q_PROPERTY(QString speechTtsVoice READ speechTtsVoice NOTIFY speechTtsSettingsChanged)
+    Q_PROPERTY(bool speechTtsApiKeyConfigured READ speechTtsApiKeyConfigured NOTIFY speechTtsSettingsChanged)
+    Q_PROPERTY(qint64 speechTtsFirstAudioMs READ speechTtsFirstAudioMs NOTIFY speechTtsSettingsChanged)
     Q_PROPERTY(int ttsCpuThreads READ ttsCpuThreads NOTIFY aiComputeSettingsChanged)
     Q_PROPERTY(bool ttsExternalThreadOverride READ ttsExternalThreadOverride CONSTANT)
     Q_PROPERTY(QVariantList availableTtsVoices READ availableTtsVoices NOTIFY availableTtsVoicesChanged)
@@ -101,6 +108,8 @@ class Application final : public QObject {
     Q_PROPERTY(bool minimizeOnClose READ minimizeOnClose NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool gpuRendererEnabled READ gpuRendererEnabled NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool gpuRendererRestartRequired READ gpuRendererRestartRequired NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool lowResourceMode READ lowResourceMode NOTIFY generalSettingsChanged)
+    Q_PROPERTY(bool lowResourceRestartRequired READ lowResourceRestartRequired NOTIFY generalSettingsChanged)
     Q_PROPERTY(bool startupReady READ startupReady NOTIFY startupChanged)
     Q_PROPERTY(bool setupVisible READ setupVisible NOTIFY setupChanged)
     Q_PROPERTY(int setupStep READ setupStep NOTIFY setupChanged)
@@ -249,6 +258,10 @@ public:
     Q_INVOKABLE void setMinimizeToTray(bool enabled);
     Q_INVOKABLE void setMinimizeOnClose(bool enabled);
     Q_INVOKABLE void setGpuRendererEnabled(bool enabled);
+    [[nodiscard]] bool lowResourceMode() const { return settingsManager_.lowResourceMode(); }
+    [[nodiscard]] bool lowResourceRestartRequired() const { return lowResourceAtStartup_ != lowResourceMode(); }
+    Q_INVOKABLE void setLowResourceMode(bool enabled);
+    Q_INVOKABLE void setUiActive(bool active);
     [[nodiscard]] bool startupReady() const noexcept { return startupReady_; }
     [[nodiscard]] double startupProgress() const noexcept
     {
@@ -289,6 +302,14 @@ public:
     Q_INVOKABLE void resetConversation();
     Q_INVOKABLE void setTtsBackend(const QString& backend);
     Q_INVOKABLE void setGoogleTtsApiKey(const QString& apiKey);
+    [[nodiscard]] QString speechTtsEndpoint() const { return settingsManager_.tts().speechEndpoint; }
+    [[nodiscard]] QString speechTtsModel() const { return settingsManager_.tts().speechModel; }
+    [[nodiscard]] QString speechTtsVoice() const { return settingsManager_.tts().speechVoice; }
+    [[nodiscard]] bool speechTtsApiKeyConfigured() const { return speechTtsApiKeyConfigured_; }
+    [[nodiscard]] qint64 speechTtsFirstAudioMs() const { return speechTtsFirstAudioMs_; }
+    Q_INVOKABLE void configureSpeechTts(const QString& endpoint, const QString& model,
+        const QString& voice, const QString& apiKey);
+    Q_INVOKABLE void clearSpeechTtsApiKey();
     Q_INVOKABLE void setGoogleTtsModel(const QString& model);
     Q_INVOKABLE void setGoogleTtsVoice(const QString& voice);
     Q_INVOKABLE void createGoogleTtsVoice(const QString& name, const QString& sourceWavPath,
@@ -333,6 +354,7 @@ signals:
     void apiStatisticsChanged();
     void ttsStatusChanged();
     void googleTtsSettingsChanged();
+    void speechTtsSettingsChanged();
     void aiComputeDevicesChanged();
     void aiComputeSettingsChanged();
     void aiComputeStatusChanged();
@@ -359,7 +381,7 @@ signals:
     void requestTranscription(const QByteArray& pcm16k, const QString& language);
 
 private slots:
-    void onStateUpdated(const raceengineer::RaceState& state);
+    void onStateUpdated(const raceengineer::RaceStateSnapshot& snapshot);
     void onConnectionStatusChanged(const QString& simulator, bool connected);
     void onVoiceStatusChanged(const QString& status);
     void onUtteranceReady(const QByteArray& pcm16k);
@@ -368,6 +390,7 @@ private slots:
     void onTtsWarmUpFinished(bool success, const QString& error);
 
 private:
+    void publishTelemetry();
     std::unique_ptr<TtsBenchmark> ttsBenchmark_;
     bool setupVisible_{false};
     bool localContextReleased_{false};
@@ -394,6 +417,9 @@ private:
     SimulatorSetup simulatorSetup_;
     UpdateChecker appUpdates_;
     bool gpuRendererAtStartup_{settingsManager_.gpuRendererEnabled()};
+    bool lowResourceAtStartup_{settingsManager_.lowResourceMode()};
+    bool uiActive_{true};
+    QElapsedTimer uiPublishClock_;
     LocalAiRuntimeSelection aiRuntimeSelection_;
     QThread telemetryThread_;
     QThread audioThread_;
@@ -404,6 +430,9 @@ private:
     WhisperRecognizer* speechRecognizer_{nullptr};
     VieNeuTtsBackend* vieNeuTtsBackend_{nullptr};
     GoogleTtsBackend* googleTtsBackend_{nullptr};
+    OpenAiTtsBackend* speechTtsBackend_{nullptr};
+    bool speechTtsApiKeyConfigured_{false};
+    qint64 speechTtsFirstAudioMs_{-1};
     ITtsBackend* ttsBackend_{nullptr};
     DInputButtonMonitor* directInput_{nullptr};
     QMediaPlayer* pttSoundPlayer_{nullptr};
@@ -458,7 +487,8 @@ private:
     QVariantList conversationLog_;
     QString apiKey_;
     std::unique_ptr<LLMManager> llmManager_;
-    RaceState latestState_;
+    RaceStateSnapshot latestState_{std::make_shared<const RaceState>()};
+    [[nodiscard]] const RaceState& latestState() const noexcept { return *latestState_; }
     QString apiState_{QStringLiteral("Unavailable")};
     QString apiDetail_{QStringLiteral("Configured; connection not tested yet")};
     QVariantMap apiStatistics_;

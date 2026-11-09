@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QObject>
+#include <QElapsedTimer>
 
 #include <memory>
 #include <vector>
@@ -49,6 +50,7 @@ private:
     QAudioFormat activeFormat_;
     std::vector<float> monoBuffer_;
     QByteArray pcmBuffer_;
+    QElapsedTimer levelPublishClock_;
     qint64 conversionElapsedUs_{0};
     qint64 conversionCalls_{0};
     qint64 conversionInputBytes_{0};

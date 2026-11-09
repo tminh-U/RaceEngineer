@@ -75,6 +75,14 @@ jobs:
         shell: pwsh
         run: |
           .\production\scripts\build-release.ps1 -QtPrefix $env:QT_ROOT_DIR -EnableLtcg
+      - name: Check performance capture tools
+        if: inputs.smoke_build_run == ''
+        shell: pwsh
+        run: |
+          python tests/test_race_performance_capture.py
+          if ($LASTEXITCODE -ne 0) { throw 'Performance analyzer tests failed.' }
+          & pwsh -NoLogo -NoProfile -File tests/test_race_performance_collector.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Windows performance collector helper tests failed.' }
       - name: Configure software Vulkan for the GPU-less smoke runner
         shell: pwsh
         run: |

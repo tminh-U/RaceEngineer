@@ -30,7 +30,7 @@ public slots:
     void setUseMockTelemetry(bool enabled);
 
 signals:
-    void stateUpdated(const raceengineer::RaceState& state);
+    void stateUpdated(const raceengineer::RaceStateSnapshot& state);
     void connectionStatusChanged(const QString& simulator, bool connected);
 
 private slots:

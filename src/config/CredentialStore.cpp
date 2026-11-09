@@ -11,6 +11,7 @@ namespace raceengineer {
 namespace {
 constexpr wchar_t credentialTarget[] = L"RaceEngineer/LLMApiKey";
 constexpr wchar_t googleTtsCredentialTarget[] = L"RaceEngineer/GoogleTtsApiKey";
+constexpr wchar_t speechTtsCredentialTarget[] = L"RaceEngineer/SpeechTtsApiKey";
 constexpr wchar_t raceDataShareTarget[] = L"RaceEngineer/RaceDataShareToken";
 }
 
@@ -98,6 +99,48 @@ bool CredentialStore::clearGoogleTtsApiKey()
 {
 #ifdef _WIN32
     if (CredDeleteW(googleTtsCredentialTarget, CRED_TYPE_GENERIC, 0) != FALSE) return true;
+    return GetLastError() == ERROR_NOT_FOUND;
+#else
+    return false;
+#endif
+}
+
+QString CredentialStore::readSpeechTtsApiKey()
+{
+#ifdef _WIN32
+    PCREDENTIALW credential = nullptr;
+    if (CredReadW(speechTtsCredentialTarget, CRED_TYPE_GENERIC, 0, &credential) == FALSE) return {};
+    const QByteArray bytes(reinterpret_cast<const char*>(credential->CredentialBlob),
+                           static_cast<qsizetype>(credential->CredentialBlobSize));
+    CredFree(credential);
+    return QString::fromUtf8(bytes);
+#else
+    return {};
+#endif
+}
+
+bool CredentialStore::writeSpeechTtsApiKey(const QString& apiKey)
+{
+    if (apiKey.isEmpty()) return clearSpeechTtsApiKey();
+#ifdef _WIN32
+    const QByteArray bytes = apiKey.toUtf8();
+    CREDENTIALW credential{};
+    credential.Type = CRED_TYPE_GENERIC;
+    credential.TargetName = const_cast<wchar_t*>(speechTtsCredentialTarget);
+    credential.CredentialBlobSize = static_cast<DWORD>(bytes.size());
+    credential.CredentialBlob = reinterpret_cast<LPBYTE>(const_cast<char*>(bytes.constData()));
+    credential.Persist = CRED_PERSIST_LOCAL_MACHINE;
+    credential.UserName = const_cast<wchar_t*>(L"RaceEngineer");
+    return CredWriteW(&credential, 0) != FALSE;
+#else
+    return false;
+#endif
+}
+
+bool CredentialStore::clearSpeechTtsApiKey()
+{
+#ifdef _WIN32
+    if (CredDeleteW(speechTtsCredentialTarget, CRED_TYPE_GENERIC, 0) != FALSE) return true;
     return GetLastError() == ERROR_NOT_FOUND;
 #else
     return false;

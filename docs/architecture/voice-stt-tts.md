@@ -4,6 +4,13 @@ This page describes the current keyboard/DirectInput, microphone, STT, radio,
 TTS, and audio ducking paths. For telemetry, event, and LLM architecture, see
 the [main architecture guide](../architect.md).
 
+The default lightweight mode defers model loading until use and releases idle
+STT/VieNeu contexts after 60 seconds. Conversation output can use Google or the
+OpenAI-compatible streaming Speech API; cached safety alerts stay local. See
+[performance and TTS options](../performance.md) for the current lifecycle,
+configuration, latency tradeoffs and validation limits. Eager warm-up behavior
+described below applies when lightweight mode is disabled.
+
 ## Runtime flow
 
 ```mermaid

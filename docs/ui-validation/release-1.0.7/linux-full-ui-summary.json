@@ -1,0 +1,41 @@
+{
+  "exit": "PASS",
+  "routes": 6,
+  "components": 16,
+  "components_ready": true,
+  "baseline_methods": 51,
+  "dynamic_methods": 51,
+  "qml_warnings": [],
+  "qt_logs_not_in_engine": [],
+  "source_hash_count": 21,
+  "source_sha256": {
+    "qml/AiVoicePage.qml": "341050ec334a9c593eaed6cf6dc7acf663076d29e58ff14128bb3b3d6f8c6aad",
+    "qml/Cockpit.qml": "b1ed02c1fa50558de4165bf6c4e5aeeabf39c47a3e76248d5ff18de6f36c95ba",
+    "qml/DrivingData.qml": "564b857b2292c88d0e135681f581972da8d34a753bdcab3af409237cc04875c0",
+    "qml/EngineerSpotterPage.qml": "afcb9656508f909296a6d93e86ca30f2f016b8849e774195a26439b72cc3a7c9",
+    "qml/FuelStrategyPage.qml": "88e4c6661915744d695e43a7332e58191a5f0a7ed53b0375c43eb9003c5c6262",
+    "qml/GoogleVoiceDialog.qml": "c1fa352f6c89a9be5684dd5f6754bacc25eee19db068fc45b53c1a96809df6e4",
+    "qml/LlmConnectionForm.qml": "bcfc116b63c5f4714c2485c0feb124d19f201e02e03ae5971562dbc9f92490e9",
+    "qml/Main.qml": "a21432fc9d5e02518774390900c6bd2b7f452fca8c5d58b48b7c8376d66514a4",
+    "qml/SetupWizard.qml": "3407d53c903a20a4c70b3fe62f7f69fe43f3fd4926117662d392148c0c2a8800",
+    "qml/SimulatorSetupPanel.qml": "d237fefd5a1671bf523e009e42a39109a0557982ca79d334039fad79fc24f5ea",
+    "qml/StartupNotice.qml": "da48e4cb09b37f4b7b779a653658ae0370228ead00eee22f16d55323cd1d6c79",
+    "qml/SystemDevicesPage.qml": "97f7adcc2a024ad4b3c283769243e2f4f1f7c40499915c940fe91008964c689d",
+    "qml/TelemetryPage.qml": "73f0ae7505651f953e9ea47b2d4a7a1cebf2c7bb44ce929906d9d88c6e9a5e7f",
+    "qml/TtsBenchmarkPanel.qml": "85bc1a2f29a3d02073f8a7c35c8adcf36dc2ba5c045859b70888c89018111c26",
+    "qml/TtsVoiceSettings.qml": "3477440b4763b98da8144b4c44ceaa3cc3dd1cfc66db21b7011f5b83eff815ae",
+    "qml/UiTheme.qml": "93973a5fb9023a133ace04ac9e12c2340391a607b3feb24829ee9d6b6e1e0934",
+    "tests/ui/run_ui.py": "ee2f918843dfbb47210f53227419c417ac2d4b4e9ea9525be7d56232bbdcc929",
+    "tests/ui/capture_review.py": "bd05ad7b548618eb244d8ebcd89049e749161010e4968330a9bf5a5591180322",
+    "tests/ui/fake_application.py": "08124ef860dc597b32b4cfe70f4884e26d9a86399c4f791ebdf0f242559e4265",
+    "tests/ui/native_contract.py": "37d59b51b6e8b8204d358ad813fba2fd11b12ae535125c3e1ff7402825ff03a4",
+    "tests/ui/parity_audit.py": "6598ba6697c4059366565c9142538e7faef3c5973c54661789c5c78788bcf2e1"
+  },
+  "screenshot_count": 20,
+  "cockpit_screenshots": [
+    ".tooling/release-1.0.7/ui/screenshots/page-0-880x576.png",
+    ".tooling/release-1.0.7/ui/screenshots/page-0-1280x800.png",
+    ".tooling/release-1.0.7/ui/screenshots/page-0-1600x1000.png"
+  ],
+  "report": "/workspace/RaceEngineer/.tooling/release-1.0.7/ui/render-report.json"
+}

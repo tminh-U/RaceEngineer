@@ -90,6 +90,7 @@ Item {
                 TabButton { text: "Kết nối AI"; Accessible.name: text }
                 TabButton { text: "Giọng cục bộ"; Accessible.name: text }
                 TabButton { text: "Google TTS"; Accessible.name: text }
+                TabButton { text: "TTS khác"; Accessible.name: text }
             }
             StackLayout {
                 objectName: "aiVoiceSectionContent"
@@ -149,7 +150,7 @@ Item {
                                         theme: page.theme
                                         live: page.live && page.sectionIndex === 1
                                         contentMode: "local"
-                                        onBackendSelectionChanged: backendName => page.sectionIndex = backendName === "Google Gemini API" ? 2 : 1
+                                        onBackendSelectionChanged: backendName => page.sectionIndex = backendName === "Google Gemini API" ? 2 : backendName === "OpenAI-compatible TTS" ? 3 : 1
                                         onAddGoogleVoiceRequested: page.openGoogleVoiceDialogRequested()
                                     }
                                 }
@@ -194,7 +195,7 @@ Item {
                                         theme: page.theme
                                         live: page.live && page.sectionIndex === 2
                                         contentMode: "google"
-                                        onBackendSelectionChanged: backendName => page.sectionIndex = backendName === "Google Gemini API" ? 2 : 1
+                                        onBackendSelectionChanged: backendName => page.sectionIndex = backendName === "Google Gemini API" ? 2 : backendName === "OpenAI-compatible TTS" ? 3 : 1
                                         onAddGoogleVoiceRequested: page.openGoogleVoiceDialogRequested()
                                     }
                                 }
@@ -214,6 +215,33 @@ Item {
                                         text: "Audio đầu tiên: " + (page.controller.googleTtsFirstAudioMs / 1000).toFixed(2) + " giây"
                                         Layout.fillWidth: true
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+                Item {
+                    implicitHeight: speechColumn.implicitHeight
+                    ColumnLayout {
+                        id: speechColumn
+                        width: parent.width
+                        spacing: 14
+                        SurfaceCard {
+                            Layout.fillWidth: true
+                            title: "TTS quốc tế / máy chủ tương thích OpenAI"
+                            ColumnLayout {
+                                width: parent.width
+                                BodyText {
+                                    text: "Phát audio streaming từ OpenAI hoặc máy chủ hỗ trợ Speech API. Spotter và cảnh báo đã thu sẵn vẫn phát cục bộ, không phụ thuộc mạng."
+                                    Layout.fillWidth: true
+                                }
+                                TtsVoiceSettings {
+                                    width: parent.width
+                                    controller: page.controller
+                                    theme: page.theme
+                                    live: page.live && page.sectionIndex === 3
+                                    contentMode: "speech"
+                                    onBackendSelectionChanged: backendName => page.sectionIndex = backendName === "Google Gemini API" ? 2 : backendName === "OpenAI-compatible TTS" ? 3 : 1
                                 }
                             }
                         }

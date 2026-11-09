@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(RaceEngineer VERSION 1.0.6 LANGUAGES CXX)
+project(RaceEngineer VERSION 1.0.7 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -121,6 +121,7 @@ qt_add_executable(RaceEngineer
     src/tts/ITtsBackend.h
     src/tts/GoogleTtsBackend.cpp
     src/tts/GoogleTtsBackend.h
+    src/tts/OpenAiTtsBackend.h
     src/tts/VieNeuTtsBackend.cpp
     src/tts/VieNeuTtsBackend.h
     src/tts/RacingTextNormalizer.cpp
@@ -478,6 +479,50 @@ if(BUILD_TESTING)
         target_compile_options(GoogleTtsBackendTests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
     add_test(NAME GoogleTtsBackendTests COMMAND GoogleTtsBackendTests)
+
+    # Exercise the real facade/capture/lifecycle without loading AI models or using API credentials.
+    # Reuse the application's source list, excluding its entrypoint and generated QML resources.
+    get_target_property(RACEENGINEER_RESOURCE_TEST_SOURCES RaceEngineer SOURCES)
+    list(FILTER RACEENGINEER_RESOURCE_TEST_SOURCES INCLUDE REGEX "^src/.*\\.(cpp|h)$")
+    list(REMOVE_ITEM RACEENGINEER_RESOURCE_TEST_SOURCES src/main.cpp)
+    # Keep this cadence/lifecycle test isolated from running games and controller hardware.
+    list(REMOVE_ITEM RACEENGINEER_RESOURCE_TEST_SOURCES src/input/DInputButtonMonitor.cpp
+        src/telemetry/ac/ACTelemetryProvider.cpp src/telemetry/acc/ACCTelemetryProvider.cpp)
+    list(APPEND RACEENGINEER_RESOURCE_TEST_SOURCES tests/fakes/DirectInputStub.cpp
+        tests/fakes/SimulatorProvidersStub.cpp)
+    add_executable(ResourceUsageTests tests/ResourceUsageTests.cpp
+        tests/fakes/VoiceRuntimeStubs.cpp ${RACEENGINEER_RESOURCE_TEST_SOURCES})
+    target_include_directories(ResourceUsageTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} src third_party/vieneu-bin/include
+        third_party/whisper.cpp/include third_party/whisper.cpp/ggml/include)
+    target_compile_definitions(ResourceUsageTests PRIVATE VIENEU_STATIC RACEENGINEER_ENABLE_MOCK=0
+        RACEENGINEER_VERSION="${PROJECT_VERSION}" RACEENGINEER_BUILD_COMMIT="${RACEENGINEER_BUILD_COMMIT}")
+    target_link_libraries(ResourceUsageTests PRIVATE Qt6::Core Qt6::Gui Qt6::Multimedia
+        Qt6::Network Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+    if(WIN32)
+        target_link_libraries(ResourceUsageTests PRIVATE Advapi32 Dinput8 Dxguid Ole32 Dwmapi Shell32)
+        target_compile_definitions(ResourceUsageTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    endif()
+    if(MSVC)
+        target_compile_options(ResourceUsageTests PRIVATE /utf-8)
+    endif()
+    add_test(NAME ResourceUsageTests COMMAND ResourceUsageTests)
+    set_tests_properties(ResourceUsageTests PROPERTIES TIMEOUT 45)
+    if(NOT WIN32)
+        set_tests_properties(ResourceUsageTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
+
+    option(RACEENGINEER_BUILD_RUNTIME_PROFILE "Build synthetic native replay profiler (not a real-game benchmark)" OFF)
+    if(RACEENGINEER_BUILD_RUNTIME_PROFILE)
+        add_executable(RuntimeProfile tools/profile_runtime.cpp tests/fakes/VoiceRuntimeStubs.cpp
+            ${RACEENGINEER_RESOURCE_TEST_SOURCES})
+        foreach(property INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTIONS LINK_LIBRARIES)
+            get_target_property(resource_test_${property} ResourceUsageTests ${property})
+            if(resource_test_${property})
+                set_property(TARGET RuntimeProfile PROPERTY ${property} "${resource_test_${property}}")
+            endif()
+        endforeach()
+        target_compile_definitions(RuntimeProfile PRIVATE RACEENGINEER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+    endif()
 endif()
 
 install(TARGETS RaceEngineer

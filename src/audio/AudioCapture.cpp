@@ -135,14 +135,18 @@ void AudioCapture::readAudio()
         return;
     }
 
-    const auto* samples = reinterpret_cast<const std::int16_t*>(pcm.constData());
-    const auto count = static_cast<std::size_t>(pcm.size() / 2);
-    double sum = 0.0;
-    for (std::size_t index = 0; index < count; ++index) {
-        const double normalized = samples[index] / 32768.0;
-        sum += normalized * normalized;
+    // The meter is presentation only; PCM/pre-roll/PTT still receive every chunk.
+    if (!levelPublishClock_.isValid() || levelPublishClock_.elapsed() >= 100) {
+        levelPublishClock_.restart();
+        const auto* samples = reinterpret_cast<const std::int16_t*>(pcm.constData());
+        const auto count = static_cast<std::size_t>(pcm.size() / 2);
+        double sum = 0.0;
+        for (std::size_t index = 0; index < count; ++index) {
+            const double normalized = samples[index] / 32768.0;
+            sum += normalized * normalized;
+        }
+        emit levelChanged(static_cast<float>(std::min(1.0, std::sqrt(sum / std::max<std::size_t>(1, count)) * 4.0)));
     }
-    emit levelChanged(static_cast<float>(std::min(1.0, std::sqrt(sum / std::max<std::size_t>(1, count)) * 4.0)));
     emit pcm16kReady(pcm);
 }
 

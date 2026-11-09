@@ -85,6 +85,27 @@ Run the offline tests:
 ctest --test-dir build --output-on-failure
 ```
 
+`ResourceUsageTests` uses AI runtime stubs to exercise the native facade's
+presentation rate, idle model lifecycle and bounded PTT without downloading
+weights. `GoogleTtsBackendTests` also covers the OpenAI-compatible Speech API
+through local HTTP mocks. These do not establish real-game performance or
+provider latency; see [performance validation](performance-validation.md).
+
+The optional native replay profiler uses the real facade and current Cockpit
+with AI/simulator stubs. It measures allocation/CPU work, not game FPS:
+
+```powershell
+cmake -S . -B build -DBUILD_TESTING=ON -DRACEENGINEER_BUILD_RUNTIME_PROFILE=ON
+cmake --build build --target RuntimeProfile --config RelWithDebInfo --parallel
+# Use the executable directory matching your CMake generator.
+.\build\RelWithDebInfo\RuntimeProfile.exe --sim ac --samples 6000 --qml --output ac-profile.json
+.\build\RelWithDebInfo\RuntimeProfile.exe --sim acc --samples 6000 --qml --output acc-profile.json
+```
+
+See the [scoped replay results](performance-allocation-profile.md) and the
+[real Windows AC/ACC capture protocol](windows-performance-capture.md). Capture
+collection does not require building the profiler or installing Python.
+
 On Windows, `TelemetryMetadataTests` exercises the real AC/ACC readers with
 synthetic shared-memory pages, including delayed metadata and reconnects. Close
 both simulators before running it: the test refuses to replace existing game

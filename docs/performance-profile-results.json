@@ -1,0 +1,1242 @@
+{
+  "schema": 1,
+  "kind": "synthetic_native_replay_not_game",
+  "date_utc": "2026-11-09",
+  "harness_revision": 2,
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor (shared cloud host)",
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+    "compile_flags": "-O2 -g -DNDEBUG -fPIC",
+    "qt_headers": "6.8.2",
+    "qt_shared_libraries": "6.8.3",
+    "qml_platform": "offscreen",
+    "qml_backend": "software",
+    "heaptrack": "1.5.0"
+  },
+  "fixture": {
+    "samples_per_run": 6000,
+    "opponents": 48,
+    "sim_fixtures": [
+      "ac",
+      "acc"
+    ],
+    "delivery": "accelerated queued native signal; batches of 64, drain every batch",
+    "ai_runtime": "stubbed",
+    "simulator_io": "stubbed",
+    "low_resource_mode": true,
+    "qml": "current Main.qml Cockpit 1280x800, setup complete, missing-model notice dismissed; force publication once per 3 samples",
+    "before": "Source at start of allocation follow-up; already includes lightweight mode and Speech API. Not pristine main.",
+    "after": "Same source with immutable shared snapshots, cached session metadata comparison, literal QVariantMap keys."
+  },
+  "evidence": {
+    "source_sha256": {
+      "before": {
+        "src/app/Application.cpp": "4884590dd6adbcbc81c59806b9955602afd7a51e8752139f11af8b2200659251",
+        "src/app/Application.h": "30a762552a63df6a29639de1ddc8a3d79ffad031a6ff1c8a549658e7578613cf",
+        "src/telemetry/TelemetryManager.cpp": "883388c78f9efe1c6bc46f2de8cffa5b7673d73d6fcc16ba2b6c8f526806625f",
+        "src/telemetry/TelemetryManager.h": "efcad98f5678c7e3336209d3b257ec42448399561bb5c5ce76d4d5ffd6415181",
+        "src/telemetry/common/RaceState.h": "79c739cdfe87b968629ae118e3f19461b76566b240ddd827a22af6bd523ceae5",
+        "tools/profile_runtime.cpp": "1b2d24bacb62845b8d0093b006c0d53b1453a7164768ae3e009a86def02bcc72"
+      },
+      "after": {
+        "src/app/Application.cpp": "184ca259315e5b6243d345d58d42181af9166a2406bcc941083a6f19b4800760",
+        "src/app/Application.h": "c9baf59eb613502f612f0f16c359623fbddc7d0d60b135a0dccbd4341c8c3bc7",
+        "src/telemetry/TelemetryManager.cpp": "02a5a9a055f1e072a815386b4673ab459231201fa2f10aca3c4073757a1cf512",
+        "src/telemetry/TelemetryManager.h": "aa3aa69db55931089272c27c92bb22ddf03f1e281ad42c324c6e0849540b85b6",
+        "src/telemetry/common/RaceState.h": "79c739cdfe87b968629ae118e3f19461b76566b240ddd827a22af6bd523ceae5",
+        "tools/profile_runtime.cpp": "1b2d24bacb62845b8d0093b006c0d53b1453a7164768ae3e009a86def02bcc72"
+      }
+    },
+    "executable_sha256": {
+      "before": "851d9b182c04861c3c58fb8112f71de61479ec1bac2db66356ef2613d8cc0072",
+      "after": "f2e9befda436ba4d06c02d2b37dd2e2f3a395b4a377f7aed79ab988d5ecbbe5c"
+    },
+    "local_raw_directory": ".tooling/profiling/measured/",
+    "source_manifest_sha256": "3261f64666b610b684822511cab582bf939216a7f9d16fedc8aa09361b7b4ae5",
+    "source_count_per_variant": 99,
+    "source_manifest_scope": "Source-tree snapshot of C++/headers/QML/fakes/harness; includes files excluded from this target, not a compilation database."
+  },
+  "timing_series": [
+    {
+      "sim_fixture": "ac",
+      "qml": false,
+      "variants": {
+        "before": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 407.177,
+              "min": 382.836,
+              "max": 417.368
+            },
+            "wall_ms": {
+              "median": 273.83782,
+              "min": 254.972367,
+              "max": 294.681217
+            },
+            "peak_rss_bytes": {
+              "median": 60137472,
+              "min": 59179008,
+              "max": 60706816
+            },
+            "callback_p50_us": {
+              "median": 7.271,
+              "min": 7.251,
+              "max": 7.412
+            },
+            "callback_p95_us": {
+              "median": 8.052,
+              "min": 7.792,
+              "max": 8.212
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 7.412,
+              "callback_p95_us": 8.212,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 59179008,
+              "process_cpu_ms": 417.368,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 294.681217
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 7.251,
+              "callback_p95_us": 8.052,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60235776,
+              "process_cpu_ms": 407.485,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 275.831607
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 7.261,
+              "callback_p95_us": 8.102,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60137472,
+              "process_cpu_ms": 385.416,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 255.447629
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 7.271,
+              "callback_p95_us": 7.902,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60706816,
+              "process_cpu_ms": 407.177,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 273.83782
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 7.321,
+              "callback_p95_us": 7.792,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 59428864,
+              "process_cpu_ms": 382.836,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 254.972367
+            }
+          ],
+          "raw_sha256": {
+            "ac-core-timing-0.json": "824369876fb67fd8752560dc3f8528149f050ca023e1f5be7c0bef2ff047be54",
+            "ac-core-timing-1.json": "d74b036709bbfc9a4634a2d6997c24981e4527d45ad58d3bb053fe72359ddd2d",
+            "ac-core-timing-2.json": "21db9f1268a9ce8c0faccf28e2a4eeac84a72e4661827477fcb18ff579952d4e",
+            "ac-core-timing-3.json": "58c718c8432b6273c6614d65584cb00f7165814840c44c4d3da93e02574f5534",
+            "ac-core-timing-4.json": "0c52a6ac947178dff7ad2a361b5fa8f50d6eef1c074773407c2cfc6decb6a522"
+          }
+        },
+        "after": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 190.73,
+              "min": 186.722,
+              "max": 198.725
+            },
+            "wall_ms": {
+              "median": 118.119371,
+              "min": 113.484341,
+              "max": 123.593485
+            },
+            "peak_rss_bytes": {
+              "median": 60354560,
+              "min": 59076608,
+              "max": 60911616
+            },
+            "callback_p50_us": {
+              "median": 13.29,
+              "min": 13.24,
+              "max": 13.38
+            },
+            "callback_p95_us": {
+              "median": 35.313,
+              "min": 35.063,
+              "max": 37.086
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 13.24,
+              "callback_p95_us": 37.086,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 60911616,
+              "process_cpu_ms": 194.015,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 120.538508
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 13.35,
+              "callback_p95_us": 37.086,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 60354560,
+              "process_cpu_ms": 190.73,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 118.119371
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 13.29,
+              "callback_p95_us": 35.063,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59932672,
+              "process_cpu_ms": 186.722,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 113.484341
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 13.38,
+              "callback_p95_us": 35.313,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59076608,
+              "process_cpu_ms": 188.323,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 115.146929
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 13.26,
+              "callback_p95_us": 35.193,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 60387328,
+              "process_cpu_ms": 198.725,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 123.593485
+            }
+          ],
+          "raw_sha256": {
+            "ac-core-timing-0.json": "751c8d36cdf39d08d0c87a5a21e02a0400280fc3db6d305ae0a31baa3797ba09",
+            "ac-core-timing-1.json": "9282418db60d88ad90d4093ae719c945f274ce80b0e5ef530b375593179389de",
+            "ac-core-timing-2.json": "1dcbd8d37a9a35c60756af27879f5570114c0157418868e4139ad0b29b9e104e",
+            "ac-core-timing-3.json": "7912b895e6fd4005cff6260253d9c947f3fc2fbed475500b4129e3ee7a386541",
+            "ac-core-timing-4.json": "1d983ed678fe99ca586373bc7104dc17e28b66f515772ccfd30866810581466e"
+          }
+        }
+      },
+      "median_cpu_change_pct": -53.15796324448582
+    },
+    {
+      "sim_fixture": "ac",
+      "qml": true,
+      "variants": {
+        "before": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 642.648,
+              "min": 611.965,
+              "max": 663.483
+            },
+            "wall_ms": {
+              "median": 472.5457,
+              "min": 445.391246,
+              "max": 490.739851
+            },
+            "peak_rss_bytes": {
+              "median": 95256576,
+              "min": 94810112,
+              "max": 96456704
+            },
+            "callback_p50_us": {
+              "median": 9.043,
+              "min": 8.714,
+              "max": 9.184
+            },
+            "callback_p95_us": {
+              "median": 162.966,
+              "min": 160.833,
+              "max": 172.971
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.114,
+              "callback_p95_us": 172.971,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 96456704,
+              "process_cpu_ms": 661.732,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 490.739851
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 8.714,
+              "callback_p95_us": 160.833,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 96239616,
+              "process_cpu_ms": 642.648,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 472.5457
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.013,
+              "callback_p95_us": 167.082,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 94810112,
+              "process_cpu_ms": 663.483,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 487.597903
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.043,
+              "callback_p95_us": 162.966,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 95256576,
+              "process_cpu_ms": 611.965,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 445.391246
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.184,
+              "callback_p95_us": 162.185,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 94871552,
+              "process_cpu_ms": 626.122,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 458.329307
+            }
+          ],
+          "raw_sha256": {
+            "ac-qml-timing-0.json": "3d6c409e569efe388060391fb419bf81e4ccea9584dd805962639441de3016c4",
+            "ac-qml-timing-1.json": "7d85caf4d8d7db1410bee67ff0a55dda54814c4b158a5d91aaac97e5cd2d99e6",
+            "ac-qml-timing-2.json": "1c8c135110d9ab59c722c33b29ae311bb9d366e4fc44fe461a22842bcad28515",
+            "ac-qml-timing-3.json": "f72bf9b40a59c1a5916b0c86fcc78892d3ab1e6801a7e47e90f92c5031cba2cd",
+            "ac-qml-timing-4.json": "95a7e605841e169245bfdbf52a26062c82a7ac92e023c21fc20cd5572098d8b4"
+          }
+        },
+        "after": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 458.397,
+              "min": 427.589,
+              "max": 497.202
+            },
+            "wall_ms": {
+              "median": 384.955702,
+              "min": 357.025532,
+              "max": 423.955564
+            },
+            "peak_rss_bytes": {
+              "median": 96055296,
+              "min": 95043584,
+              "max": 96550912
+            },
+            "callback_p50_us": {
+              "median": 9.915,
+              "min": 9.394,
+              "max": 11.637
+            },
+            "callback_p95_us": {
+              "median": 170.767,
+              "min": 161.825,
+              "max": 181.374
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 10.256,
+              "callback_p95_us": 176.697,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 95043584,
+              "process_cpu_ms": 458.397,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 378.066618
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.915,
+              "callback_p95_us": 170.767,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 96550912,
+              "process_cpu_ms": 458.143,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 384.955702
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 11.637,
+              "callback_p95_us": 167.443,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 96092160,
+              "process_cpu_ms": 474.396,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 391.918163
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.394,
+              "callback_p95_us": 161.825,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 95989760,
+              "process_cpu_ms": 427.589,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 357.025532
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 9.614,
+              "callback_p95_us": 181.374,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 96055296,
+              "process_cpu_ms": 497.202,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "ac",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 423.955564
+            }
+          ],
+          "raw_sha256": {
+            "ac-qml-timing-0.json": "1718e2204ce1c94c465f8f4a32cc093611f8d61b30ad3bc8121349aa7e15f215",
+            "ac-qml-timing-1.json": "ece5cadd9a1feb10c7f864e029c86fe6672e5b70e1920ab5a3336a87343b1d56",
+            "ac-qml-timing-2.json": "efcc20472f04bde00ee84a630592fa483e242df7867d9a1da67cd07bb1d27f57",
+            "ac-qml-timing-3.json": "e09549e988d56b341174462079885e10190e2cf29dd14211e65ed960143c1b58",
+            "ac-qml-timing-4.json": "a369a4ee7fa72c353ce5bfb2da23a70236260d52db1dd573298822177f5e5906"
+          }
+        }
+      },
+      "median_cpu_change_pct": -28.670594166635553
+    },
+    {
+      "sim_fixture": "acc",
+      "qml": false,
+      "variants": {
+        "before": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 228.77,
+              "min": 219.711,
+              "max": 254.537
+            },
+            "wall_ms": {
+              "median": 156.326776,
+              "min": 148.569556,
+              "max": 184.756215
+            },
+            "peak_rss_bytes": {
+              "median": 60325888,
+              "min": 58511360,
+              "max": 60432384
+            },
+            "callback_p50_us": {
+              "median": 2.664,
+              "min": 2.494,
+              "max": 2.674
+            },
+            "callback_p95_us": {
+              "median": 2.975,
+              "min": 2.945,
+              "max": 3.114
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.664,
+              "callback_p95_us": 2.965,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60325888,
+              "process_cpu_ms": 219.711,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 148.569556
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.664,
+              "callback_p95_us": 2.975,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 58511360,
+              "process_cpu_ms": 228.77,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 156.326776
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.624,
+              "callback_p95_us": 2.945,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 59834368,
+              "process_cpu_ms": 224.916,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 154.199415
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.494,
+              "callback_p95_us": 3.114,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60432384,
+              "process_cpu_ms": 254.537,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 184.756215
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.674,
+              "callback_p95_us": 3.065,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 60358656,
+              "process_cpu_ms": 229.427,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 157.538464
+            }
+          ],
+          "raw_sha256": {
+            "acc-core-timing-0.json": "64022cc7d4d9774fc7f11e2f0eaf7952dedc7b7c340c7e57ec5ab7b62aad0a10",
+            "acc-core-timing-1.json": "a25c02b744bad209acdfc378ff757830215632605edda9aa5778754315f026c7",
+            "acc-core-timing-2.json": "774a5fb5f7100b7df7a3a1bab5c1187b755a02dbe5cef84ac94339e465976f0a",
+            "acc-core-timing-3.json": "4c75a7017e89b1c80b32e89960271da7780c4b6929acda9ae73d68baa92fbfc2",
+            "acc-core-timing-4.json": "4886c555a36eb7c2ba33a1d70b325199ec3a99032456888ec2f60cdca582728f"
+          }
+        },
+        "after": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 114.731,
+              "min": 101.891,
+              "max": 128.921
+            },
+            "wall_ms": {
+              "median": 73.561531,
+              "min": 62.495911,
+              "max": 83.856435
+            },
+            "peak_rss_bytes": {
+              "median": 59551744,
+              "min": 58511360,
+              "max": 59809792
+            },
+            "callback_p50_us": {
+              "median": 5.238,
+              "min": 5.078,
+              "max": 5.368
+            },
+            "callback_p95_us": {
+              "median": 17.807,
+              "min": 16.806,
+              "max": 24.166
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.168,
+              "callback_p95_us": 17.266,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59629568,
+              "process_cpu_ms": 107.525,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 65.546226
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.368,
+              "callback_p95_us": 24.166,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59551744,
+              "process_cpu_ms": 128.921,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 83.856435
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.078,
+              "callback_p95_us": 16.806,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59809792,
+              "process_cpu_ms": 101.891,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 62.495911
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.238,
+              "callback_p95_us": 17.807,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 58511360,
+              "process_cpu_ms": 114.731,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 73.561531
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.368,
+              "callback_p95_us": 21.903,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 59244544,
+              "process_cpu_ms": 118.867,
+              "qml": false,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 1,
+              "viewport": "none",
+              "wall_ms": 75.104749
+            }
+          ],
+          "raw_sha256": {
+            "acc-core-timing-0.json": "050c0dccbd1d0e10088aa25c3a96aa1953ee33f14729342082d8979abc0d1bf5",
+            "acc-core-timing-1.json": "a04b18228dc8132277ff8c7c6a54f69b5f02024489d333d5d9077e758989f6ed",
+            "acc-core-timing-2.json": "ea63463bd63aa6d55870d52e284bde8d2ef639afe2ee4080a6befcf925985209",
+            "acc-core-timing-3.json": "911f4de1f36a695af165e4cf42eb8b52180acfa18d3b9fd26784f5ef806bdb51",
+            "acc-core-timing-4.json": "418fe9e7f8885adf9e096abe973b767010a023eb6f7ed8bb245afe9851e9229d"
+          }
+        }
+      },
+      "median_cpu_change_pct": -49.848756392883686
+    },
+    {
+      "sim_fixture": "acc",
+      "qml": true,
+      "variants": {
+        "before": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 473.329,
+              "min": 450.3,
+              "max": 682.099
+            },
+            "wall_ms": {
+              "median": 389.100704,
+              "min": 368.495587,
+              "max": 455.628798
+            },
+            "peak_rss_bytes": {
+              "median": 94244864,
+              "min": 93700096,
+              "max": 95141888
+            },
+            "callback_p50_us": {
+              "median": 3.536,
+              "min": 3.295,
+              "max": 5.388
+            },
+            "callback_p95_us": {
+              "median": 156.937,
+              "min": 127.692,
+              "max": 160.432
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 5.388,
+              "callback_p95_us": 127.692,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 95141888,
+              "process_cpu_ms": 682.099,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 455.628798
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.295,
+              "callback_p95_us": 156.937,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 93876224,
+              "process_cpu_ms": 450.3,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 368.495587
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.385,
+              "callback_p95_us": 157.458,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 94425088,
+              "process_cpu_ms": 472.468,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 389.100704
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 4.737,
+              "callback_p95_us": 143.517,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 94244864,
+              "process_cpu_ms": 615.909,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 451.437154
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.536,
+              "callback_p95_us": 160.432,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "before",
+              "opponents": 48,
+              "peak_rss_bytes": 93700096,
+              "process_cpu_ms": 473.329,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": false,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 380.013234
+            }
+          ],
+          "raw_sha256": {
+            "acc-qml-timing-0.json": "0f4bd39c21ae1a3a206cbe255492b7c4addbecd954798a242306bddfda1d03be",
+            "acc-qml-timing-1.json": "17b0d542135751ca089611973404efe959486ac300b4ccc31e5aa080ff0d739f",
+            "acc-qml-timing-2.json": "d2cc01d39e43146864fd2f6f3c996392c9b31886da2a51c6610d09bc5d2a343d",
+            "acc-qml-timing-3.json": "54aa6686784f23fba87506c528ac5b11c42e3a3bc9741ac42a716ed8a137b016",
+            "acc-qml-timing-4.json": "9dd955e00abeab8e8f5b6f9b7051a8b5bcdc047fe4e643d9c9129456e86325e9"
+          }
+        },
+        "after": {
+          "summary": {
+            "process_cpu_ms": {
+              "median": 382.323,
+              "min": 301.032,
+              "max": 427.231
+            },
+            "wall_ms": {
+              "median": 345.2293,
+              "min": 263.692469,
+              "max": 383.112399
+            },
+            "peak_rss_bytes": {
+              "median": 94228480,
+              "min": 93327360,
+              "max": 94502912
+            },
+            "callback_p50_us": {
+              "median": 3.155,
+              "min": 2.664,
+              "max": 3.525
+            },
+            "callback_p95_us": {
+              "median": 160.272,
+              "min": 124.768,
+              "max": 173.072
+            }
+          },
+          "runs": [
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 2.664,
+              "callback_p95_us": 124.768,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 93560832,
+              "process_cpu_ms": 301.032,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 263.692469
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.004,
+              "callback_p95_us": 148.775,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 94228480,
+              "process_cpu_ms": 338.206,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 300.235698
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.456,
+              "callback_p95_us": 173.072,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 93327360,
+              "process_cpu_ms": 427.231,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 383.112399
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.525,
+              "callback_p95_us": 164.809,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 94228480,
+              "process_cpu_ms": 412.016,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 373.000564
+            },
+            {
+              "ai_runtime": "stubbed",
+              "callback_p50_us": 3.155,
+              "callback_p95_us": 160.272,
+              "harness_revision": 2,
+              "kind": "synthetic_native_replay_not_game",
+              "label": "after",
+              "opponents": 48,
+              "peak_rss_bytes": 94502912,
+              "process_cpu_ms": 382.323,
+              "qml": true,
+              "samples": 6000,
+              "schema": 1,
+              "shared_snapshot": true,
+              "sim_fixture": "acc",
+              "simulator_io": "stubbed",
+              "ui_publications": 2001,
+              "viewport": "1280x800 Cockpit; setup closed; optional AI notice dismissed",
+              "wall_ms": 345.2293
+            }
+          ],
+          "raw_sha256": {
+            "acc-qml-timing-0.json": "91ed9f1da77cfef5d9219c222ce7d83da0f4e851cbf03ad18534fcac9e4929bf",
+            "acc-qml-timing-1.json": "0197c101e96d57f2d13eceda227721d5d2c2cbfc40723947aef69a3b9aba9015",
+            "acc-qml-timing-2.json": "147b6942874c010fa6577d8228f7021dd43c17cfbfbe514334f0fc95a01957c1",
+            "acc-qml-timing-3.json": "84f70220535b085a462e855f507245ee2cdc4c19fd445ce1c3ffe811e8055e82",
+            "acc-qml-timing-4.json": "836e6e6b6d560e26e54d8e03c1baff7138087f46ed7ef37b16dc276762b94af7"
+          }
+        }
+      },
+      "median_cpu_change_pct": -19.22679573827085
+    }
+  ],
+  "heaptrack_runs": [
+    {
+      "variant": "before",
+      "fixture": "ac-core",
+      "allocation_calls_whole_process": 3650439,
+      "heaptrack_print_sha256": "c774cc3f61fdda3402f69f3191b878e6fd36cf213996edf499bad95d1ee2b7a7",
+      "peak heap memory consumption": "27.85M",
+      "peak RSS (including heaptrack overhead)": "64.96M",
+      "total memory leaked": "171.28K"
+    },
+    {
+      "variant": "before",
+      "fixture": "acc-qml",
+      "allocation_calls_whole_process": 2773540,
+      "heaptrack_print_sha256": "9d243fdca8948416e419b32de1542d68047d7df019fb645a07cf541e435ad4f4",
+      "peak heap memory consumption": "48.80M",
+      "peak RSS (including heaptrack overhead)": "114.04M",
+      "total memory leaked": "2.83M"
+    },
+    {
+      "variant": "after",
+      "fixture": "ac-core",
+      "allocation_calls_whole_process": 1832141,
+      "heaptrack_print_sha256": "37b3171f2f578b53db34b16f51ad7fef2c3b108aa0c77ca184107601d81a7edf",
+      "peak heap memory consumption": "28.43M",
+      "peak RSS (including heaptrack overhead)": "65.44M",
+      "total memory leaked": "171.97K"
+    },
+    {
+      "variant": "after",
+      "fixture": "acc-qml",
+      "allocation_calls_whole_process": 1744133,
+      "heaptrack_print_sha256": "e3fc4a102dfd7f3e4a1a1266677db578b64b85890ed0c3febf38745576550713",
+      "peak heap memory consumption": "48.80M",
+      "peak RSS (including heaptrack overhead)": "113.99M",
+      "total memory leaked": "2.80M"
+    }
+  ],
+  "limitations": [
+    "Synthetic replay only: no actual AC/ACC, Windows, GPU contention, real AI inference, network TTS or physical audio.",
+    "Before/after use the same revision-2 harness and current QML; accelerated publication is not real-time telemetry or game FPS.",
+    "Uninstrumented timing: one warm-up per variant per fixture; five runs per variant, alternating run order; report median and range on shared cloud hardware.",
+    "Process CPU covers the replay phase only. Peak RSS includes startup and cached audio; heaptrack allocation totals include whole process lifetime.",
+    "Reduced allocation churn does not imply lower peak RAM. Last-owner snapshot destruction shifts work into the timed GUI callback; its p95 increased.",
+    "No actual Windows 8 GB readiness or no-stutter claim. Real capture remains pending."
+  ],
+  "windows_8gb_ac_acc_validation": "not_run_environment_has_no_windows_or_games"
+}

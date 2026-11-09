@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <utility>
 
 namespace raceengineer {
 
@@ -288,6 +289,17 @@ VieNeuTtsBackend::VieNeuTtsBackend(QString modelDir,
     , voice_(voice.trimmed().isEmpty() ? QStringLiteral("Minh Đức") : std::move(voice))
 {
     (void)initialOmpOverride();
+    idleTimer_ = new QTimer(this);
+    idleTimer_->setSingleShot(true);
+    idleTimer_->setInterval(60'000);
+    connect(idleTimer_, &QTimer::timeout, this, [this] {
+        if (lowResourceMode_ && ready_ && !initializing_ && !synthesizing_
+            && !playbackActive_ && pausedSpeech_.isEmpty() && activeBenchmarkRequestId_ == 0)
+            releaseModel();
+    });
+    connect(this, &ITtsBackend::speakingFinished, this, [this] {
+        if (lowResourceMode_) idleTimer_->start();
+    });
     setAudioOutputDevice(QString());
 
     workerThread_ = new QThread(this);
@@ -307,7 +319,7 @@ VieNeuTtsBackend::VieNeuTtsBackend(QString modelDir,
 
     loadCachedSpotter();
 
-    workerThread_->start();
+    workerThread_->start(QThread::LowPriority);
 }
 
 VieNeuTtsBackend::~VieNeuTtsBackend()
@@ -332,18 +344,24 @@ bool VieNeuTtsBackend::hasExternalThreadOverride()
     return initialOmpOverride().active;
 }
 
+void VieNeuTtsBackend::setLowResourceMode(const bool enabled)
+{
+    lowResourceMode_ = enabled;
+    if (enabled) setCpuThreads(std::min(cpuThreads_, 2));
+}
+
 bool VieNeuTtsBackend::setCpuThreads(const int cpuThreads)
 {
     if ((cpuThreads != 2 && cpuThreads != 3 && cpuThreads != 4)
         || !contextReleased_ || releasePending_ || initializing_ || ready_ || !worker_) {
         return false;
     }
-    cpuThreads_ = cpuThreads;
+    cpuThreads_ = lowResourceMode_ ? std::min(cpuThreads, 2) : cpuThreads;
     if (!hasExternalThreadOverride()) {
-        qputenv("OMP_NUM_THREADS", QByteArray::number(cpuThreads));
+        qputenv("OMP_NUM_THREADS", QByteArray::number(cpuThreads_));
     }
     return QMetaObject::invokeMethod(worker_, "setCpuThreads", Qt::QueuedConnection,
-        Q_ARG(int, cpuThreads));
+        Q_ARG(int, cpuThreads_));
 }
 
 void VieNeuTtsBackend::warmUp()
@@ -364,6 +382,12 @@ void VieNeuTtsBackend::warmUp()
         emit initializationFinished(false, QStringLiteral("Unavailable"), error);
         emit warmUpFinished(false, error);
         emit errorOccurred(error);
+        if (!std::exchange(deferredText_, {}).isEmpty()) emit speakingFinished();
+        return;
+    }
+    if (lowResourceMode_ && deferredText_.isEmpty()) {
+        emit runtimeBackendChanged(QStringLiteral("Chờ phát giọng · chế độ nhẹ"), {});
+        emit warmUpFinished(true, {});
         return;
     }
     initializing_ = true;
@@ -382,6 +406,14 @@ void VieNeuTtsBackend::onWorkerInitialized(const quint64 generation, bool succes
     emit initializationFinished(success, backend, error);
     if (success) {
         emit runtimeBackendChanged(backend, fallbackReason);
+        if (lowResourceMode_ && !deferredText_.isEmpty()) {
+            initializing_ = false;
+            ready_ = true;
+            const QString text = std::exchange(deferredText_, {});
+            emit warmUpFinished(true, {});
+            speak(text);
+            return;
+        }
         emit statusChanged(QStringLiteral("Đang chạy inference khởi động VieNeu-TTS..."));
         emit requestSynthesis(generation, 0, QStringLiteral("Kiểm tra giọng nói."));
     } else {
@@ -392,6 +424,7 @@ void VieNeuTtsBackend::onWorkerInitialized(const quint64 generation, bool succes
         emit statusChanged(QStringLiteral("Lỗi khởi tạo VieNeu-TTS"));
         emit warmUpFinished(false, error);
         emit errorOccurred(error);
+        if (!std::exchange(deferredText_, {}).isEmpty()) emit speakingFinished();
     }
 }
 
@@ -406,12 +439,18 @@ void VieNeuTtsBackend::setVoice(const QString& voice)
 
 void VieNeuTtsBackend::speak(const QString& text)
 {
+    idleTimer_->stop();
     const QString normalized = RacingTextNormalizer::normalize(text);
     if (normalized.isEmpty()) return;
 
     requestTimer_.start();
     if (playCachedSpotter(normalized)) return;
-    if (releasePending_ || activeBenchmarkRequestId_ != 0) {
+    if (releasePending_) {
+        deferredText_ = normalized;
+        warmUp();
+        return;
+    }
+    if (activeBenchmarkRequestId_ != 0) {
         emit speakingFinished();
         return;
     }
@@ -530,6 +569,7 @@ void VieNeuTtsBackend::stop()
 
 void VieNeuTtsBackend::releaseModel()
 {
+    idleTimer_->stop();
     for (const auto token : pausedSpeech_.keys()) discardSpeech(token);
     warmUpRequestedAfterRelease_ = false;
     stop();
@@ -562,6 +602,7 @@ void VieNeuTtsBackend::onWorkerContextReleased(const quint64 generation)
 
 void VieNeuTtsBackend::shutdown()
 {
+    idleTimer_->stop();
     for (const auto token : pausedSpeech_.keys()) discardSpeech(token);
     if (shuttingDown_) return;
     shuttingDown_ = true;
@@ -643,6 +684,7 @@ void VieNeuTtsBackend::onSynthesisFailed(const quint64 generation, const quint64
         emit statusChanged(QStringLiteral("Lỗi khởi chạy inference VieNeu-TTS"));
         emit warmUpFinished(false, error);
         emit errorOccurred(error);
+        if (!std::exchange(deferredText_, {}).isEmpty()) emit speakingFinished();
         return;
     }
     for (auto it = pausedSpeech_.begin(); it != pausedSpeech_.end(); ++it) {

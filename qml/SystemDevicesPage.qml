@@ -295,6 +295,16 @@ Item {
                                 checked: page.controller.gpuRendererEnabled
                                 onToggled: value => page.controller.setGpuRendererEnabled(value)
                             }
+                            ToggleRow {
+                                Layout.fillWidth: true
+                                title: "Chế độ nhẹ — ưu tiên game"
+                                subtitle: page.controller.lowResourceRestartRequired
+                                    ? "Khởi động lại ứng dụng để áp dụng."
+                                    : "UI tối đa 10 lần/giây; nạp giọng nói khi dùng, giải phóng model sau 60 giây rảnh. Câu đầu sau khi nghỉ có thể chậm hơn."
+                                switchObjectName: "lowResourceToggle"
+                                checked: page.controller.lowResourceMode
+                                onToggled: value => page.controller.setLowResourceMode(value)
+                            }
                         }
                     }
                     SurfaceCard {

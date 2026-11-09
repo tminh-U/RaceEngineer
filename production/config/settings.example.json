@@ -3,6 +3,7 @@
   "setup_completed": false,
   "setup_step": 0,
   "tts_benchmark": {},
+  "low_resource_mode": true,
   "driver_name": "Driver",
   "response_style": "Tiêu chuẩn",
   "llm": {
@@ -26,6 +27,9 @@
     "backend": "VieNeu-TTS",
     "cpu_threads": 2,
     "voice": "Minh Đức",
+    "speech_endpoint": "https://api.openai.com/v1/audio/speech",
+    "speech_model": "gpt-4o-mini-tts",
+    "speech_voice": "coral",
     "output_device": "",
     "volume": 0.85,
     "audio_ducking": true,

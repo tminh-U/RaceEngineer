@@ -14,6 +14,7 @@
 class QAudioSink;
 class QBuffer;
 class QThread;
+class QTimer;
 
 namespace raceengineer {
 
@@ -39,6 +40,7 @@ public:
     }
     [[nodiscard]] QString voice() const { return voice_; }
     void setVoice(const QString& voice);
+    void setLowResourceMode(bool enabled);
     quint64 pauseSpeech() override;
     bool resumeSpeech(quint64 token) override;
     void discardSpeech(quint64 token) override;
@@ -130,6 +132,8 @@ private:
     bool synthesizing_{false};
     bool playbackActive_{false};
     bool shuttingDown_{false};
+    bool lowResourceMode_{false};
+    QTimer* idleTimer_{nullptr};
     QString currentPlayingText_;
 };
 
